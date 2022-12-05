@@ -57,6 +57,5 @@ if __name__ == "__main__":
         ga.run()
         ga.show(save=True)
 
-        loss.stop()
     except Exception as e:
         raise e

@@ -1,8 +1,7 @@
 import warnings
 
-from experiments.monash_archive.meta_model import FeedCellEstimator
-
 warnings.filterwarnings("ignore")
+
 import csv
 import os
 import subprocess
@@ -10,8 +9,7 @@ import numpy as np
 from pytorch_lightning import seed_everything
 from gluonts.evaluation import make_evaluation_predictions
 from utils.tools import logger
-
-from gluonts.model.simple_feedforward import SimpleFeedForwardEstimator
+from experiments.monash_archive.meta_model import FeedCellEstimator
 
 
 class GluontsNet:
@@ -21,7 +19,6 @@ class GluontsNet:
         self.config = config
 
     def get_nn_forecast(self, args):
-        logger.info(f"Args: {args}")
         path_name = self.config["SaveDir"] + str(args[-1])
         final_forecasts = []
         forecast_horizon = self.config['ForecastHorizon']
@@ -89,7 +86,7 @@ class GluontsNet:
                 os.makedirs(path_name + f"/results/fixed_horizon_errors/")
             try:
                 smape = subprocess.check_output(
-                    ["Rscript", "--vanilla","experiments/monash_archive/tsforecastinggit/error_calc_helper.R",
+                    ["Rscript", "--vanilla", "experiments/monash_archive/tsforecastinggit/error_calc_helper.R",
                      self.config['PathName'],
                      forecast_file_path, temp_results_path, temp_dataset_path, str(self.config['Seasonality']),
                      file_name])
@@ -105,7 +102,7 @@ class GluontsNet:
             logger.info(f"Mean MASE: NAN")
             try:
                 os.system("rm -r " + path_name)
-            except Exception as e:
+            except Exception:
                 pass
             smape = np.inf
         return smape

@@ -167,7 +167,7 @@ class Attention1D(nn.Module):
         elif init == "conv":
             self.attention_center = nn.Parameter((torch.arange(Nh) - Nh // 2).float().view(Nh, 1),
                                                  requires_grad=True)
-            self.alpha = nn.Parameter(torch.randn([alpha]),
+            self.alpha = nn.Parameter(torch.Tensor([alpha]),
                                       requires_grad=True)
             self.W_query = nn.Linear(d_in, 2 * Nh)
             self.W_query.weight = nn.init.zeros_(self.W_query.weight)

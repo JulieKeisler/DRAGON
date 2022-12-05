@@ -28,7 +28,7 @@ class AdjMatrix(object):
 
     def __eq__(self, other):
         if len(self.operations) == len(other.operations):
-            return (other.matrix == self.matrix) and (
+            return (other.matrix == self.matrix).all() and (
                         sum([other.operations[i] != self.operations[i] for i in range(len(self.operations))]) == 0)
         else:
             return False

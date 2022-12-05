@@ -1,7 +1,7 @@
 from experiments.monash_archive.datasets_configs import dataset_configs
 
 exp_config = {
-    "GlobalSeed": 0,
+    "GlobalSeed": 100,
     "Generations": 2,
     "PopSize": 4,
     "DatasetConfig": dataset_configs,
