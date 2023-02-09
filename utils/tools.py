@@ -9,17 +9,6 @@ import random
 import numpy as np
 
 
-def argparser():
-    CLI = argparse.ArgumentParser()
-    CLI.add_argument(
-        "--benchmark",  # name on the CLI - drop the `--` for positional/required parameters
-        nargs=1,  # 1 value expected => creates a list
-        type=str,
-        default="tourism_monthly",  # default if nothing is provided
-    )
-    return CLI
-
-
 def set_logs():
     if not os.path.exists("logs"):
         os.makedirs("logs")

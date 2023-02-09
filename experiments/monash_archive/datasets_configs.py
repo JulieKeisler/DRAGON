@@ -1,3 +1,5 @@
+from experiments.monash_archive.meta_model import FeedCellModel
+
 nn5_daily_config = {
     "PathName": "experiments/monash_archive/raw_data/",
     "FileName": "nn5_daily_dataset_without_missing_values.tsf",
@@ -8,7 +10,7 @@ nn5_daily_config = {
     "NumEpochs": 10,
     "Device": "cpu",
     "ExternalForecastHorizon": None,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -23,7 +25,7 @@ tourism_yearly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": None,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -38,7 +40,7 @@ tourism_quarterly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": None,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -50,10 +52,10 @@ tourism_monthly_config = {
     "Target": "series_value",
     "TimeCol": "start_timestamp",
     "Lag": 15,
-    "NumEpochs": 100,
+    "NumEpochs": 1,
     "Device": "cpu",
     "ExternalForecastHorizon": None,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -67,7 +69,7 @@ m1_yearly_config = {
     "Lag": 2,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -82,7 +84,7 @@ m1_quarterly_config = {
     "Lag": 5,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -97,7 +99,7 @@ m1_monthly_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -112,7 +114,7 @@ m3_yearly_config = {
     "Lag": 2,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -127,7 +129,7 @@ m3_quarterly_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -142,7 +144,7 @@ m3_monthly_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -157,7 +159,7 @@ m3_other_config = {
     "Lag": 2,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -172,7 +174,7 @@ m4_quarterly_config = {
     "Lag": 5,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -187,7 +189,7 @@ m4_monthly_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -202,7 +204,7 @@ m4_weekly_config = {
     "Lag": 65,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -217,7 +219,7 @@ m4_daily_config = {
     "Lag": 9,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -232,7 +234,7 @@ m4_hourly_config = {
     "Lag": 210,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': None,
     "IntegerConversion": False,
     "Save": True
@@ -247,7 +249,7 @@ car_parts_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': 12,
     "IntegerConversion": True,
     "Save": True
@@ -262,7 +264,7 @@ hospital_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': 12,
     "IntegerConversion": True,
     "Save": True
@@ -277,7 +279,7 @@ fred_md_config = {
     "Lag": 15,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': 12,
     "IntegerConversion": False,
     "Save": True
@@ -292,7 +294,7 @@ nn5_weekly_config = {
     "Lag": 65,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': 8,
     "IntegerConversion": False,
     "Save": True
@@ -307,7 +309,7 @@ traffic_weekly_config = {
     "Lag": 65,
     "NumEpochs": 100,
     "Device": "cpu",
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     'ExternalForecastHorizon': 8,
     "IntegerConversion": False,
     "Save": True
@@ -323,7 +325,7 @@ electricity_weekly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 8,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -338,7 +340,7 @@ solar_weekly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 5,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -353,7 +355,7 @@ kaggle_web_traffic_weekly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 8,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -368,7 +370,7 @@ dominick_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 8,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -383,7 +385,7 @@ us_births_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -398,7 +400,7 @@ saugeen_river_flow_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -413,7 +415,7 @@ sunspot_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -428,7 +430,7 @@ covid_deaths_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -443,7 +445,7 @@ weather_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -458,7 +460,7 @@ traffic_hourly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 168,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -473,7 +475,7 @@ electricity_hourly_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 168,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -488,7 +490,7 @@ solar_10_minutes_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 1008,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -503,7 +505,7 @@ kdd_cup_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 168,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -518,7 +520,7 @@ melbourne_pedestrian_counts_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 24,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -533,7 +535,7 @@ bitcoin_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -548,7 +550,7 @@ vehicle_trips_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": True,
     "Save": True
 }
@@ -563,7 +565,7 @@ aus_elecdemand_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 336,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -578,7 +580,7 @@ rideshare_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 168,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }
@@ -593,7 +595,7 @@ temperature_rain_config = {
     "NumEpochs": 100,
     "Device": "cpu",
     "ExternalForecastHorizon": 30,
-    "Model": "feed_cell",
+    "Model": FeedCellModel,
     "IntegerConversion": False,
     "Save": True
 }

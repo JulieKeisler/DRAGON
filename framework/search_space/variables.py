@@ -55,9 +55,9 @@ def unitary_var(label, operations=None):
     if operations is None:
         operations = "Identity"
     return ArrayVar(
-        label,
         combiner_var(label + " Combiner"),
         Constant(label + " Operation", operations, neighbor=ConstantInterval()),
+        label=label,
         neighbor=ArrayInterval(),
     )
 
@@ -101,8 +101,8 @@ def attention_mts_var(label, operations=None, output=None, n_heads=None, initial
                                                f"{type(initialization)} instead."
     assert isinstance(activation,
                       CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations, output, n_heads, initialization,
-                    activation, *kwargs, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, output, n_heads, initialization,
+                    activation, *kwargs, label=label, neighbor=ArrayInterval())
 
 
 def attention_var(label, operations=None, n_heads=None, initialization=None, activation=None, *kwargs):
@@ -125,8 +125,8 @@ def attention_var(label, operations=None, n_heads=None, initialization=None, act
                                                f"{type(initialization)} instead."
     assert isinstance(activation,
                       CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations, n_heads, initialization, activation, *kwargs,
-                    neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, n_heads, initialization, activation, *kwargs,
+                    label=label, neighbor=ArrayInterval())
 
 
 def attention_var_2d(label, operations=None, output=None, n_heads=None, initialization=None, activation=None, *kwargs):
@@ -151,7 +151,7 @@ def attention_var_2d(label, operations=None, output=None, n_heads=None, initiali
                                                f"{type(initialization)} instead."
     assert isinstance(activation,
                       CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations, output, n_heads, initialization, activation, *kwargs, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, output, n_heads, initialization, activation, *kwargs, label=label, neighbor=ArrayInterval())
 
 
 def pooling_var(label, operations, size=None):
@@ -160,7 +160,7 @@ def pooling_var(label, operations, size=None):
     operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
     size = create_int_var(label + " Size", size, 1, 32)
     assert isinstance(size, IntVar), f"{label} size should be an instance of IntVar, got {type(size)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations, size, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, size, label=label, neighbor=ArrayInterval())
 
 
 def dropout_var(label, operations=None, rate=None):
@@ -171,7 +171,7 @@ def dropout_var(label, operations=None, rate=None):
         rate = 1
     rate = FloatVar(label + " Rate", 0, rate, neighbor=FloatInterval(0.01))
     assert isinstance(rate, FloatVar), f"{label} rate should be an instance of FloatVar, got {type(rate)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations, rate, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, rate, label=label, neighbor=ArrayInterval())
 
 
 def mlp_var(label, output=None, activation=None):
@@ -181,9 +181,8 @@ def mlp_var(label, output=None, activation=None):
     assert isinstance(output, IntVar), f"{label} output should be an instance of IntVar, got {type(output)} instead."
     assert isinstance(activation,
                       CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), Constant(label + " Operation", "MLP",
-                                                                       neighbor=ConstantInterval()), output, activation,
-                                                                        neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), Constant(label + " Operation", "MLP",
+                    neighbor=ConstantInterval()), output, activation, label=label, neighbor=ArrayInterval())
 
 
 def convolution_var_2d(label, kernel, operation=None, output=None, activation=None):
@@ -207,7 +206,7 @@ def convolution_var_2d(label, kernel, operation=None, output=None, activation=No
                                                         Constant)), f"{label} operation should be an instance" \
                                                                     f" of CatVar or Constant, got {type(operation)} instead."
 
-    return ArrayVar(label, combiner_var(label + " Combiner"), operation, output, kernel, activation, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operation, output, kernel, activation, label=label, neighbor=ArrayInterval())
 
 
 def convolution_var_1d(label, kernel, operation=None, activation=None):
@@ -228,7 +227,7 @@ def convolution_var_1d(label, kernel, operation=None, activation=None):
     assert (isinstance(operation, CatVar) or isinstance(operation,
                                                         Constant)), f"{label} operation should be an instance" \
                                                                     f" of CatVar or Constant, got {type(operation)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operation, kernel, activation, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operation, kernel, activation, label=label, neighbor=ArrayInterval())
 
 
 def convolution_var_1d_2d(label, kernel, operation=None, activation=None):
@@ -250,7 +249,7 @@ def convolution_var_1d_2d(label, kernel, operation=None, activation=None):
     assert (isinstance(operation, CatVar) or isinstance(operation,
                                                         Constant)), f"{label} operation should be an instance" \
                                                                     f" of CatVar or Constant, got {type(operation)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operation, kernel, activation, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operation, kernel, activation, label=label, neighbor=ArrayInterval())
 
 
 def recurrence_var(label, operations, hidden_size=None, output=None, activation=None):
@@ -268,5 +267,4 @@ def recurrence_var(label, operations, hidden_size=None, output=None, activation=
     assert (isinstance(operations, CatVar) or isinstance(operations,
                                                          Constant)), f"{label} operations should be an instance" \
                                                                      f" of CatVar or Constant, got {type(operations)} instead."
-    return ArrayVar(label, combiner_var(label + " Combiner"), operations,
-                    hidden_size, output, activation, neighbor=ArrayInterval())
+    return ArrayVar(combiner_var(label + " Combiner"), operations, hidden_size, output, activation, label=label, neighbor=ArrayInterval())

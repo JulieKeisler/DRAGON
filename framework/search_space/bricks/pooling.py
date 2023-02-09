@@ -1,8 +1,5 @@
 import torch.nn as nn
 
-from utils.tools import logger
-
-
 class AVGPooling2D(nn.Module):
     def __init__(self, pool_size):
         super(AVGPooling2D, self).__init__()

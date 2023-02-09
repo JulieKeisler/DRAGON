@@ -1,7 +1,5 @@
 import torch.nn as nn
 
-from utils.tools import logger
-
 
 class Simple_2DLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):

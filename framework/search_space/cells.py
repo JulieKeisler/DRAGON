@@ -21,6 +21,7 @@ class AdjCell(nn.Module):
                 input_channel = max(parents_channels)
             if "Pooling" in self.nodes[j][1]:
                 input_channel = max(self.nodes[j][2]+1, input_channel)
+
             if self.nodes[j][1] == "1DCNN":
                 input_channel = max(self.nodes[j][2], input_channel)
             if self.nodes[j][1] == "2DCNN":

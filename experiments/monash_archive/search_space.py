@@ -1,7 +1,7 @@
-from zellij.core.variables import DynamicBlock, CatVar, ArrayVar
-from zellij.utils.neighborhoods import DynamicInterval, ArrayInterval
+from zellij.core.variables import CatVar, ArrayVar, DynamicBlock
+from zellij.utils.neighborhoods import ArrayInterval, DynamicBlockInterval
 
-from framework.operators.neighborhoods import LayersInterval, AdjMatrixHierarchicalInterval
+from framework.search_algorithm.neighborhoods import LayersInterval, AdjMatrixHierarchicalInterval
 from framework.search_space.dags import AdjMatrixVariable
 from framework.search_space.variables import unitary_var, pooling_var, mlp_var, \
     recurrence_var, dropout_var, attention_var, convolution_var_1d, activation_var, create_int_var
@@ -24,13 +24,12 @@ def operations_var(label, shape, size):
             neighbor=LayersInterval([2, 1]),
         ),
         size,
-        neighbor=DynamicInterval(neighborhood=2),
+        neighbor=DynamicBlockInterval(neighborhood=2),
     )
 
 
 def NN_monash_var(label="Neural Network", shape=1000, size=10):
     NeuralNetwork = ArrayVar(
-        label,
         AdjMatrixVariable(
             "Cell",
             operations_var("Feed Cell", shape, size),
@@ -38,6 +37,7 @@ def NN_monash_var(label="Neural Network", shape=1000, size=10):
         ),
         activation_var("NN Activation"),
         create_int_var("Seed", None, 0, 10000),
+        label=label,
         neighbor=ArrayInterval(),
     )
     return NeuralNetwork

@@ -36,14 +36,13 @@ class GluontsNet:
             trainer_kwargs["accelerator"] = "gpu"
             trainer_kwargs["devices"] = 1
         estimator = FeedCellEstimator(
+            model=self.config['Model'],
             prediction_length=forecast_horizon,
             context_length=self.config["Lag"],
             args=args,
             device=self.config["Device"],
             trainer_kwargs=trainer_kwargs
         )
-        # estimator = SimpleFeedForwardEstimator(prediction_length=forecast_horizon,
-        #    context_length=self.config["Lag"])
 
         try:
             predictor = estimator.train(training_data=self.train_ds, enable_progress_bar=False)
@@ -63,7 +62,7 @@ class GluontsNet:
                 os.makedirs(path_name + "/results/fixed_horizon_forecasts/")
 
             # write the forecasting results to a file
-            file_name = self.config["DatasetName"] + "_" + self.config["Model"] + "_lag_" + str(self.config["Lag"])
+            file_name = self.config["DatasetName"] + "_lag_" + str(self.config["Lag"])
             forecast_file_path = path_name + "/results/fixed_horizon_forecasts/" + file_name + ".txt"
 
             with open(forecast_file_path, "w") as output:

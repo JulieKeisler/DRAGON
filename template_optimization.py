@@ -1,19 +1,14 @@
+import argparse
 import warnings
-
-from framework.operators.neighborhoods_operators import HierarchicalNNMutation
-from framework.operators.other_operators import selBestWODuplicates
-from framework.operators.variation_operators import DAGTwoPoint
+import torch
+import logging
 
 warnings.filterwarnings("ignore")
 
-import torch
-import logging
+from framework.search_algorithm.pb_configuration import problem_configuration
 from zellij.core.loss_func import Loss
-from zellij.core.search_space import HpoSearchspace
-from zellij.strategies.genetic_algorithm import Genetic_algorithm
-from zellij.utils.neighborhoods import Intervals
-from zellij.utils.operators import DeapTournament
-from utils.tools import argparser, set_seed
+
+from utils.tools import set_seed, logger
 from experiments.exp_config import exp_config
 from experiments.monash_archive.dataset import gluonts_dataset
 from experiments.monash_archive.search_space import monash_search_space
@@ -21,41 +16,53 @@ from experiments.monash_archive.training import GluontsNet
 
 if __name__ == "__main__":
     try:
+        ############ GENERAL SETUP ############
+
+        # Remove unnecessary logs from imported packages
         log_gluonts = logging.getLogger("gluonts")
         log_gluonts.setLevel('CRITICAL')
         log_mxnet = logging.getLogger("pytorch_lightning")
         log_mxnet.setLevel('CRITICAL')
-        # Loss Construction
-        CLI = argparser()
-        args = CLI.parse_args()
-        dataset = args.benchmark[0]
+
+        # Args parser for experiment
+        parser = argparse.ArgumentParser(description='Template Optimization')
+        parser.add_argument('--dataset', type=str, required=False, default='m4_daily', help='dataset name')
+        parser.add_argument('--seed', type=int, required=False, default=0, help='general seed for the experiment')
+        args = parser.parse_args()
+
+        # Load and set config for the chosen dataset
+        dataset = args.dataset
         config = exp_config["DatasetConfig"][dataset]
-        set_seed(exp_config['GlobalSeed'])
         n_gpu = torch.cuda.device_count()
         if n_gpu > 0:
             config["Device"] = "cuda:0"
         config['SaveDir'] = config['PathName'] + "_"
         config['SPSize'] = exp_config['SPSize']
+        # Set seed for general reproducibility
+        set_seed(args.seed)
+
+        logger.info(f'This is optimization script on the dataset {args.dataset}, with {args.seed} as the experiment seed.')
+        #######################################
+
+        # Load Dataset
         train_ds, test_ds, config = gluonts_dataset(config)
+
+        # Create NN training functions
         model = GluontsNet(train_ds, test_ds, config)
+        # Search space arguments
         net = monash_search_space(config)
         labels = [e.label for e in net]
-
-        loss = Loss(verbose=False, save=True, separator=';', labels=labels)(model.get_nn_forecast)
-        pop = exp_config['PopSize']
-        change = exp_config['FChange']
-        search_space = HpoSearchspace(net,
-                                      loss=loss,
-                                      neighbor=Intervals(),
-                                      mutation=HierarchicalNNMutation(exp_config["MutationRate"], change=change),
-                                      selection=DeapTournament(max(int(pop / exp_config["TournamentRate"]), 1)),
-                                      crossover=DAGTwoPoint(),
-                                      )
-        ga = Genetic_algorithm(search_space, 1000000, pop_size=pop, generation=exp_config["Generations"],
-                               elitism=exp_config["ElitismRate"], random=exp_config["RandomRate"],
-                               best_selection=selBestWODuplicates)
-        ga.run()
-        ga.show(save=True)
-
+        # Objective Loss
+        loss = Loss(verbose=False, save=True)(model.get_nn_forecast)
+        # Generate optimization problem
+        search_space, search_algorithm = problem_configuration(exp_config, net, loss)
+        if exp_config["MetaHeuristic"] == "GA":
+            search_algorithm.run()
+        elif exp_config["MetaHeuristic"] == "SA":
+            x0 = search_space.random_point()
+            y0 = search_space.loss(x0)
+            search_algorithm.run(X0=x0, Y0=y0)
+        elif not isinstance(exp_config["MetaHeuristic"], str):
+            search_algorithm.run()
     except Exception as e:
         raise e

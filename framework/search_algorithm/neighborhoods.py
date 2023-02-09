@@ -1,6 +1,5 @@
 import random
 import numpy as np
-import copy
 
 import warnings
 from zellij.core.addons import VarNeighborhood, logger
@@ -136,7 +135,7 @@ class AdjMatrixHierarchicalInterval(VarNeighborhood):
                 inter.matrix[:j, j] = new_col
             inter.operations.pop(idx)
         elif modif == "modify":  # Modify node operation
-            inter.operations[idx] = self.target.operations.value.neighbor(inter.operations[idx], neigh=neigh)
+            inter.operations[idx] = self.target.operations.value.neighbor(inter.operations[idx])
         elif modif == "children":  # Modify node children
             new_row = np.zeros(inter.matrix.shape[0] - idx - 1)
             while sum(new_row) == 0:
@@ -162,9 +161,9 @@ class AdjMatrixHierarchicalInterval(VarNeighborhood):
         return inter
 
 
-class LayersInterval(VarNeighborhood):
+class HierarchicalLayersInterval(VarNeighborhood):
     def __init__(self, neighborhood=None, variable=None):
-        super(LayersInterval, self).__init__(variable)
+        super(HierarchicalLayersInterval, self).__init__(variable)
         self._neighborhood = neighborhood
 
     def __call__(self, layer, size=1, neigh="local"):
@@ -372,3 +371,35 @@ class AdjMatrixInterval(VarNeighborhood):
             inter.matrix[-2, -1] = 1
         return inter
 
+
+class LayersInterval(VarNeighborhood):
+    def __init__(self, neighborhood=None, variable=None):
+        super(LayersInterval, self).__init__(variable)
+        self._neighborhood = neighborhood
+
+    def __call__(self, layer, size=1, *kwargs):
+        if size > 1:
+            res = []
+            type = value_to_layer_type(layer, self._target.features)
+            new_layer = type.neighbor(layer)
+            res.append(new_layer)
+            return res
+        else:
+            type = value_to_layer_type(layer, self._target.features)
+            new_layer = type.neighbor(layer)
+            return new_layer
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+        assert isinstance(neighborhood, list) or neighborhood is None, logger.error(
+            f"Layers neighborhood must be a list of weights, got {neighborhood}"
+        )
+        self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+        assert isinstance(variable, CatVar) or variable is None, logger.error(
+            f"Target object must be a `CatInterval` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable

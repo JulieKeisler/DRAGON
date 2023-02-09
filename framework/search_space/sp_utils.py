@@ -10,6 +10,7 @@ from utils.exceptions import InvalidArgumentError
 from utils.tools import logger
 
 
+
 def get_dag_max_channels(dag, input_shape):
     max_channels = input_shape
     for node in dag.nodes:
