@@ -16,10 +16,10 @@ The following libraries are necessary:
 
 You can try the optimization framework on any data from the [Monash Forecasting Archive](https://zenodo.org/communities/forecasting?page=1&size=20) whose config has been set in the config file: experiments/monash_archive/datasets_configs.py, by running:
 
-python template_optimization.py --dataset=dataset_name
+`python template_optimization.py --dataset=dataset_name`
 
 An MPI version is also available:
 
-mpiexec -np X python template_MPI_optimization.py --dataset=dataset_name
+`mpiexec -np X python template_MPI_optimization.py --dataset=dataset_name`
 
 
