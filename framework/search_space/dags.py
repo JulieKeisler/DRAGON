@@ -3,7 +3,6 @@ from zellij.core.variables import Variable, DynamicBlock
 
 from utils.tools import logger
 
-
 class AdjMatrix(object):
     def __init__(self, operations, matrix):
         self.matrix = matrix
@@ -29,7 +28,7 @@ class AdjMatrix(object):
     def __eq__(self, other):
         if len(self.operations) == len(other.operations):
             return (other.matrix == self.matrix).all() and (
-                        sum([other.operations[i] != self.operations[i] for i in range(len(self.operations))]) == 0)
+                    sum([other.operations[i] != self.operations[i] for i in range(len(self.operations))]) == 0)
         else:
             return False
 
@@ -60,27 +59,30 @@ def fill_adj_matrix(matrix):
         matrix[:j, j] = new_col
     return matrix
 
+
 # Directed Acyclic Graph represented by adjacency matrix for NAS
 class AdjMatrixVariable(Variable):
-    def __init__(self, label, operations, **kwargs):
+    def __init__(self, label, operations, init_complexity=None, **kwargs):
         assert isinstance(operations, DynamicBlock), f"""
         Operations must inherit from `DynamicBlock`, got {operations}
         """
         self.operations = operations
         self.max_size = operations.repeat
+        self.complexity = init_complexity
         super(AdjMatrixVariable, self).__init__(label, **kwargs)
 
     def random(self, size=1):
         """random(size=1)
             Parameters
             ----------
-            size : int, default=None
+            size : int, default=1
                 Number of draws.
-
             Returns AdjMatrix
             ---------
         """
         operations = self.operations.random()
+        if self.complexity is not None:
+            operations = operations[: min(self.complexity, len(operations))]
         operations = [['Input']] + operations
         matrix = np.random.randint(0, 2, (len(operations), len(operations)))
         matrix = np.triu(matrix, k=1)
@@ -110,5 +112,3 @@ class AdjMatrixVariable(Variable):
         \t- Operations:\n"
                 + self.operations.__repr__()
         )
-
-

@@ -1,9 +1,6 @@
 import torch.nn as nn
 import numpy as np
 
-from utils.tools import logger
-
-
 class Simple_2DCNN(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size):
         super(Simple_2DCNN, self).__init__()

@@ -147,6 +147,7 @@ class FeedCellEstimator(PyTorchLightningEstimator):
                  context_length: int,
                  args: List,
                  device,
+                 model=FeedCellModel,
                  distr_output: DistributionOutput = StudentTOutput(),
                  loss: DistributionLoss = NegativeLogLikelihood(),
                  batch_size: int = 32,
@@ -169,6 +170,7 @@ class FeedCellEstimator(PyTorchLightningEstimator):
         self.batch_size = batch_size
         self.num_batches_per_epoch = num_batches_per_epoch
         self.device = device
+        self.meta_model = model
 
         self.train_sampler = train_sampler or ExpectedNumInstanceSampler(
             num_instances=1.0, min_future=prediction_length
@@ -194,7 +196,7 @@ class FeedCellEstimator(PyTorchLightningEstimator):
         )
 
     def create_lightning_module(self) -> pl.LightningModule:
-        model = FeedCellModel(
+        model = self.meta_model(
             prediction_length=self.prediction_length,
             context_length=self.context_length,
             args=self.args,

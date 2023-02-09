@@ -6,10 +6,11 @@ exp_config = {
     "PopSize": 4,
     "DatasetConfig": dataset_configs,
     "SPSize": 5,
+    "Neighborhood": "Hierarchical",
     "FChange": ["large" for _ in range(1)] + ["local" for _ in range(2)],
     "MutationRate": 0.7,
     "TournamentRate": 10,
     "ElitismRate": 0.1,
     "RandomRate": 0.1,
-
+    "MetaHeuristic": "GA",
 }
