@@ -15,7 +15,8 @@ setup(
         'pandas',
         'zellij',
         'torch',
-        'gluonts[torch,pro]'
+        'gluonts[torch,pro]',
+        'graphviz'
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"]
