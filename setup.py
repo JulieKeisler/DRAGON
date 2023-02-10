@@ -15,7 +15,7 @@ setup(
         'pandas',
         'zellij',
         'torch',
-        'glutons[torch,pro]'
+        'gluonts[torch,pro]'
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"]
