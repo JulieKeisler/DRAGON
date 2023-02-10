@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 setup(
@@ -6,8 +6,8 @@ setup(
     version="1.0",
     description='Implementation of the algorithmic framework from <An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters>',
     url="https://github.com/JulieKeisler/SmoothAutoDL.git",
-    package_dir={"":"lib"},
-    packages=find_packages("lib"),
+    package_dir={"evodags":"lib/evodags"},
+    packages=['evodags'],
     author='Julie Keisler',
     author_email='julie.keisler@edf.fr',
     install_requires=[
