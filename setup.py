@@ -13,7 +13,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'git+https://github.com/ThomasFirmin/zellij.git@dag',
+        'zellij',
         'torch'
         'glutons[torch,pro]'
     ],
