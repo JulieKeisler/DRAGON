@@ -14,7 +14,7 @@ setup(
         'numpy',
         'pandas',
         'zellij',
-        'torch'
+        'torch',
         'glutons[torch,pro]'
     ],
     extras_require={
