@@ -6,9 +6,9 @@ from zellij.strategies.tools import MulExponential
 from zellij.utils.neighborhoods import Intervals
 from zellij.utils.operators import DeapTournament
 
-from lib.evodags.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
-from lib.evodags.search_algorithm.other_operators import SelBestWoDuplicate, Random
-from lib.evodags.search_algorithm.variation_operators import DAGTwoPoint
+from evodags.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
+from evodags.search_algorithm.other_operators import SelBestWoDuplicate, Random
+from evodags.search_algorithm.variation_operators import DAGTwoPoint
 
 
 def problem_configuration(config, net, loss):

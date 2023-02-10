@@ -3,7 +3,7 @@ from zellij.core.addons import Mutator
 from zellij.core.search_space import Searchspace
 from zellij.core.variables import Constant
 
-from lib.evodags.search_space.dags import AdjMatrixVariable
+from evodags.search_space.dags import AdjMatrixVariable
 
 
 class HierarchicalNNMutation(Mutator):

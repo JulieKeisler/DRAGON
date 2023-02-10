@@ -1,7 +1,7 @@
 import numpy as np
 from zellij.core.variables import Variable, DynamicBlock
 
-from lib.evodags.utils.tools import logger
+from evodags.utils.tools import logger
 
 class AdjMatrix(object):
     def __init__(self, operations, matrix):

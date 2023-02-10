@@ -1,4 +1,4 @@
-from lib.evodags.experiments.monash_archive.datasets_configs import dataset_configs
+from evodags.experiments.monash_archive.datasets_configs import dataset_configs
 
 exp_config = {
     "GlobalSeed": 100,
