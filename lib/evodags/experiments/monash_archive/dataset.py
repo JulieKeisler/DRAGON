@@ -6,7 +6,7 @@ from gluonts.dataset.field_names import FieldName
 
 import lib.evodags.experiments.monash_archive.tsforecastinggit.tsf_loader as loader
 from lib.evodags.experiments.monash_archive.datasets_configs import FREQUENCY_MAP, SEASONALITY_MAP
-from utils.tools import logger, read_nn
+from lib.evodags.utils.tools import logger, read_nn
 
 
 def gluonts_dataset(config):

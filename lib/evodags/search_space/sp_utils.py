@@ -6,8 +6,8 @@ from lib.evodags.search_space.bricks.convolutions import Simple_2DCNN, Simple_1D
 from lib.evodags.search_space.bricks.dropout import Dropout
 from lib.evodags.search_space.bricks.pooling import MaxPooling1D, AVGPooling1D, MaxPooling2D, AVGPooling2D
 from lib.evodags.search_space.bricks.recurrences import Simple_1DLSTM, Simple_2DLSTM, Simple_1DGRU, Simple_2DGRU
-from utils.exceptions import InvalidArgumentError
-from utils.tools import logger
+from lib.evodags.utils.exceptions import InvalidArgumentError
+from lib.evodags.utils.tools import logger
 
 
 

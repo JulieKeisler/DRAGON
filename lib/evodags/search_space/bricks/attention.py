@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils.tools import logger
+from lib.evodags.utils.tools import logger
 
 # noinspection PyArgumentList
 class SpatialAttention(nn.Module):
