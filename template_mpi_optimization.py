@@ -1,6 +1,6 @@
 import argparse
 import warnings
-from framework.search_algorithm.pb_configuration import problem_configuration
+from lib.evodags.search_algorithm.pb_configuration import problem_configuration
 
 warnings.filterwarnings("ignore")
 

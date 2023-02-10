@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from framework.search_space.bricks.basics import Identity
-from framework.search_space.sp_utils import get_layers, get_activation
+from lib.evodags.search_space.bricks.basics import Identity
+from lib.evodags.search_space.sp_utils import get_layers, get_activation
 
 
 class AdjCell(nn.Module):

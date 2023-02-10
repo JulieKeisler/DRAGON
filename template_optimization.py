@@ -5,7 +5,7 @@ import logging
 
 warnings.filterwarnings("ignore")
 
-from framework.search_algorithm.pb_configuration import problem_configuration
+from lib.evodags.search_algorithm.pb_configuration import problem_configuration
 from zellij.core.loss_func import Loss
 
 from utils.tools import set_seed, logger

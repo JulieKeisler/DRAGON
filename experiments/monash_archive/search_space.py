@@ -1,9 +1,9 @@
 from zellij.core.variables import CatVar, ArrayVar, DynamicBlock
 from zellij.utils.neighborhoods import ArrayInterval, DynamicBlockInterval
 
-from framework.search_algorithm.neighborhoods import LayersInterval, AdjMatrixHierarchicalInterval
-from framework.search_space.dags import AdjMatrixVariable
-from framework.search_space.variables import unitary_var, pooling_var, mlp_var, \
+from lib.evodags.search_algorithm.neighborhoods import LayersInterval, AdjMatrixHierarchicalInterval
+from lib.evodags.search_space.dags import AdjMatrixVariable
+from lib.evodags.search_space.variables import unitary_var, pooling_var, mlp_var, \
     recurrence_var, dropout_var, attention_var, convolution_var_1d, activation_var, create_int_var
 
 

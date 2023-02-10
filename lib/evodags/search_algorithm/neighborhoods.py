@@ -6,7 +6,7 @@ from zellij.core.addons import VarNeighborhood, logger
 from zellij.core.variables import CatVar, IntVar, Constant
 from zellij.utils.neighborhoods import ConstantInterval
 
-from framework.search_space.dags import AdjMatrixVariable
+from lib.evodags.search_space.dags import AdjMatrixVariable
 from utils.exceptions import InvalidArgumentError
 
 warnings.filterwarnings("ignore")

@@ -1,4 +1,3 @@
-import argparse
 import ast
 import logging
 import sys
@@ -38,7 +37,7 @@ def set_seed(s):
 
 
 def read_nn(string):
-    from framework.search_space.dags import AdjMatrix
+    from lib.evodags.search_space.dags import AdjMatrix
     nodes, matrix = string.split('|')
     nodes = ast.literal_eval(nodes.split(':')[1].strip())
     matrix = ast.literal_eval(matrix.split(':')[1].strip())
