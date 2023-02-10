@@ -30,8 +30,8 @@ from gluonts.torch.distributions import (
     StudentTOutput,
 )
 
-from framework.search_space.bricks.basics import MLP
-from framework.search_space.cells import CandidateOperation, AdjCell
+from evodags.search_space.bricks.basics import MLP
+from evodags.search_space.cells import CandidateOperation, AdjCell
 
 PREDICTION_INPUT_NAMES = [
     "past_target",

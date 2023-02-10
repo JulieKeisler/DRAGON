@@ -1,13 +1,13 @@
 import torch.nn as nn
 
-from framework.search_space.bricks.attention import SpatialAttention, TemporalAttention, Attention1D
-from framework.search_space.bricks.basics import MLP, Identity, Zero
-from framework.search_space.bricks.convolutions import Simple_2DCNN, Simple_1DCNN
-from framework.search_space.bricks.dropout import Dropout
-from framework.search_space.bricks.pooling import MaxPooling1D, AVGPooling1D, MaxPooling2D, AVGPooling2D
-from framework.search_space.bricks.recurrences import Simple_1DLSTM, Simple_2DLSTM, Simple_1DGRU, Simple_2DGRU
-from utils.exceptions import InvalidArgumentError
-from utils.tools import logger
+from evodags.search_space.bricks.attention import SpatialAttention, TemporalAttention, Attention1D
+from evodags.search_space.bricks.basics import MLP, Identity, Zero
+from evodags.search_space.bricks.convolutions import Simple_2DCNN, Simple_1DCNN
+from evodags.search_space.bricks.dropout import Dropout
+from evodags.search_space.bricks.pooling import MaxPooling1D, AVGPooling1D, MaxPooling2D, AVGPooling2D
+from evodags.search_space.bricks.recurrences import Simple_1DLSTM, Simple_2DLSTM, Simple_1DGRU, Simple_2DGRU
+from evodags.utils.exceptions import InvalidArgumentError
+from evodags.utils.tools import logger
 
 
 
@@ -34,7 +34,7 @@ def get_matrix_max_channels(operations, input_shape):
 
 # noinspection PyBroadException,SpellCheckingInspection
 def get_layers(args, input_shape, input_channels):
-    from framework.search_space.cells import CandidateOperation
+    from evodags.search_space.cells import CandidateOperation
     combiner = args[0]
     name = args[1]
     if len(input_shape) == 3:

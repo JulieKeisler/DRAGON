@@ -6,9 +6,9 @@ from zellij.strategies.tools import MulExponential
 from zellij.utils.neighborhoods import Intervals
 from zellij.utils.operators import DeapTournament
 
-from framework.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
-from framework.search_algorithm.other_operators import SelBestWoDuplicate, Random
-from framework.search_algorithm.variation_operators import DAGTwoPoint
+from evodags.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
+from evodags.search_algorithm.other_operators import SelBestWoDuplicate, Random
+from evodags.search_algorithm.variation_operators import DAGTwoPoint
 
 
 def problem_configuration(config, net, loss):
@@ -38,5 +38,5 @@ def problem_configuration(config, net, loss):
         search_algorithm = config['MetaHeuristic'](search_space, 1000000, pop_size=config["PopSize"],
                                              generation=config["Generations"],
                                              elitism=config["ElitismRate"], random=config["RandomRate"],
-                                             best_selection=selBestWODuplicates)
+                                             best_selection=SelBestWoDuplicate)
     return search_space, search_algorithm

@@ -8,8 +8,8 @@ import subprocess
 import numpy as np
 from pytorch_lightning import seed_everything
 from gluonts.evaluation import make_evaluation_predictions
-from utils.tools import logger
-from experiments.monash_archive.meta_model import FeedCellEstimator
+from evodags.utils.tools import logger
+from evodags.experiments.monash_archive.meta_model import FeedCellEstimator
 
 
 class GluontsNet:
@@ -85,7 +85,7 @@ class GluontsNet:
                 os.makedirs(path_name + f"/results/fixed_horizon_errors/")
             try:
                 smape = subprocess.check_output(
-                    ["Rscript", "--vanilla", "experiments/monash_archive/tsforecastinggit/error_calc_helper.R",
+                    ["Rscript", "--vanilla", "lib/evodags/experiments/monash_archive/tsforecastinggit/error_calc_helper.R",
                      self.config['PathName'],
                      forecast_file_path, temp_results_path, temp_dataset_path, str(self.config['Seasonality']),
                      file_name])

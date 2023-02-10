@@ -4,9 +4,9 @@ import pandas as pd
 from gluonts.dataset.common import ListDataset
 from gluonts.dataset.field_names import FieldName
 
-import experiments.monash_archive.tsforecastinggit.tsf_loader as loader
-from experiments.monash_archive.datasets_configs import FREQUENCY_MAP, SEASONALITY_MAP
-from utils.tools import logger, read_nn
+import evodags.experiments.monash_archive.tsforecastinggit.tsf_loader as loader
+from evodags.experiments.monash_archive.datasets_configs import FREQUENCY_MAP, SEASONALITY_MAP
+from evodags.utils.tools import logger, read_nn
 
 
 def gluonts_dataset(config):

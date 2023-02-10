@@ -1,7 +1,7 @@
 import numpy as np
 from zellij.core.variables import Variable, DynamicBlock
 
-from utils.tools import logger
+from evodags.utils.tools import logger
 
 class AdjMatrix(object):
     def __init__(self, operations, matrix):
@@ -66,6 +66,7 @@ class AdjMatrixVariable(Variable):
         assert isinstance(operations, DynamicBlock), f"""
         Operations must inherit from `DynamicBlock`, got {operations}
         """
+        self.operations = operations
         self.operations = operations
         self.max_size = operations.repeat
         self.complexity = init_complexity

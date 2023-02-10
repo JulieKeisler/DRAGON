@@ -1,6 +1,9 @@
 import argparse
 import warnings
-from framework.search_algorithm.pb_configuration import problem_configuration
+import os
+os.chdir("lib")
+
+from evodags.search_algorithm.pb_configuration import problem_configuration
 
 warnings.filterwarnings("ignore")
 
@@ -8,11 +11,11 @@ import torch
 from mpi4py import MPI
 import logging
 from zellij.core.loss_func import Loss
-from utils.tools import set_seed, logger
-from experiments.exp_config import exp_config
-from experiments.monash_archive.dataset import gluonts_dataset
-from experiments.monash_archive.search_space import monash_search_space
-from experiments.monash_archive.training import GluontsNet
+from evodags.utils.tools import set_seed, logger
+from evodags.experiments.exp_config import exp_config
+from evodags.experiments.monash_archive.dataset import gluonts_dataset
+from evodags.experiments.monash_archive.search_space import monash_search_space
+from evodags.experiments.monash_archive.training import GluontsNet
 
 if __name__ == "__main__":
     try:
