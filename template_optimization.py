@@ -9,10 +9,10 @@ from lib.evodags.search_algorithm.pb_configuration import problem_configuration
 from zellij.core.loss_func import Loss
 
 from utils.tools import set_seed, logger
-from experiments.exp_config import exp_config
-from experiments.monash_archive.dataset import gluonts_dataset
-from experiments.monash_archive.search_space import monash_search_space
-from experiments.monash_archive.training import GluontsNet
+from lib.evodags.experiments.exp_config import exp_config
+from lib.evodags.experiments.monash_archive.dataset import gluonts_dataset
+from lib.evodags.experiments.monash_archive.search_space import monash_search_space
+from lib.evodags.experiments.monash_archive.training import GluontsNet
 
 if __name__ == "__main__":
     try:

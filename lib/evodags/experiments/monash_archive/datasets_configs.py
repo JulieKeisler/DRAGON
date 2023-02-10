@@ -1,7 +1,7 @@
-from experiments.monash_archive.meta_model import FeedCellModel
+from lib.evodags.experiments.monash_archive.meta_model import FeedCellModel
 
 nn5_daily_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "nn5_daily_dataset_without_missing_values.tsf",
     "DatasetName": "nn5_daily",
     "Target": "series_value",
@@ -16,7 +16,7 @@ nn5_daily_config = {
 }
 
 tourism_yearly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "tourism_yearly_dataset.tsf",
     "DatasetName": "tourism_yearly",
     "Target": "series_value",
@@ -31,7 +31,7 @@ tourism_yearly_config = {
 }
 
 tourism_quarterly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "tourism_quarterly_dataset.tsf",
     "DatasetName": "tourism_quarterly",
     "Target": "series_value",
@@ -46,7 +46,7 @@ tourism_quarterly_config = {
 }
 
 tourism_monthly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "tourism_monthly_dataset.tsf",
     "DatasetName": "tourism_monthly",
     "Target": "series_value",
@@ -61,7 +61,7 @@ tourism_monthly_config = {
 }
 
 m1_yearly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m1_yearly_dataset.tsf",
     "DatasetName": "m1_yearly",
     "Target": "series_value",
@@ -76,7 +76,7 @@ m1_yearly_config = {
 }
 
 m1_quarterly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m1_quarterly_dataset.tsf",
     "DatasetName": "m1_quarterly",
     "Target": "series_value",
@@ -91,7 +91,7 @@ m1_quarterly_config = {
 }
 
 m1_monthly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m1_monthly_dataset.tsf",
     "DatasetName": "m1_monthly",
     "Target": "series_value",
@@ -106,7 +106,7 @@ m1_monthly_config = {
 }
 
 m3_yearly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m3_yearly_dataset.tsf",
     "DatasetName": "m3_yearly",
     "Target": "series_value",
@@ -121,7 +121,7 @@ m3_yearly_config = {
 }
 
 m3_quarterly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m3_quarterly_dataset.tsf",
     "DatasetName": "m3_quarterly",
     "Target": "series_value",
@@ -136,7 +136,7 @@ m3_quarterly_config = {
 }
 
 m3_monthly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m3_monthly_dataset.tsf",
     "DatasetName": "m3_monthly",
     "Target": "series_value",
@@ -151,7 +151,7 @@ m3_monthly_config = {
 }
 
 m3_other_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m3_other_dataset.tsf",
     "DatasetName": "m3_other",
     "Target": "series_value",
@@ -166,7 +166,7 @@ m3_other_config = {
 }
 
 m4_quarterly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m4_quarterly_dataset.tsf",
     "DatasetName": "m4_quarterly",
     "Target": "series_value",
@@ -181,7 +181,7 @@ m4_quarterly_config = {
 }
 
 m4_monthly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m4_monthly_dataset.tsf",
     "DatasetName": "m4_monthly",
     "Target": "series_value",
@@ -196,7 +196,7 @@ m4_monthly_config = {
 }
 
 m4_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m4_weekly_dataset.tsf",
     "DatasetName": "m4_weekly",
     "Target": "series_value",
@@ -211,7 +211,7 @@ m4_weekly_config = {
 }
 
 m4_daily_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m4_daily_dataset.tsf",
     "DatasetName": "m4_daily",
     "Target": "series_value",
@@ -226,7 +226,7 @@ m4_daily_config = {
 }
 
 m4_hourly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "m4_hourly_dataset.tsf",
     "DatasetName": "m4_hourly",
     "Target": "series_value",
@@ -241,7 +241,7 @@ m4_hourly_config = {
 }
 
 car_parts_config = {
-    "PathName":  "experiments/monash_archive/raw_data/",
+    "PathName":  "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "car_parts_dataset_without_missing_values.tsf",
     "DatasetName": "car_parts",
     "Target": "series_value",
@@ -256,7 +256,7 @@ car_parts_config = {
 }
 
 hospital_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "hospital_dataset.tsf",
     "DatasetName": "hospital",
     "Target": "series_value",
@@ -271,7 +271,7 @@ hospital_config = {
 }
 
 fred_md_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "fred_md_dataset.tsf",
     "DatasetName": "fred_md",
     "Target": "series_value",
@@ -286,7 +286,7 @@ fred_md_config = {
 }
 
 nn5_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "nn5_weekly_dataset.tsf",
     "DatasetName": "nn5_weekly",
     "Target": "series_value",
@@ -301,7 +301,7 @@ nn5_weekly_config = {
 }
 
 traffic_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "traffic_weekly_dataset.tsf",
     "DatasetName": "traffic_weekly",
     "Target": "series_value",
@@ -316,7 +316,7 @@ traffic_weekly_config = {
 }
 
 electricity_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "electricity_weekly_dataset.tsf",
     "DatasetName": "electricity_weekly",
     "Target": "series_value",
@@ -331,7 +331,7 @@ electricity_weekly_config = {
 }
 
 solar_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "solar_weekly_dataset.tsf",
     "DatasetName": "solar_weekly",
     "Target": "series_value",
@@ -346,7 +346,7 @@ solar_weekly_config = {
 }
 
 kaggle_web_traffic_weekly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "kaggle_web_traffic_weekly_dataset.tsf",
     "DatasetName": "kaggle_web_traffic_weekly",
     "Target": "series_value",
@@ -361,7 +361,7 @@ kaggle_web_traffic_weekly_config = {
 }
 
 dominick_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "dominick_dataset.tsf",
     "DatasetName": "dominick",
     "Target": "series_value",
@@ -376,7 +376,7 @@ dominick_config = {
 }
 
 us_births_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "us_births_dataset.tsf",
     "DatasetName": "us_births",
     "Target": "series_value",
@@ -391,7 +391,7 @@ us_births_config = {
 }
 
 saugeen_river_flow_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "saugeenday_dataset.tsf",
     "DatasetName": "saugeen_river_flow",
     "Target": "series_value",
@@ -406,7 +406,7 @@ saugeen_river_flow_config = {
 }
 
 sunspot_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "sunspot_dataset_without_missing_values.tsf",
     "DatasetName": "sunspot",
     "Target": "series_value",
@@ -421,7 +421,7 @@ sunspot_config = {
 }
 
 covid_deaths_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "sunspot_dataset_without_missing_values.tsf",
     "DatasetName": "covid_deaths",
     "Target": "series_value",
@@ -436,7 +436,7 @@ covid_deaths_config = {
 }
 
 weather_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "weather_dataset.tsf",
     "DatasetName": "weather",
     "Target": "series_value",
@@ -451,7 +451,7 @@ weather_config = {
 }
 
 traffic_hourly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "traffic_hourly_dataset.tsf",
     "DatasetName": "traffic_hourly",
     "Target": "series_value",
@@ -466,7 +466,7 @@ traffic_hourly_config = {
 }
 
 electricity_hourly_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "electricity_hourly_dataset.tsf",
     "DatasetName": "electricity_hourly",
     "Target": "series_value",
@@ -481,7 +481,7 @@ electricity_hourly_config = {
 }
 
 solar_10_minutes_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "solar_10_minutes_dataset.tsf",
     "DatasetName": "solar_10_minutes",
     "Target": "series_value",
@@ -496,7 +496,7 @@ solar_10_minutes_config = {
 }
 
 kdd_cup_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "kdd_cup_2018_dataset_without_missing_values.tsf",
     "DatasetName": "kdd_cup",
     "Target": "series_value",
@@ -511,7 +511,7 @@ kdd_cup_config = {
 }
 
 melbourne_pedestrian_counts_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "pedestrian_counts_dataset.tsf",
     "DatasetName": "melbourne_pedestrian_counts",
     "Target": "series_value",
@@ -526,7 +526,7 @@ melbourne_pedestrian_counts_config = {
 }
 
 bitcoin_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "bitcoin_dataset_without_missing_values.tsf",
     "DatasetName": "bitcoin",
     "Target": "series_value",
@@ -541,7 +541,7 @@ bitcoin_config = {
 }
 
 vehicle_trips_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "vehicle_trips_dataset_without_missing_values.tsf",
     "DatasetName": "vehicle_trips",
     "Target": "series_value",
@@ -556,7 +556,7 @@ vehicle_trips_config = {
 }
 
 aus_elecdemand_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "australian_electricity_demand_dataset.tsf",
     "DatasetName": "aus_elecdemand",
     "Target": "series_value",
@@ -571,7 +571,7 @@ aus_elecdemand_config = {
 }
 
 rideshare_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "rideshare_dataset_without_missing_values.tsf",
     "DatasetName": "rideshare",
     "Target": "series_value",
@@ -586,7 +586,7 @@ rideshare_config = {
 }
 
 temperature_rain_config = {
-    "PathName": "experiments/monash_archive/raw_data/",
+    "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
     "FileName": "temperature_rain_dataset_without_missing_values.tsf",
     "DatasetName": "temperature_rain",
     "Target": "series_value",
