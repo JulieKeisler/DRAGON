@@ -9,7 +9,7 @@ setup(
     package_dir={"": "lib"},
     packages=find_packages("lib"),
     author='Julie Keisler',
-    author_email='julie.keisler@edf.fr',
+    author_email='julie.keisler.rfo@gmail.com',
     install_requires=[
         'numpy',
         'pandas',
