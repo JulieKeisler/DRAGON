@@ -2,7 +2,6 @@ from operator import attrgetter
 
 from zellij.core.addons import Operator
 
-
 class SelBestWoDuplicate(Operator):
     def __init__(self, search_space=None):
         super(SelBestWoDuplicate, self).__init__(search_space)
@@ -22,7 +21,8 @@ class SelBestWoDuplicate(Operator):
             if ind.__repr__() not in rpr:
                 rpr.append(ind.__repr__())
                 wo_duplicates.append(ind)
-        return sorted(wo_duplicates, key=attrgetter(fit_attr), reverse=True)[:k]
+        out = sorted(wo_duplicates, key=attrgetter(fit_attr), reverse=True)[:k]
+        return out
 
 
 class Random(Operator):

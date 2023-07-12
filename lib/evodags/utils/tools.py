@@ -10,7 +10,10 @@ import numpy as np
 
 def set_logs():
     if not os.path.exists("logs"):
-        os.makedirs("logs")
+        try:
+            os.makedirs("logs")
+        except FileExistsError:
+            pass
     filename = os.path.join("logs", "evodag_" + str(datetime.date.today()) + ".log")
     logging.basicConfig(filename=filename, level='INFO')
     logger = logging.getLogger("")

@@ -13,7 +13,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'zellij',
+        'zellij @ git+ssh://git@github.com/TFirmin/zellig@dag',
         'torch',
         'gluonts[torch,pro]',
         'graphviz'

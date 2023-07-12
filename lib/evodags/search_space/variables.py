@@ -14,6 +14,7 @@ from zellij.utils.neighborhoods import (
     ConstantInterval,
     FloatInterval
 )
+from zellij.utils.converters import IntMinmax, CatMinmax, ArrayMinmax
 
 
 def activation_var(label, activations=None):
@@ -69,17 +70,17 @@ def int_neighborhood(b_min, b_max, scale=4):
 def create_int_var(label, int_var, default_min, default_max):
     if int_var is None:
         default_neighborhood = int_neighborhood(default_min, default_max)
-        int_var = IntVar(label, lower=default_min, upper=default_max, neighbor=IntInterval(default_neighborhood))
+        int_var = IntVar(label, lower=default_min, upper=default_max, neighbor=IntInterval(default_neighborhood), to_continuous=IntMinmax())
     elif isinstance(int_var, int) or isinstance(int_var, np.int64) or (isinstance(int_var, list) and len(int_var) == 1):
         if isinstance(int_var, list):
             int_var = int_var[0]
-        int_var = IntVar(label, lower=1, upper=int_var, neighbor=IntInterval(int_neighborhood(1, int_var)))
+        int_var = IntVar(label, lower=1, upper=int_var, neighbor=IntInterval(int_neighborhood(1, int_var)), to_continuous=IntMinmax())
     elif isinstance(int_var, list):
         if len(int_var) == 2:
             int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(
-                int_neighborhood(int_var[0], int_var[1])))
+                int_neighborhood(int_var[0], int_var[1])), to_continuous=IntMinmax())
         if len(int_var) == 3:
-            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(int_var[2]))
+            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(int_var[2]), to_continuous=IntMinmax())
     return int_var
 
 
