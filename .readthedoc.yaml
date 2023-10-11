@@ -11,11 +11,4 @@ sphinx:
    configuration: docs/conf.py
 
 submodules:
-  include:
-    - Search_space
-    - Search_algorithm
-    - Examples
-    - Quickstart
-    - Toctree
-    - Welcome
-  recursive: true
+  include: all
