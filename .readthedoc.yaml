@@ -11,3 +11,13 @@ python:
 
 sphinx:
   configuration: docs/source/conf.py
+
+submodules:
+  include:
+    - Search_space
+    - Search_algprithm
+    - Examples
+    - Quickstart
+    - Toctree
+    - Welcome
+  recursive: true
