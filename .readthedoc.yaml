@@ -1,13 +1,38 @@
-version: "2"
+#required
+version: 2
 
+# Set the version of Python and other tools you might need
 build:
-  os: "ubuntu-22.04"
+  os: ubuntu-20.04
   tools:
-    python: "3.10"
+    python: "3.9"
+
+# Build documentation in the docs/ directory with Sphinx
+sphinx:
+   configuration: docs/conf.py
+
+# If using Sphinx, optionally build your docs in additional formats such as PDF
+formats:
+   - pdf
 
 python:
   install:
     - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+    - method: setuptools
+      path: another/package
+  system_packages: true
 
-sphinx:
-  configuration: docs/conf.py
+
+submodules:
+  include:
+    - Search_space
+    - Search_algorithm
+    - Examples
+    - Quickstart
+    - Toctree
+    - Welcome
+  recursive: true
