@@ -1,13 +1,17 @@
-# DRAGON #
+![alt text](docs/source/dragon_logo.jpeg)
+[![Documentation Status](https://readthedocs.org/projects/dragon-tutorial/badge/?version=latest)](https://dragon-tutorial.readthedocs.io/en/latest/?badge=latest)
+[![GitHub latest commit](https://badgen.net/github/last-commit/JulieKeisler/dragon/)](https://github.com/JulieKeisler/dragon/commit/)
+![Maintainer](https://img.shields.io/badge/maintainer-J.Keisler-blue)
 
-Code for peprint paper -- An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters
 
+**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [1]_. 
+**DRAGON** is based on the package `Zellij <https://zellij.readthedocs.io/>`__.
 
-If you use this code please cite: 
+The distributed version requires a MPI library, such as `MPICH <https://www.mpich.org/>`__
+or `Open MPI <https://www.open-mpi.org/>`__.
+It is based on `mpi4py <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`__.
 
-`Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2023). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. arXiv preprint arXiv:2303.12797.`
-
-See [documentation](https://dragon.readthedocs.io/en/latest/).
+See [documentation](https://dragon-tutorial.readthedocs.io/en/latest/).
 
 ## Dependencies ##
 
@@ -26,5 +30,13 @@ You can try the optimization framework on any data from the [Monash Forecasting 
 An MPI version is also available:
 
 `mpiexec -np X python template_MPI_optimization.py --dataset=dataset_name`
+
+## Contributors
+### Design
+* Julie Keisler: julie.keisler.rfo@gmail.com
+  
+## References
+<a id="1">[1]</a>
+Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2023). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. arXiv preprint arXiv:2303.12797.
 
 
