@@ -30,7 +30,7 @@ templates_path = ['_templates']
 
 # -- Options for HTML output
 
-html_theme = 'sphinx-book-theme'
+html_theme = "sphinx_book_theme"
 html_logo = 'dragon_logo.jpeg'
 html_theme_options = {
     "repository_url": "https://github.com/ThomasFirmin/zellij",
