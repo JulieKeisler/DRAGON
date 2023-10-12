@@ -13,9 +13,10 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'zellij',
+        'zellij @ git+ssh://git@github.com/TFirmin/zellig@dag',
         'torch',
-        'gluonts[torch,pro]'
+        'gluonts[torch,pro]',
+        'graphviz'
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"]

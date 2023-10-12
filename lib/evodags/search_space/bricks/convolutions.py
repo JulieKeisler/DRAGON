@@ -1,5 +1,6 @@
 import torch.nn as nn
 import numpy as np
+from evodags.utils.tools import logger
 
 class Simple_2DCNN(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size):
@@ -14,7 +15,7 @@ class Simple_2DCNN(nn.Module):
         try:
             X = self.cnn(X)
         except RuntimeError as e:
-            print("RUNTIM ERROR: ", X.shape, " --> ", self.cnn)
+            logger.error("RUNTIM ERROR: ", X.shape, " --> ", self.cnn)
             raise e
         pad = (int(np.floor((init_shape[3] - X.shape[3]) / 2)), int(np.ceil((init_shape[3] - X.shape[3]) / 2)),
                int(np.floor((init_shape[2] - X.shape[2]) / 2)), int(np.ceil((init_shape[2] - X.shape[2]) / 2)))

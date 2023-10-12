@@ -43,7 +43,8 @@ def get_layers(args, input_shape, input_channels):
         F, T = input_shape
     elif len(input_shape) == 1:
         F = input_shape if isinstance(input_shape, int) else input_shape[0]
-
+    if F == 0:
+        logger.info(f'Input shape = {input_shape}')
     if name == "Zero":
         return CandidateOperation(combiner, Zero(), input_channels)
     elif name == "Identity":
@@ -74,8 +75,9 @@ def get_layers(args, input_shape, input_channels):
     elif name == "MLP":
         return CandidateOperation(combiner, MLP(input_channels, out_channels=args[2]), input_channels, activation=args[3])
     elif name == "2DCNN":
+        kernel_size = (min(F, args[3]), min(T, args[3]))
         return CandidateOperation(combiner, Simple_2DCNN(in_channels=input_channels, out_channels=args[2],
-                                                         kernel_size=args[3]), input_channels, activation=args[4])
+                                                         kernel_size=kernel_size), input_channels, activation=args[4])
     elif name == "1DCNN":
         return CandidateOperation(combiner, Simple_1DCNN(in_channels=1, out_channels=1, kernel_size=args[2]),
                                   input_channels, activation=args[3])

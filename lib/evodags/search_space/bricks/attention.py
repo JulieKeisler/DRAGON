@@ -93,7 +93,11 @@ class TemporalAttention(nn.Module):
 
         elif init == "conv":
             att_center = (torch.arange(Nh) - Nh // 2).float().view(Nh, 1)
-            self.attention_center = nn.Parameter(torch.cat([att_center.unsqueeze(0) for _ in range(F)], axis=0))
+            try:
+                self.attention_center = nn.Parameter(torch.cat([att_center.unsqueeze(0) for _ in range(F)], axis=0))
+            except NotImplementedError as e:
+                logger.info(f'Nh = {Nh}, F = {F}, T = {T}, d_in = {d_in}, d_out={d_out}, att_center = {att_center}')
+                raise e
             self.alpha = nn.Parameter(torch.Tensor([alpha for _ in range(F)]))
             self.W_query = nn.Parameter(torch.zeros(F, T, d_in, Nh, 2))
             self.W_key = nn.Parameter(torch.zeros(F, T, d_in, Nh, 2))

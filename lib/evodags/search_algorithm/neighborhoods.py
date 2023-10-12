@@ -238,33 +238,40 @@ class AdjMatrixInterval(VarNeighborhood):
 
     def __call__(self, value, size=1):
         if size == 1:
-            inter = value.copy()
-            variable_idx = list(set(np.random.choice(range(len(inter.operations)), size=len(inter.operations))))
-            modifications = []
-            for i in range(len(variable_idx)):
-                idx = variable_idx[i]
-                choices = ['add', 'delete', 'modify', 'children', 'parents']
-                if idx == 0:
-                    choices = ['add', 'children']
-                    if inter.matrix.shape[0] == self.target.max_size:
-                        choices = ["children"]
-                elif idx == len(inter.operations) - 1:
-                    choices = ['add', 'delete', 'modify', 'parents']
-                    if inter.matrix.shape[0] == self.target.max_size:
-                        choices = ['delete', 'modify', 'parents']
-                    elif inter.matrix.shape[0] == 2:
-                        choices = ['add', 'modify', 'parents']
-                else:
-                    if inter.matrix.shape[0] == self.target.max_size:
-                        choices = ['delete', 'modify', 'children', 'parents']
-                modification = random.choice(choices)
-                inter = self.modification(modification, idx, inter)
-                modifications.append(modification)
-                if modification == "add":
-                    variable_idx[i+1:] = [j + 1 for j in variable_idx[i+1:]]
-                elif modification == "delete":
-                    variable_idx[i+1:] = [j - 1 for j in variable_idx[i+1:]]
-            inter.assert_adj_matrix()
+            valid = False
+            while not valid:
+                inter = value.copy()
+                variable_idx = list(set(np.random.choice(range(len(inter.operations)), size=len(inter.operations))))
+                modifications = []
+            
+                for i in range(len(variable_idx)):
+                    idx = variable_idx[i]
+                    choices = ['add', 'delete', 'modify', 'children', 'parents']
+                    if idx == 0:
+                        choices = ['add', 'children']
+                        if inter.matrix.shape[0] == self.target.max_size:
+                            choices = ["children"]
+                    elif idx == len(inter.operations) - 1:
+                        choices = ['add', 'delete', 'modify', 'parents']
+                        if inter.matrix.shape[0] == self.target.max_size:
+                            choices = ['delete', 'modify', 'parents']
+                        elif inter.matrix.shape[0] == 2:
+                            choices = ['add', 'modify', 'parents']
+                    else:
+                        if inter.matrix.shape[0] == self.target.max_size:
+                            choices = ['delete', 'modify', 'children', 'parents']
+                    modification = random.choice(choices)
+                    inter = self.modification(modification, idx, inter)
+                    modifications.append(modification)
+                    if modification == "add":
+                        variable_idx[i+1:] = [j + 1 for j in variable_idx[i+1:]]
+                    elif modification == "delete":
+                        variable_idx[i+1:] = [j - 1 for j in variable_idx[i+1:]]
+                try:
+                    inter.assert_adj_matrix()
+                    valid = True
+                except AssertionError as e:
+                    logger.error(f"Modifications = {modification}, idx={idx}, value=\n{value}\n{e}", exc_info=True)
             return inter
         else:
             res = []
