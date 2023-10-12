@@ -1,6 +1,6 @@
 sphinx==7.1.2
+sphinx-book-theme
 numpydoc
 sphinx-togglebutton
 sphinx-copybutton
-sphinx-book-theme
 pillow>=6.2.0
