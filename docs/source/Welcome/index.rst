@@ -17,7 +17,7 @@ Basic version
 After cloning the git repository, install **DRAGON**, using:
 
 .. code-block:: console
-  pip install -e dragon
+     (.venv) $pip install -e dragon
 
 Distributed version
 ^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ Distributed version
 If you plan on using the distributed version, you have to install the mpi4py package:
 
 .. code-block:: console
-  pip install mpi4py
+     (.venv) $pip install mpi4py
 
 Dependencies
 ------------
