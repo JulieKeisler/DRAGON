@@ -11,8 +11,8 @@ Loading the dataset
 
 .. code-block:: python
 
-    from evodags.experiments.monash_archive.dataset import gluonts_dataset
-    from evodags.experiments.monash_archive.datasets_config import m1_monthly_config
+    from dragon.experiments.monash_archive.dataset import gluonts_dataset
+    from dragon.experiments.monash_archive.datasets_config import m1_monthly_config
 
     train_ds, test_ds, config = gluonts_dataset(m1_monthly_config)
 

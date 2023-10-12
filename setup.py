@@ -48,7 +48,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'zellij @ git+ssh://git@github.com/ThomasFirmin/zellig@dag',
+        #'zellij @ git+ssh://git@github.com/ThomasFirmin/zellij@dag',
         'torch',
         'gluonts[torch,pro]',
         'graphviz'

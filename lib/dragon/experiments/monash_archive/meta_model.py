@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from lightning_fabric import seed_everything
+from pytorch_lightning.utilities.seed import _set_rng_states, _collect_rng_states
 
 from gluonts.dataset.common import Dataset
 from gluonts.dataset.field_names import FieldName
@@ -20,9 +22,7 @@ from gluonts.transform import (
     ExpectedNumInstanceSampler,
     SelectFields,
 )
-from gluonts.torch.util import (
-    IterableDataset,
-)
+
 from gluonts.torch.model.estimator import PyTorchLightningEstimator
 from gluonts.torch.model.predictor import PyTorchPredictor
 from gluonts.torch.distributions import (
@@ -234,49 +234,51 @@ class FeedCellEstimator(PyTorchLightningEstimator):
 
     def create_training_data_loader(
             self,
-            data: Dataset,
-            module: FeedCellLightningModule,
-            shuffle_buffer_length: Optional[int] = None,
-            **kwargs,
+        data: Dataset,
+        module: FeedCellLightningModule,
+        shuffle_buffer_length: Optional[int] = None,
+        **kwargs,
     ) -> Iterable:
-        transformation = self._create_instance_splitter(
-            module, "training"
-        ) + SelectFields(TRAINING_INPUT_NAMES)
-
-        training_instances = transformation.apply(
-            Cyclic(data)
-            if shuffle_buffer_length is None
-            else PseudoShuffled(
-                Cyclic(data), shuffle_buffer_length=shuffle_buffer_length
-            )
+        old_states = _collect_rng_states()
+        # New stats for initialization
+        init_seed = 0
+        seed_everything(init_seed)
+        data = Cyclic(data).stream()
+        instances = self._create_instance_splitter(module, "training").apply(
+            data, is_train=True
         )
-
-        return IterableSlice(
-            iter(
-                DataLoader(
-                    IterableDataset(training_instances),
-                    batch_size=self.batch_size,
-                    **kwargs,
-                )
-            ),
-            self.num_batches_per_epoch,
+        batches = as_stacked_batches(
+            instances,
+            batch_size=self.batch_size,
+            shuffle_buffer_length=shuffle_buffer_length,
+            field_names=TRAINING_INPUT_NAMES,
+            output_type=torch.tensor,
+            num_batches_per_epoch=self.num_batches_per_epoch,
         )
+        torch.set_rng_state(old_states)
+        return batches
 
     def create_validation_data_loader(
             self,
             data: Dataset,
             module: FeedCellLightningModule,
             **kwargs,
-    ) -> Iterable:
-        transformation = self._create_instance_splitter(module, "validation") + SelectFields(TRAINING_INPUT_NAMES)
-
-        validation_instances = transformation.apply(data)
-
-        return DataLoader(
-            IterableDataset(validation_instances),
-            batch_size=self.batch_size,
-            **kwargs,
-        )
+        ) -> Iterable:
+            old_states = _collect_rng_states()
+            # New stats for initialization
+            init_seed = 0
+            seed_everything(init_seed)
+            instances = self._create_instance_splitter(module, "validation").apply(
+                data, is_train=True
+            )
+            batches = as_stacked_batches(
+                    instances,
+                    batch_size=self.batch_size,
+                    field_names=TRAINING_INPUT_NAMES,
+                    output_type=torch.tensor,
+                )
+            _set_rng_states(old_states)
+            return batches
 
     def create_predictor(
             self,
