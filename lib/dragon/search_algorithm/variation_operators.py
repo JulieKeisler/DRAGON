@@ -4,7 +4,7 @@ import numpy as np
 from zellij.core.addons import Mutator, Crossover
 from zellij.core.search_space import Searchspace
 
-from evodags.search_space.dags import AdjMatrix, fill_adj_matrix
+from dragon.search_space.dags import AdjMatrix, fill_adj_matrix
 
 
 class DAGTwoPoint(Crossover):

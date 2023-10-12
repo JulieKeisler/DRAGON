@@ -7,12 +7,12 @@ warnings.filterwarnings("ignore")
 
 from zellij.core.loss_func import Loss
 
-from evodags.search_algorithm.pb_configuration import problem_configuration
-from evodags.utils.tools import set_seed, logger
-from evodags.experiments.exp_config import exp_config
-from evodags.experiments.monash_archive.dataset import gluonts_dataset
-from evodags.experiments.monash_archive.search_space import monash_search_space
-from evodags.experiments.monash_archive.training import GluontsNet
+from dragon.search_algorithm.pb_configuration import problem_configuration
+from dragon.utils.tools import set_seed, logger
+from dragon.experiments.exp_config import exp_config
+from dragon.experiments.monash_archive.dataset import gluonts_dataset
+from dragon.experiments.monash_archive.search_space import monash_search_space
+from dragon.experiments.monash_archive.training import GluontsNet
 
 if __name__ == "__main__":
     try:

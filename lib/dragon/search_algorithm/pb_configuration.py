@@ -6,10 +6,10 @@ from zellij.utils.neighborhoods import Intervals
 from zellij.utils.operators import DeapTournament
 from zellij.utils import Continuous
 
-from evodags.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
-from evodags.search_algorithm.other_operators import SelBestWoDuplicate, Random
-from evodags.search_algorithm.variation_operators import DAGTwoPoint
-from evodags.utils.tools import logger
+from dragon.search_algorithm.neighborhoods_operators import HierarchicalNNMutation, NNMutation
+from dragon.search_algorithm.other_operators import SelBestWoDuplicate, Random
+from dragon.search_algorithm.variation_operators import DAGTwoPoint
+from dragon.utils.tools import logger
 
 def problem_configuration(config, net, loss):
     args = {}

@@ -40,7 +40,7 @@ def set_seed(s):
 
 
 def read_nn(string):
-    from evodags.search_space.dags import AdjMatrix
+    from dragon.search_space.dags import AdjMatrix
     nodes, matrix = string.split('|')
     nodes = ast.literal_eval(nodes.split(':')[1].strip())
     matrix = ast.literal_eval(matrix.split(':')[1].strip())

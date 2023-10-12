@@ -8,8 +8,8 @@ import subprocess
 import numpy as np
 from pytorch_lightning import seed_everything
 from gluonts.evaluation import make_evaluation_predictions
-from evodags.utils.tools import logger
-from evodags.experiments.monash_archive.meta_model import FeedCellEstimator
+from dragon.utils.tools import logger
+from dragon.experiments.monash_archive.meta_model import FeedCellEstimator
 
 
 class GluontsNet:

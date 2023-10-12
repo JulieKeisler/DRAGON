@@ -1,4 +1,4 @@
-from evodags.experiments.monash_archive.meta_model import FeedCellModel
+from dragon.experiments.monash_archive.meta_model import FeedCellModel
 
 nn5_daily_config = {
     "PathName": "lib/evodags/experiments/monash_archive/raw_data/",
