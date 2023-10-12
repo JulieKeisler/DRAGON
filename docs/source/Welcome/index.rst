@@ -34,11 +34,11 @@ Dependencies
 * `numpy <https://numpy.org/>`__>=1.21.4
 * `DEAP <https://deap.readthedocs.io/en/master/>`__>=1.3.1
 * `botorch <https://botorch.org/>`__>=0.6.3.1
+* `gluonts <https://ts.gluon.ai/stable/>`__>=0.11.3
 * `gpytorch <https://gpytorch.ai/>`__>=1.6.0
+* `graphviz <https://graphviz.org/>`__>=0.8.4
 * `pandas <https://pandas.pydata.org/>`__>=1.3.4
 * `enlighten <https://python-enlighten.readthedocs.io/en/stable/>`__>=1.10.2
-* `gluonts[torch,pro] <https://ts.gluon.ai/stable/>`__>=0.11.3
-* `graphviz <https://graphviz.org/>`__>=0.8.4
 * [mpi]: `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`__>=3.1.2
 
 Contributors
