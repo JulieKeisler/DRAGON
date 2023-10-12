@@ -10,3 +10,4 @@ Here are a few examples.
 
    ts_example
    image_example
+   regression
