@@ -1,15 +1,15 @@
-# EvoDagsAutoDL #
+# DRAGON #
 
 Code for peprint paper -- An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters
 
-If you use this code please cite:
-
+If you use this code please cite: Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2023). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. arXiv preprint arXiv:2303.12797.
+See [documentation](https://dragon.readthedocs.io/en/latest/).
 ## Dependencies ##
 
 The following libraries are necessary:
 * Zellij: [https://github.com/ThomasFirmin/zellij](https://github.com/ThomasFirmin/zellij)
 * Pytorch: [https://pytorch.org/](https://pytorch.org/)
-* MPI4py to use the parallelization: [https://mpi4py.readthedocs.io/en/stable/](https://mpi4py.readthedocs.io/en/stable/)
+* MPI4py to use the kdistributed version: [https://mpi4py.readthedocs.io/en/stable/](https://mpi4py.readthedocs.io/en/stable/)
 * GluonTS: [https://ts.gluon.ai/stable/](https://ts.gluon.ai/stable/) to compare with the [Monash Forecasting Repository](https://forecastingdata.org/) ([https://github.com/rakshitha123/TSForecasting](https://github.com/rakshitha123/TSForecasting))
 
 ## Launch the optimization ##
