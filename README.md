@@ -2,6 +2,7 @@
 
 Code for peprint paper -- An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters
 
+
 If you use this code please cite: 
 
 `Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2023). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. arXiv preprint arXiv:2303.12797.`
