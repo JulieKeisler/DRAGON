@@ -51,3 +51,6 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 /evodags.egg-info/
+dragon/experiments/monash_archive/raw_data/
+lib/dragon/experiments/monash_archive/raw_data/
+
