@@ -1,3 +1,3 @@
-===============
-Image classification with DRAGON
-===============
+====================
+Image classification
+====================
