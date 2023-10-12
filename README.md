@@ -1,15 +1,16 @@
 ![alt text](docs/source/dragon_logo.jpeg)
+
 [![Documentation Status](https://readthedocs.org/projects/dragon-tutorial/badge/?version=latest)](https://dragon-tutorial.readthedocs.io/en/latest/?badge=latest)
 [![GitHub latest commit](https://badgen.net/github/last-commit/JulieKeisler/dragon/)](https://github.com/JulieKeisler/dragon/commit/)
 ![Maintainer](https://img.shields.io/badge/maintainer-J.Keisler-blue)
 
 
-**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [1]_. 
-**DRAGON** is based on the package `Zellij <https://zellij.readthedocs.io/>`__.
+**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [[1]](#1). 
+**DRAGON** is based on the package [Zellij](https://zellij.readthedocs.io/).
 
-The distributed version requires a MPI library, such as `MPICH <https://www.mpich.org/>`__
-or `Open MPI <https://www.open-mpi.org/>`__.
-It is based on `mpi4py <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`__.
+The distributed version requires a MPI library, such as [MPICH](https://www.mpich.org/)
+or [Open MPI](https://www.open-mpi.org/).
+It is based on [mpi4py](https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi).
 
 See [documentation](https://dragon-tutorial.readthedocs.io/en/latest/).
 
@@ -19,7 +20,7 @@ The following libraries are necessary:
 * Zellij: [https://github.com/ThomasFirmin/zellij](https://github.com/ThomasFirmin/zellij)
 * Pytorch: [https://pytorch.org/](https://pytorch.org/)
 * MPI4py to use the kdistributed version: [https://mpi4py.readthedocs.io/en/stable/](https://mpi4py.readthedocs.io/en/stable/)
-* GluonTS: [https://ts.gluon.ai/stable/](https://ts.gluon.ai/stable/) to compare with the [Monash Forecasting Repository](https://forecastingdata.org/) ([https://github.com/rakshitha123/TSForecasting](https://github.com/rakshitha123/TSForecasting))
+* GluonTS: [https://ts.gluon.ai/stable/](https://ts.gluon.ai/stable/) to compare with the [Monash Forecasting Repository](https://forecastingdata.org/) ([see github](https://github.com/rakshitha123/TSForecasting))
 
 ## Launch the optimization ##
 
