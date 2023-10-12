@@ -4,4 +4,3 @@ sphinx-togglebutton
 sphinx-copybutton
 sphinx-book-theme
 pillow>=6.2.0
--e .[docs]
