@@ -1,4 +1,8 @@
+from datetime import timedelta
+import logging
 import warnings
+
+import gluonts
 
 warnings.filterwarnings("ignore")
 
@@ -6,10 +10,11 @@ import csv
 import os
 import subprocess
 import numpy as np
-from pytorch_lightning import seed_everything
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import EarlyStopping
 from gluonts.evaluation import make_evaluation_predictions
 from dragon.utils.tools import logger
-from dragon.experiments.monash_archive.meta_model import FeedCellEstimator
+from dragon.experiments.monash_archive.meta_model import FeedCellEstimator, FeedCellLightningModule
 
 
 class GluontsNet:
@@ -23,25 +28,28 @@ class GluontsNet:
         final_forecasts = []
         forecast_horizon = self.config['ForecastHorizon']
 
-        seed_everything(args[-1], workers=True)
-        trainer_kwargs = {"max_epochs": self.config["NumEpochs"],
-                          "gradient_clip_val": 10.0,
-                          "enable_progress_bar": False,
-                          "default_root_dir": path_name,
-                          "deterministic": True,
-                          "logger": False,
-                          }
+        pl.seed_everything(args[-1])
 
-        if self.config['Device'] != 'cpu':
-            trainer_kwargs["accelerator"] = "gpu"
-            trainer_kwargs["devices"] = 1
+        gts_logger = logging.getLogger(gluonts.__name__)
+        gts_logger.setLevel(logging.ERROR)
+        params = {
+            "batch_size": 64,
+            "device": self.config['Device']
+        }
         estimator = FeedCellEstimator(
             model=self.config['Model'],
+            lightning_module=FeedCellLightningModule,
+            freq=self.config['Freq'],
             prediction_length=forecast_horizon,
             context_length=self.config["Lag"],
             args=args,
-            device=self.config["Device"],
-            trainer_kwargs=trainer_kwargs
+            trainer_kwargs={
+                "max_epochs": self.config['NumEpochs'],
+                "enable_progress_bar": False,
+                "devices": "auto", 
+                "accelerator": "auto"
+            },
+            **params
         )
 
         try:

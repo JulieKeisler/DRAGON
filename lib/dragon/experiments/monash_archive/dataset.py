@@ -57,12 +57,12 @@ def gluonts_dataset(config):
         # We use full length training series to train the model as we do not tune hyperparameters
         train_series_full_list.append({
             FieldName.TARGET: train_series_data,
-            FieldName.START: pd.Timestamp(train_start_time, freq=freq)
+            FieldName.START: pd.Timestamp(train_start_time)
         })
 
         test_series_full_list.append({
             FieldName.TARGET: series_data,
-            FieldName.START: pd.Timestamp(train_start_time, freq=freq)
+            FieldName.START: pd.Timestamp(train_start_time)
         })
 
     train_ds = ListDataset(train_series_full_list, freq=freq)

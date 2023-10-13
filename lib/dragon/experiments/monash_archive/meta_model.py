@@ -5,10 +5,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from lightning_fabric import seed_everything
-from pytorch_lightning.utilities.seed import _set_rng_states, _collect_rng_states
-
 from gluonts.dataset.common import Dataset
 from gluonts.dataset.field_names import FieldName
+from gluonts.dataset.loader import as_stacked_batches
 from gluonts.itertools import Cyclic, PseudoShuffled, IterableSlice
 from gluonts.model.forecast_generator import DistributionForecastGenerator
 from gluonts.torch.modules.loss import DistributionLoss, NegativeLogLikelihood
@@ -21,6 +20,8 @@ from gluonts.transform import (
     TestSplitSampler,
     ExpectedNumInstanceSampler,
     SelectFields,
+    MissingValueImputation,
+    DummyValueImputation,
 )
 
 from gluonts.torch.model.estimator import PyTorchLightningEstimator
@@ -142,19 +143,26 @@ class FeedCellLightningModule(pl.LightningModule):
 
 class FeedCellEstimator(PyTorchLightningEstimator):
 
-    def __init__(self,
-                 prediction_length: int,
-                 context_length: int,
-                 args: List,
-                 device,
-                 model=FeedCellModel,
-                 distr_output: DistributionOutput = StudentTOutput(),
-                 loss: DistributionLoss = NegativeLogLikelihood(),
-                 batch_size: int = 32,
-                 num_batches_per_epoch: int = 50,
-                 trainer_kwargs: Optional[Dict[str, Any]] = None,
-                 train_sampler: Optional[InstanceSampler] = None,
-                 validation_sampler: Optional[InstanceSampler] = None,
+    def __init__(
+            self,
+            args: List,
+            device: torch.device,
+            lightning_module: pl.LightningModule,
+            model: nn.Module,
+            freq: str,
+            prediction_length: int,
+            context_length: Optional[int] = None,
+            lr: float = 1e-3,
+            weight_decay: float = 1e-8,
+            patience: int = 10,
+            distr_output: DistributionOutput = StudentTOutput(),
+            loss: DistributionLoss = NegativeLogLikelihood(),
+            batch_size: int = 32,
+            num_batches_per_epoch: int = 50,
+            imputation_method: Optional[MissingValueImputation] = None,
+            trainer_kwargs: Optional[Dict[str, Any]] = None,
+            train_sampler: Optional[InstanceSampler] = None,
+            validation_sampler: Optional[InstanceSampler] = None,
                  ) -> None:
         default_trainer_kwargs = {
             "max_epochs": 100,
@@ -163,14 +171,31 @@ class FeedCellEstimator(PyTorchLightningEstimator):
         if trainer_kwargs is not None:
             default_trainer_kwargs.update(trainer_kwargs)
         super().__init__(trainer_kwargs=default_trainer_kwargs)
-        self.context_length = context_length or 10 * prediction_length
+
+        self.meta_model = model
+        self.lightning_module = lightning_module
+        self.args = args
+        self.device = device
+
+        self.freq = freq
+        self.context_length = (
+            context_length if context_length is not None else prediction_length
+        )
+
         self.prediction_length = prediction_length
+        self.patience = patience
         self.distr_output = distr_output
         self.loss = loss
+        self.lr = lr
+        self.weight_decay = weight_decay
         self.batch_size = batch_size
         self.num_batches_per_epoch = num_batches_per_epoch
-        self.device = device
-        self.meta_model = model
+
+        self.imputation_method = (
+            imputation_method
+            if imputation_method is not None
+            else DummyValueImputation(self.distr_output.value_in_support)
+        )
 
         self.train_sampler = train_sampler or ExpectedNumInstanceSampler(
             num_instances=1.0, min_future=prediction_length
@@ -179,7 +204,6 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             min_future=prediction_length
         )
 
-        self.args = args
 
     def create_transformation(self) -> Transformation:
         return SelectFields(
@@ -202,10 +226,14 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             args=self.args,
             distr_output=self.distr_output,
         )
-        return FeedCellLightningModule(
+
+        lm = self.lightning_module(
             model=model,
             loss=self.loss,
+            lr=self.lr,
+            weight_decay=self.weight_decay,
         )
+        return lm
 
     def _create_instance_splitter(
             self, module: FeedCellLightningModule, mode: str
@@ -232,17 +260,14 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             dummy_value=self.distr_output.value_in_support,
         )
 
+
     def create_training_data_loader(
-            self,
+        self,
         data: Dataset,
         module: FeedCellLightningModule,
         shuffle_buffer_length: Optional[int] = None,
         **kwargs,
     ) -> Iterable:
-        old_states = _collect_rng_states()
-        # New stats for initialization
-        init_seed = 0
-        seed_everything(init_seed)
         data = Cyclic(data).stream()
         instances = self._create_instance_splitter(module, "training").apply(
             data, is_train=True
@@ -255,30 +280,24 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             output_type=torch.tensor,
             num_batches_per_epoch=self.num_batches_per_epoch,
         )
-        torch.set_rng_state(old_states)
         return batches
 
     def create_validation_data_loader(
-            self,
-            data: Dataset,
-            module: FeedCellLightningModule,
-            **kwargs,
-        ) -> Iterable:
-            old_states = _collect_rng_states()
-            # New stats for initialization
-            init_seed = 0
-            seed_everything(init_seed)
-            instances = self._create_instance_splitter(module, "validation").apply(
-                data, is_train=True
+        self,
+        data: Dataset,
+        module: FeedCellLightningModule,
+        **kwargs,
+    ) -> Iterable:
+        instances = self._create_instance_splitter(module, "validation").apply(
+            data, is_train=True
+        )
+        batches = as_stacked_batches(
+                instances,
+                batch_size=self.batch_size,
+                field_names=TRAINING_INPUT_NAMES,
+                output_type=torch.tensor,
             )
-            batches = as_stacked_batches(
-                    instances,
-                    batch_size=self.batch_size,
-                    field_names=TRAINING_INPUT_NAMES,
-                    output_type=torch.tensor,
-                )
-            _set_rng_states(old_states)
-            return batches
+        return batches
 
     def create_predictor(
             self,
@@ -286,8 +305,7 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             module,
     ) -> PyTorchPredictor:
         prediction_splitter = self._create_instance_splitter(module, "test")
-
-        return PyTorchPredictor(
+        predictor = PyTorchPredictor(
             input_transform=transformation + prediction_splitter,
             input_names=PREDICTION_INPUT_NAMES,
             prediction_net=module.model,
@@ -298,3 +316,5 @@ class FeedCellEstimator(PyTorchLightningEstimator):
             prediction_length=self.prediction_length,
             device=self.device
         )
+
+        return predictor

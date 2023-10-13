@@ -1,7 +1,6 @@
 from zellij.core.search_space import MixedSearchspace
 from zellij.strategies import Genetic_algorithm
 from zellij.strategies.simulated_annealing import Simulated_annealing
-from zellij.strategies.bayesian_optimization import Bayesian_optimization
 from zellij.utils.neighborhoods import Intervals
 from zellij.utils.operators import DeapTournament
 from zellij.utils import Continuous
@@ -70,7 +69,5 @@ def problem_configuration(config, net, loss):
         config["MetaHeuristic"] =  Genetic_algorithm
     elif config["MetaHeuristic"] == "SA":
         config["MetaHeuristic"] =  Simulated_annealing
-    elif config["MetaHeuristic"] == "BO":
-        config["MetaHeuristic"] = Bayesian_optimization
     search_algorithm = config['MetaHeuristic'](search_space, 1000000, **args)
     return search_space, search_algorithm

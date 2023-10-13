@@ -4,7 +4,7 @@
   :hidden:
 
   ../Welcome/index
-  ../Quickstart/index
+  ../Quickstart/quickstart
 ..
 
 .. toctree::
