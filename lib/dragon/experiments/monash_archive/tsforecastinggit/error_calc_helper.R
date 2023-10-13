@@ -6,7 +6,7 @@ training_set_path <- args[4]
 seasonality <- args[5]
 output_file_name <- args[6]
 
-source(file.path("lib/evodags/experiments/monash_archive/tsforecastinggit", "error_calculator.R", fsep = "/"))
+source(file.path("lib/dragon/experiments/monash_archive/tsforecastinggit", "error_calculator.R", fsep = "/"))
 
 forecasts <- read.csv(forecasts_path, header = FALSE)
 test_set <- read.csv(test_set_path, header = FALSE)

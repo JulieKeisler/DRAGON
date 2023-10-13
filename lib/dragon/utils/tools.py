@@ -24,6 +24,7 @@ def set_logs():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logging.getLogger('numexpr').setLevel(logging.WARNING)
+    logger.info("The logger has been created.")
     return logger
 
 
