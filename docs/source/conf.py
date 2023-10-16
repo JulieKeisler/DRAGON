@@ -31,7 +31,7 @@ templates_path = ['_templates']
 # -- Options for HTML output
 
 html_theme = "sphinx_book_theme"
-html_logo = 'dragon_logo.jpeg'
+html_logo = 'dragon_logo.png'
 html_theme_options = {
     "repository_url": "https://github.com/JulieKeisler/dragon",
     "use_repository_button": True,
