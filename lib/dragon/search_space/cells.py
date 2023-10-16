@@ -85,7 +85,8 @@ class CandidateOperation(nn.Module):
                     X_mul *= X[i]
                 return X_mul
         else:
-            return X
+            return self.padding(X)
+            
 
     def padding(self, X):
         if isinstance(X, list):

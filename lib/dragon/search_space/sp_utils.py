@@ -6,6 +6,7 @@ from dragon.search_space.bricks.convolutions import Simple_2DCNN, Simple_1DCNN
 from dragon.search_space.bricks.dropout import Dropout
 from dragon.search_space.bricks.pooling import MaxPooling1D, AVGPooling1D, MaxPooling2D, AVGPooling2D
 from dragon.search_space.bricks.recurrences import Simple_1DLSTM, Simple_2DLSTM, Simple_1DGRU, Simple_2DGRU
+from dragon.search_space.bricks.normalization import LayerNorm1d, LayerNorm2d, BatchNorm1d, BatchNorm2d
 from dragon.utils.exceptions import InvalidArgumentError
 from dragon.utils.tools import logger
 
@@ -98,6 +99,14 @@ def get_layers(args, input_shape, input_channels):
                                                num_layers=args[3]), input_channels, activation=args[4])
     elif name == "Dropout":
         return CandidateOperation(combiner, Dropout(rate=args[2]), input_channels)
+    elif name == "1DBatchNorm":
+        return CandidateOperation(combiner, BatchNorm1d(input_channels), input_channels)
+    elif name == "2DBatchNorm":
+        return CandidateOperation(combiner, BatchNorm2d(input_channels), input_channels)
+    elif name == "1DLayerNorm":
+        return CandidateOperation(combiner, LayerNorm1d(input_channels), input_channels)
+    elif name == "2DLayerNorm":
+        return CandidateOperation(combiner, LayerNorm2d(F, T, input_channels), input_channels)
     elif name == "Input":
         return Identity()
     else:

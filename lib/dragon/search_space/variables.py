@@ -163,6 +163,18 @@ def pooling_var(label, operations, size=None):
     assert isinstance(size, IntVar), f"{label} size should be an instance of IntVar, got {type(size)} instead."
     return ArrayVar(combiner_var(label + " Combiner"), operations, size, label=label, neighbor=ArrayInterval())
 
+def norm_1d_var(label, operations=None):
+    if operations is None:
+        operations = ['1DLayerNorm', '1DBatchNorm']
+    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
+    return ArrayVar(combiner_var(label+ " Combiner"), operations, label=label, neighbor=ArrayInterval())
+
+def norm_2d_var(label, operations=None):
+    if operations is None:
+        operations = ['2DLayerNorm', '2DBatchNorm']
+    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
+    return ArrayVar(combiner_var(label+ " Combiner"), operations, label=label, neighbor=ArrayInterval())
+
 
 def dropout_var(label, operations=None, rate=None):
     if operations is None:

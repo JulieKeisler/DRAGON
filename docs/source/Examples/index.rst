@@ -8,6 +8,6 @@ Here are a few examples.
 
 .. toctree::
 
-   image
    sktorch
+   image
    openml
