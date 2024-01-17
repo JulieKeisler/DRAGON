@@ -54,7 +54,7 @@ setup(
     extras_require={
         "gluonts": ['gluonts[torch,pro]'],
         "mpi": ["mpi4py>=3.1.2"],
-        "gluontsmpi": ['gluonts[torch,pro]', 'mpi4py>=3.1.2']
+        "gluontsmpi": ['gluonts[torch,pro]', 'mpi4py>=3.1.2'],
         "docs": docs_extras,
     },
     python_requires=">=3.9",
