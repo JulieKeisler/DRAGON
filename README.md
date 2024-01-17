@@ -17,7 +17,10 @@ See [documentation](https://dragon-tutorial.readthedocs.io/en/latest/).
 ## Dependencies ##
 
 The following libraries are necessary:
-* Zellij: [https://github.com/ThomasFirmin/zellij](https://github.com/ThomasFirmin/zellij)
+* Zellij: [https://github.com/ThomasFirmin/zellij](https://github.com/ThomasFirmin/zellij):
+  
+  `pip install git+https://github.com/ThomasFirmin/zellij.git@dag`
+  
 * Pytorch: [https://pytorch.org/](https://pytorch.org/)
 
 Optional librairies:
