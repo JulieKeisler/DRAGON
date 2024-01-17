@@ -51,11 +51,11 @@ setup(
         #'zellij @ git+ssh://git@github.com/ThomasFirmin/zellij@dag',
         'torch',
         'graphviz'
-        'gluonts[torch,pro]',
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"],
         "docs": docs_extras,
+        'gluonts[torch,pro]'
     },
     python_requires=">=3.9",
 )
