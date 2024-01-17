@@ -1,4 +1,4 @@
-![alt text](docs/source/dragon_logo.jpeg)
+![alt text](docs/source/dragon_logo.png)
 
 [![Documentation Status](https://readthedocs.org/projects/dragon-tutorial/badge/?version=latest)](https://dragon-tutorial.readthedocs.io/en/latest/?badge=latest)
 [![GitHub latest commit](https://badgen.net/github/last-commit/JulieKeisler/dragon/)](https://github.com/JulieKeisler/dragon/commit/)
