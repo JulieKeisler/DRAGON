@@ -52,7 +52,7 @@ setup(
         'graphviz'
     ],
     extras_require={
-        "gluonts: ['gluonts[torch,pro]'],
+        "gluonts": ['gluonts[torch,pro]'],
         "mpi": ["mpi4py>=3.1.2"],
         "gluontsmpi": ['gluonts[torch,pro]', 'mpi4py>=3.1.2']
         "docs": docs_extras,
