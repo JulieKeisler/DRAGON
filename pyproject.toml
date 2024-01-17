@@ -1,0 +1,11 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dragon"
+authors = [{name = "Keisler", email = "julie.keisler.rfo@gmail.com"}]
+dynamic = ["version", "description"]
