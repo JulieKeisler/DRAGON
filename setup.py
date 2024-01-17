@@ -48,14 +48,14 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        #'zellij @ git+ssh://git@github.com/ThomasFirmin/zellij@dag',
         'torch',
         'graphviz'
     ],
     extras_require={
+        "gluonts: ['gluonts[torch,pro]'],
         "mpi": ["mpi4py>=3.1.2"],
+        "gluontsmpi": ['gluonts[torch,pro]', 'mpi4py>=3.1.2']
         "docs": docs_extras,
-        'gluonts[torch,pro]'
     },
     python_requires=">=3.9",
 )
