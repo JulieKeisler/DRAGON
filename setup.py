@@ -50,8 +50,8 @@ setup(
         'pandas',
         #'zellij @ git+ssh://git@github.com/ThomasFirmin/zellij@dag',
         'torch',
-        'gluonts[torch,pro]',
         'graphviz'
+        'gluonts[torch,pro]',
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"],
