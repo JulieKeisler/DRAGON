@@ -1,7 +1,6 @@
 import numpy as np
-from zellij.core.addons import Mutator
-from zellij.core.search_space import Searchspace
-from zellij.core.variables import Constant
+from dragon.search_space.addons import Mutator
+from dragon.search_space.zellij_variables import Constant
 
 from dragon.search_space.dags import AdjMatrixVariable
 
@@ -22,17 +21,6 @@ class HierarchicalNNMutation(Mutator):
 
     @Mutator.target.setter
     def target(self, search_space):
-        if search_space:
-            assert isinstance(
-                search_space, Searchspace
-            ), f""" Target object must be a :ref:`sp`
-                for {self.__class__.__name__}, got {search_space}"""
-
-            assert all(
-                hasattr(val, "neighbor") for val in search_space.values
-            ), f"""For {self.__class__.__name__} values of target object must
-                have a `neighbor` method.
-                """
         self._target = search_space
 
     def _build(self, toolbox):
@@ -70,17 +58,6 @@ class NNMutation(Mutator):
 
     @Mutator.target.setter
     def target(self, search_space):
-        if search_space:
-            assert isinstance(
-                search_space, Searchspace
-            ), f""" Target object must be a :ref:`sp`
-                for {self.__class__.__name__}, got {search_space}"""
-
-            assert all(
-                hasattr(val, "neighbor") for val in search_space.values
-            ), f"""For {self.__class__.__name__} values of target object must
-                have a `neighbor` method.
-                """
         self._target = search_space
 
     def _build(self, toolbox):

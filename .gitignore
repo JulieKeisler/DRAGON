@@ -1,4 +1,7 @@
 /experiments/monash_archive/raw_data/
+# Ignore pickles
+*.pkl
+**/*.pkl
 /template_stability.py
 .idea
 # Byte-compiled / optimized / DLL files

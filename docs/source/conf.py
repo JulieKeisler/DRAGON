@@ -3,10 +3,10 @@
 # -- Project information
 
 project = 'DRAGON'
-copyright = '2023, Julie Keisler'
+copyright = '2024, Julie Keisler'
 author = 'Julie Keisler'
 
-release = '0.1'
+release = '0.2'
 version = '0.1.0'
 
 # -- General configuration

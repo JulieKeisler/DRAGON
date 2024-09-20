@@ -1,8 +1,7 @@
 import random
 import numpy as np
 
-from zellij.core.addons import Mutator, Crossover
-from zellij.core.search_space import Searchspace
+from dragon.search_space.addons import Mutator, Crossover
 
 from dragon.search_space.dags import AdjMatrix, fill_adj_matrix
 
@@ -111,13 +110,16 @@ class DAGTwoPoint(Crossover):
                 op1 = op1[:new_s2[i]] + [p2.operations[s2[i]]] + op1[new_s2[i]:]
             if max(len(op1), len(op2)) <= self.size:
                 crossed = True
+        for j in range(1, len(op1)):
+            if hasattr(op1[j], "modification"):
+                input_shapes = [op1[i].output_shape for i in range(j) if m1[i, j] == 1]
+                op1[j].modification(input_shapes=input_shapes)
+        for j in range(1, len(op2)):
+            if hasattr(op2[j], "modification"):
+                input_shapes = [op2[i].output_shape for i in range(j) if m2[i, j] == 1]
+                op2[j].modification(input_shapes=input_shapes)
         return AdjMatrix(op1, m1), AdjMatrix(op2, m2)
 
     @Mutator.target.setter
     def target(self, search_space):
-        if search_space:
-            assert isinstance(
-                search_space, Searchspace
-            ), f""" Target object must be a :ref:`sp`
-                for {self.__class__.__name__}, got {search_space}"""
         self._target = search_space

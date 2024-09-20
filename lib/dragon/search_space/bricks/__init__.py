@@ -1,7 +1,7 @@
-from .attention import Attention1D, SpatialAttention, TemporalAttention
-from .basics import Identity, Zero, MLP
-from .convolutions import Simple_2DCNN, Simple_1DCNN
+from .basics import Identity, MLP, ChannelsMLP
+from .convolutions import Conv1d, Conv2d
 from .dropout import Dropout
-from .normalization import BatchNorm1d, BatchNorm2d, LayerNorm1d, LayerNorm2d
+from .normalization import LayerNorm1d, LayerNorm2d, BatchNorm1d, BatchNorm2d
 from .pooling import MaxPooling2D, AVGPooling2D, MaxPooling1D, AVGPooling1D
-from .recurrences import Simple_1DGRU, Simple_2DGRU, Simple_2DLSTM, Simple_1DLSTM
+from .attention import Attention1D, SpatialAttention, TemporalAttention
+from .recurrences import Simple_1DGRU, Simple_1DLSTM, Simple_2DGRU, Simple_2DLSTM, ESBrick, Simple_1DRNN

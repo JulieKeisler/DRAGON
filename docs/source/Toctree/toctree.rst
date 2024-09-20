@@ -8,8 +8,8 @@
 ..
 
 .. toctree::
-  :caption: Examples
+  :caption: Applications
   :maxdepth: 2
   :hidden:
 
-  ../Examples/index
+  ../Applications/index

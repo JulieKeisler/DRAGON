@@ -6,8 +6,6 @@
 
 
 **DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [[1]](#1). 
-**DRAGON** is based on the package [Zellij](https://zellij.readthedocs.io/).
-
 The distributed version requires a MPI library, such as [MPICH](https://www.mpich.org/)
 or [Open MPI](https://www.open-mpi.org/).
 It is based on [mpi4py](https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi).
@@ -17,27 +15,11 @@ See [documentation](https://dragon-tutorial.readthedocs.io/en/latest/).
 ## Dependencies ##
 
 The following libraries are necessary:
-* Zellij: [https://github.com/ThomasFirmin/zellij](https://github.com/ThomasFirmin/zellij):
-  
-  `pip install git+https://github.com/ThomasFirmin/zellij.git@dag`
   
 * Pytorch: [https://pytorch.org/](https://pytorch.org/)
 
 Optional librairies:
 * MPI4py to use the distributed version: [https://mpi4py.readthedocs.io/en/stable/](https://mpi4py.readthedocs.io/en/stable/)
-* GluonTS: [https://ts.gluon.ai/stable/](https://ts.gluon.ai/stable/) to compare with the [Monash Forecasting Repository](https://forecastingdata.org/) ([see github](https://github.com/rakshitha123/TSForecasting))
-
-## Launch the optimization ##
-
-You can try the optimization framework on any data from the [Monash Forecasting Archive](https://zenodo.org/communities/forecasting?page=1&size=20) whose config has been set in the config file: experiments/monash_archive/datasets_configs.py, by running:
-
-`python template_optimization.py --dataset=dataset_name`
-
-An MPI version is also available:
-
-`mpiexec -np X python template_MPI_optimization.py --dataset=dataset_name`
-
-=======
 
 ## Contributors ##
 ### Design
@@ -45,6 +27,6 @@ An MPI version is also available:
   
 ## References ##
 <a id="1">[1]</a>
-Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2023). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. arXiv preprint arXiv:2303.12797.
+Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2024). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. Journal of Machine Learning Research.
 
 
