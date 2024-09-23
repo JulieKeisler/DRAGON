@@ -14,12 +14,16 @@
 
   ../Applications/index
 
+..
+
 .. toctree::
   :caption: Search Space
   :maxdepth: 2
   :hidden:
 
   ../Search_Space/index
+
+..
 
 .. toctree::
   :caption: Search Algorithm
