@@ -7,4 +7,5 @@ Search space documentation
 .. toctree::
 
    variables
+   addons
    cell-based
