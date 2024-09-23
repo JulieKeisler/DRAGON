@@ -30,4 +30,8 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Algorithm/index
+  ../Search_Algorithm/search_operators
+  ../Search_Algorithm/random_search
+  ../Search_Algorithm/ssea
+  ../Search_Algorithm/mutant_ucb
+  ../Search_Algorithm/hyperband
