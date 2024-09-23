@@ -24,8 +24,7 @@ python:
         - docs
     - method: setuptools
       path: another/package
-  system_packages: true
-
+      
 version: 2
 
 submodules:
