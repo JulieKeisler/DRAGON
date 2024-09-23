@@ -56,14 +56,6 @@ class Variable(ABC):
     def subset(self):
         pass
 
-    # @abstractmethod
-    # def header(self):
-    #     pass
-    #
-    # @abstractmethod
-    # def save(self, x):
-    #     pass
-
     def _add_addons(self, **kwargs):
         for k in kwargs:
 
