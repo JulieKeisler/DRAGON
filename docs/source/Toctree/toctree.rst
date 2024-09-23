@@ -19,11 +19,11 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search Space/index
+  ../Search_Space/index
 
 .. toctree::
   :caption: Search Algorithm
   :maxdepth: 2
   :hidden:
 
-  ../Search Algorithm/index
+  ../Search_Algorithm/index
