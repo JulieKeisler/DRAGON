@@ -1,7 +1,7 @@
 .. _search_space:
 
 =============================
-Search Space
+Search space documentation
 =============================
 
 .. toctree::
