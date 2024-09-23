@@ -22,9 +22,7 @@ python:
       path: .
       extra_requirements:
         - docs
-    - method: setuptools
-      path: another/package
-      
+
 version: 2
 
 submodules:
