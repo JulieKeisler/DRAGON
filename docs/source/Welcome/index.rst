@@ -6,7 +6,7 @@ On the other hand, the package allows you to modulate the search space at will f
 
 The code to implement the DAGs-based search space was inspired by the `zellij <https://zellij.readthedocs.io/en/latest/>`__ package developed for hyperparameters optimization. The  :ref:`_search_space` section describes its implementation and advanced features to further modulate the search space. In particular, we show that the **DRAGON** search space includes cell-based search spaces [4]_.
 
-The Search Algorithm section introduces the search operators used to modify elements of the search space (e.g., mutations, neighborhoods, crossover). It also describes the algorithms already implemented in **DRAGON**: :`Random Search <../Search_Algorithm/random_search.ipynb>`_, `Evolutionary Algorithm <../Search_Algorithm/ssea.ipynb>`_ ref1_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [5]_, and `HyperBand <../Search_Algorithm/hyperband.ipynb>`_ [6]_.
+The Search Algorithm section introduces the search operators used to modify elements of the search space (e.g., mutations, neighborhoods, crossover). It also describes the algorithms already implemented in **DRAGON**: `Random Search <../Search_Algorithm/random_search.ipynb>`_, `Evolutionary Algorithm <../Search_Algorithm/ssea.ipynb>`_ ref1_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [5]_, and `HyperBand <../Search_Algorithm/hyperband.ipynb>`_ [6]_.
 
 The distributed version requires a MPI library, such as `MPICH <https://www.mpich.org/>`_
 or `Open MPI <https://www.open-mpi.org/>`_.
