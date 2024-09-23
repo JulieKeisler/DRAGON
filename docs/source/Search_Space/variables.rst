@@ -4,7 +4,7 @@
 Variables
 ============
 
-**DRAGON** search space is based on Variables, retrieved from the `zellij <https://zellij.readthedocs.io/en/latest/>` package.
+**DRAGON** search space is based on Variables, retrieved from the `zellij <https://zellij.readthedocs.io/en/latest/>`_ package.
 
 ******************
 Abstract variables
