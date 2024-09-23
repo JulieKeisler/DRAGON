@@ -1,33 +1,45 @@
 import numpy as np
-from zellij.core.variables import (
-    ArrayVar,
-    CatVar,
-    IntVar,
-    Constant,
-    FloatVar
-)
+import torch.nn as nn
+from dragon.search_algorithm.neighborhoods import CatHpInterval, EvoDagInterval, HpInterval, NodeInterval, int_neighborhood
+from dragon.search_algorithm.zellij_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval
+from dragon.search_space.bricks.attention import Attention1D, SpatialAttention, TemporalAttention
+from dragon.search_space.bricks.basics import MLP, Identity
+from dragon.search_space.bricks.convolutions import Conv1d, Conv2d
+from dragon.search_space.bricks.dropout import Dropout
+from dragon.search_space.bricks.normalization import BatchNorm1d, BatchNorm2d, LayerNorm1d, LayerNorm2d
+from dragon.search_space.bricks.pooling import AVGPooling1D, AVGPooling2D, MaxPooling1D, MaxPooling2D
+from dragon.search_space.bricks.recurrences import Simple_1DGRU, Simple_1DLSTM, Simple_1DRNN, Simple_2DGRU, Simple_2DLSTM
+from dragon.search_space.dags import EvoDagVariable, HpVar, NodeVariable
+from dragon.search_space.zellij_variables import DynamicBlock, FloatVar, IntVar, CatVar, Constant
 
-from zellij.utils.neighborhoods import (
-    CatInterval,
-    IntInterval,
-    ArrayInterval,
-    ConstantInterval,
-    FloatInterval
-)
-from zellij.utils.converters import IntMinmax, CatMinmax, ArrayMinmax
 
+def create_int_var(label, int_var, default_min, default_max):
+    if int_var is None:
+        default_neighborhood = int_neighborhood(default_min, default_max)
+        int_var = IntVar(label, lower=default_min, upper=default_max, neighbor=IntInterval(default_neighborhood))
+    elif isinstance(int_var, int) or isinstance(int_var, np.int64) or (isinstance(int_var, list) and len(int_var) == 1):
+        if isinstance(int_var, list):
+            int_var = int_var[0]
+        int_var = IntVar(label, lower=1, upper=int_var, neighbor=IntInterval(int_neighborhood(1, int_var)))
+    elif isinstance(int_var, list):
+        if len(int_var) == 2:
+            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(
+                int_neighborhood(int_var[0], int_var[1])))
+        if len(int_var) == 3:
+            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(int_var[2]))
+    return int_var
 
 def activation_var(label, activations=None):
     if activations is None:
         activations = [
-            "swish",
-            "relu",
-            "leaky_relu",
-            "sigmoid",
-            "softmax",
-            "gelu",
-            "elu",
-            "id",
+            nn.ReLU(),
+            nn.LeakyReLU(),
+            nn.Identity(),
+            nn.Sigmoid(),
+            nn.Tanh(),
+            nn.ELU(),
+            nn.GELU(),
+            nn.SiLU(),
         ]
     return CatVar(
         label,
@@ -35,249 +47,193 @@ def activation_var(label, activations=None):
         neighbor=CatInterval(),
     )
 
+def identity_var(label):
+    name = Constant(label=label, value=Identity, neighbor=ConstantInterval())
+    return HpVar(label=label, name=name, hyperparameters = {}, neighbor=HpInterval())
 
-def combiner_var(label, combiners=None):
-    if combiners is not None:
-        pass
-    else:
-        combiners = [
-            "add",
-            "mul",
-            "concat"
-        ]
-    return CatVar(
-        label,
-        combiners,
-        neighbor=CatInterval()
-    )
+def mlp_var(label, max_int=512):
+    name = Constant(label=label, value=MLP, neighbor=ConstantInterval())
+    hp = {
+        "out_channels": create_int_var(label + " Output", None, 1, max_int)
+    } 
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
+def attention_2d(label):
+    name = CatVar(label + " Name", [SpatialAttention, TemporalAttention], neighbor=CatInterval())
+    hp = {
+            "Nh": create_int_var(label + " Nh", None, 1, 32),
+            "d_out": create_int_var(label + " d_out", None, 1, 30),
+            "init": CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval())
+            
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
-def unitary_var(label, operations=None):
-    if operations is None:
-        operations = "Identity"
-    return ArrayVar(
-        combiner_var(label + " Combiner"),
-        Constant(label + " Operation", operations, neighbor=ConstantInterval()),
-        label=label,
-        neighbor=ArrayInterval(),
-    )
+def attention_1d(label):
+    name = Constant(label=label, value=Attention1D, neighbor=ConstantInterval())
+    hp = {
+            "Nh": create_int_var(label + " Nh", None, 1, 32),
+            "init": CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval()),
+            "d_out": create_int_var(label+" d_out", None, 1, 512)
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
+def conv_1d(label, max_out, permute=True):
+    name = Constant(label=label, value=Conv1d, neighbor=ConstantInterval())
+    hp = {
+            "kernel_size": create_int_var(label + " Ker", None, 1, max_out),
+            "out_channels": create_int_var(label + " Output", None, 1, 512),
+            "padding": Constant(label="Padding", value="same", neighbor=ConstantInterval()), 
+            "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
-def int_neighborhood(b_min, b_max, scale=4):
-    return np.ceil(max(int((b_max - b_min) / scale), 2))
+def const_conv_1d(label, kernel, max_out, permute=True):
+    name = Constant(label=label, value=Conv1d, neighbor=ConstantInterval())
+    hp = {
+            "kernel_size": Constant(label="kernel", value=kernel, neighbor=ConstantInterval()),
+            "out_channels": create_int_var(label + " Output", None, 1, max_out),
+            "padding": Constant(label="Padding", value=0, neighbor=ConstantInterval()),
+            "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
+def conv_2d(label, max_out=10, permute=True):
+    name = Constant(label=label, value=Conv2d, neighbor=ConstantInterval())
+    hp = {
+            "kernel_size": create_int_var(label + " Ker1", None, 1, max_out),
+            "out_channels": create_int_var(label + " Out", None, 1, 64),
+            "padding": Constant(label="Padding", value="same", neighbor=ConstantInterval()),
+            "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
-def create_int_var(label, int_var, default_min, default_max):
-    if int_var is None:
-        default_neighborhood = int_neighborhood(default_min, default_max)
-        int_var = IntVar(label, lower=default_min, upper=default_max, neighbor=IntInterval(default_neighborhood), to_continuous=IntMinmax())
-    elif isinstance(int_var, int) or isinstance(int_var, np.int64) or (isinstance(int_var, list) and len(int_var) == 1):
-        if isinstance(int_var, list):
-            int_var = int_var[0]
-        int_var = IntVar(label, lower=1, upper=int_var, neighbor=IntInterval(int_neighborhood(1, int_var)), to_continuous=IntMinmax())
-    elif isinstance(int_var, list):
-        if len(int_var) == 2:
-            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(
-                int_neighborhood(int_var[0], int_var[1])), to_continuous=IntMinmax())
-        if len(int_var) == 3:
-            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(int_var[2]), to_continuous=IntMinmax())
-    return int_var
+def norm_2d(label):
+    name = CatVar(label, [BatchNorm2d, LayerNorm2d], neighbor=CatInterval())
+    hp = {}
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
+def norm_1d(label):
+    name = CatVar(label, [BatchNorm1d, LayerNorm1d], neighbor=CatInterval())
+    hp = {}
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
-def attention_mts_var(label, operations=None, output=None, n_heads=None, initialization=None, activation=None, *kwargs):
-    if operations is None:
-        operations = ["SpatialAttention", "TemporalAttention"]
-    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
-    n_heads = create_int_var(label + " N_Heads", n_heads, 1, 32)
-    output = create_int_var(label + " Output", output, 1, 30)
-    if initialization is None:
-        initialization = CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval())
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(operations,
-                      CatVar), f"{label} operations should be an instance of CatVar, got {type(operations)} instead."
-    assert isinstance(output, IntVar), f"{label} output should be an instance of IntVar, got {type(output)} instead."
-    assert isinstance(n_heads, IntVar), f"{label} n_heads should be an instance of IntVar, got {type(n_heads)} instead."
-    assert isinstance(initialization, CatVar), f"{label} initialization should be an instance of CatVar, got " \
-                                               f"{type(initialization)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, output, n_heads, initialization,
-                    activation, *kwargs, label=label, neighbor=ArrayInterval())
-
-
-def attention_var(label, operations=None, n_heads=None, initialization=None, activation=None, *kwargs):
-    if operations is None:
-        operations = "Attention1D"
-    operations = Constant(label + " Operation", operations, neighbor=ConstantInterval())
-    n_heads = create_int_var(label + " Nh", n_heads, 1, 10)
-    if initialization is None:
-        initialization = CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval())
-    elif isinstance(initialization, list):
-        initialization = CatVar(label + " Initialisation", initialization, neighbor=CatInterval())
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    elif isinstance(activation, list):
-        activation = activation_var(label + " Activation", activations=activation)
-    assert isinstance(operations,
-                      Constant), f"{label} operations should be an instance of Constant, got {type(operations)} instead."
-    assert isinstance(n_heads, IntVar), f"{label} n_heads should be an instance of IntVar, got {type(n_heads)} instead."
-    assert isinstance(initialization, CatVar), f"{label} initialization should be an instance of CatVar, got " \
-                                               f"{type(initialization)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, n_heads, initialization, activation, *kwargs,
-                    label=label, neighbor=ArrayInterval())
+def dropout(label):
+    name = Constant(label=label, value=Dropout, neighbor=ConstantInterval())
+    hp = {
+        "rate": FloatVar(label=label + " rate", lower=0, upper=1, neighbor=FloatInterval(0.1))
+    }
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 
-def attention_var_2d(label, operations=None, output=None, n_heads=None, initialization=None, activation=None, *kwargs):
-    if operations is None:
-        operations = "Attention1D2D"
-    operations = Constant(label + " Operation", operations, neighbor=ConstantInterval())
-    output = create_int_var(label + " Output", output, 1, 512)
-    n_heads = create_int_var(label + " Nh", n_heads, 1, 10)
-    if initialization is None:
-        initialization = CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval())
-    elif isinstance(initialization, list):
-        initialization = CatVar(label + " Initialisation", initialization, neighbor=CatInterval())
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    elif isinstance(activation, list):
-        activation = activation_var(label + " Activation", activations=activation)
-    assert isinstance(operations,
-                      Constant), f"{label} operations should be an instance of Constant, got {type(operations)} instead."
-    assert isinstance(n_heads, IntVar), f"{label} n_heads should be an instance of IntVar, got {type(n_heads)} instead."
-    assert isinstance(output, IntVar), f"{label} output should be an instance of IntVar, got {type(output)} instead."
-    assert isinstance(initialization, CatVar), f"{label} initialization should be an instance of CatVar, got " \
-                                               f"{type(initialization)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(initialization)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, output, n_heads, initialization, activation, *kwargs, label=label, neighbor=ArrayInterval())
+def pooling_1d(label):
+    name = CatVar(label + " Name", [AVGPooling1D, MaxPooling1D], neighbor=CatInterval())
+    hp = {
+            "pool_size": create_int_var(label + " pooling", None, 1, 32),
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
+
+def pooling_2d(label):
+    name = CatVar(label + " Name", [AVGPooling2D, MaxPooling2D], neighbor=CatInterval())
+    hp = {
+            "pool": create_int_var(label + " pooling", None, 1, 10),
+            "stride": create_int_var(label + " pooling", None, 1, 5),
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
+
+def recurrence_1d(label, max_h=20):
+    name = CatVar(label + " Name", [Simple_1DGRU, Simple_1DLSTM, Simple_1DRNN], neighbor=CatInterval())
+    hp = {
+            "hidden_size": create_int_var(label + " rec", None, 1, max_h),
+            "num_layers": create_int_var(label + " rec", None, 1, 5),
+        }
+    
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 
-def pooling_var(label, operations, size=None):
-    assert isinstance(operations, list), f"{label} operations should be an instance of list, got {type(operations)} " \
-                                         f"instead."
-    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
-    size = create_int_var(label + " Size", size, 1, 32)
-    assert isinstance(size, IntVar), f"{label} size should be an instance of IntVar, got {type(size)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, size, label=label, neighbor=ArrayInterval())
-
-def norm_1d_var(label, operations=None):
-    if operations is None:
-        operations = ['1DLayerNorm', '1DBatchNorm']
-    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
-    return ArrayVar(combiner_var(label+ " Combiner"), operations, label=label, neighbor=ArrayInterval())
-
-def norm_2d_var(label, operations=None):
-    if operations is None:
-        operations = ['2DLayerNorm', '2DBatchNorm']
-    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
-    return ArrayVar(combiner_var(label+ " Combiner"), operations, label=label, neighbor=ArrayInterval())
+def recurrence_2d(label):
+    name = CatVar(label + " Name", [Simple_2DGRU, Simple_2DLSTM], neighbor=CatInterval())
+    hp = {
+            "hidden_size": create_int_var(label + " rec", None, 1, 20),
+            "num_layers": create_int_var(label + " rec", None, 1, 5),
+        }
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 
-def dropout_var(label, operations=None, rate=None):
-    if operations is None:
-        operations = "Dropout"
-    operations = Constant(label + " Operation", operations, neighbor=ConstantInterval())
-    if rate is None:
-        rate = 1
-    rate = FloatVar(label + " Rate", 0, rate, neighbor=FloatInterval(0.01))
-    assert isinstance(rate, FloatVar), f"{label} rate should be an instance of FloatVar, got {type(rate)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, rate, label=label, neighbor=ArrayInterval())
+def mlp_const_var(label, out=None, value=MLP):
+    name = Constant(label=label, value=value, neighbor=ConstantInterval())
+    hp = {
+        "out_channels": Constant(label="out_constant", value=out, neighbor=ConstantInterval())
+    } 
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 
-def mlp_var(label, output=None, activation=None):
-    output = create_int_var(label + " Output", output, 1, 512)
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(output, IntVar), f"{label} output should be an instance of IntVar, got {type(output)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), Constant(label + " Operation", "MLP",
-                    neighbor=ConstantInterval()), output, activation, label=label, neighbor=ArrayInterval())
+def pooling_2d_const_var(label, pool=None):
+    name = Constant(label=label, value=AVGPooling2D, neighbor=ConstantInterval())
+    hp = {
+        "pool": Constant(label="pool_constant", value=pool, neighbor=ConstantInterval())
+    } 
+    return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
+def operations_1d_var(label, size, candidates=None):
+    if candidates is None:
+        candidates = [identity_var("Unitary"), attention_1d("Attention"), mlp_var("MLP"), conv_1d("Convolution", max_out), 
+                      pooling_1d('Pooling'), norm_1d("Norm")]
+    return DynamicBlock(
+                    label,
+                    NodeVariable(
+                        label = "Variable",
+                        combiner=CatVar("Combiner", features=['add', 'mul', 'concat'], neighbor=CatInterval()),
+                        operation=CatVar(
+                                "Candidates",
+                                candidates,
+                                neighbor=CatHpInterval(neighborhood=0.7)
+                            ),
+                        activation_function=activation_var("Activation"),
+                        neighbor=NodeInterval()
+                    ),
+                    size,
+                    neighbor=DynamicBlockInterval(neighborhood=2),
+                    )
 
-def convolution_var_2d(label, kernel, operation=None, output=None, activation=None):
-    if operation is None:
-        operation = '2DCNN'
-    if isinstance(operation, str) or (isinstance(operation, list) and len(operation == 1)):
-        if isinstance(operation, list):
-            operation = operation[0]
-        operation = Constant(label + " Operation", operation, neighbor=ConstantInterval())
-    if isinstance(operation, list):
-        operation = CatVar(label + "Operation", operation, neighbor=CatInterval())
-    output = create_int_var(label + " Output", output, 1, 100)
-    kernel = create_int_var(label + " Kernel", kernel, None, None)
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(output, IntVar), f"{label} output should be an instance of IntVar, got {type(output)} instead."
-    assert isinstance(kernel, IntVar), f"{label} kernel should be an instance of IntVar, got {type(kernel)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    assert (isinstance(operation, CatVar) or isinstance(operation,
-                                                        Constant)), f"{label} operation should be an instance" \
-                                                                    f" of CatVar or Constant, got {type(operation)} instead."
+def operations_2d_var(label, size, candidates=None):
+    if candidates is None:
+        candidates = [identity_var("Unitary"), attention_2d("Attention"), conv_2d("Convolution"), norm_2d('Norm'), 
+                  pooling_2d('Pooling'), dropout('Dropout'), mlp_var('MLP')]
+    return DynamicBlock(
+                label,
+                NodeVariable(
+                    label = "Variable",
+                    combiner=CatVar("Combiner", features=['add', 'mul', 'concat'], neighbor=CatInterval()),
+                    operation=CatVar(
+                            "Candidates",
+                            candidates,
+                            neighbor=CatHpInterval(neighborhood=0.7)
+                        ),
+                    activation_function=activation_var("Activation"),
+                    neighbor=NodeInterval()
+                ),
+                size,
+                neighbor=DynamicBlockInterval(neighborhood=2),
+            )
 
-    return ArrayVar(combiner_var(label + " Combiner"), operation, output, kernel, activation, label=label, neighbor=ArrayInterval())
+def dag_var(label, operations, complexity=None):
+    return EvoDagVariable(
+                    label=label,
+                    operations = operations,
+                    init_complexity=complexity,
+                    neighbor=EvoDagInterval() 
+                )
 
-
-def convolution_var_1d(label, kernel, operation=None, activation=None):
-    if operation is None:
-        operation = '1DCNN'
-    if isinstance(operation, str) or (isinstance(operation, list) and len(operation == 1)):
-        if isinstance(operation, list):
-            operation = operation[0]
-        operation = Constant(label + " Operation", operation, neighbor=ConstantInterval())
-    if isinstance(operation, list):
-        operation = CatVar(label + "Operation", operation, neighbor=CatInterval())
-    kernel = create_int_var(label + " Kernel", kernel, None, None)
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(kernel, IntVar), f"{label} kernel should be an instance of IntVar, got {type(kernel)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    assert (isinstance(operation, CatVar) or isinstance(operation,
-                                                        Constant)), f"{label} operation should be an instance" \
-                                                                    f" of CatVar or Constant, got {type(operation)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operation, kernel, activation, label=label, neighbor=ArrayInterval())
-
-
-def convolution_var_1d_2d(label, kernel, operation=None, activation=None):
-    if operation is None:
-        operation = '1DCNN2D'
-    if isinstance(operation, str) or (isinstance(operation, list) and len(operation == 1)):
-        if isinstance(operation, list):
-            operation = operation[0]
-        operation = Constant(label + " Operation", operation, neighbor=ConstantInterval())
-    if isinstance(operation, list):
-        operation = CatVar(label + "Operation", operation, neighbor=CatInterval())
-    kernel = create_int_var(label + " Kernel", kernel, None, None)
-
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(kernel, IntVar), f"{label} kernel should be an instance of IntVar, got {type(kernel)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    assert (isinstance(operation, CatVar) or isinstance(operation,
-                                                        Constant)), f"{label} operation should be an instance" \
-                                                                    f" of CatVar or Constant, got {type(operation)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operation, kernel, activation, label=label, neighbor=ArrayInterval())
-
-
-def recurrence_var(label, operations, hidden_size=None, output=None, activation=None):
-    operations = CatVar(label + " Operation", operations, neighbor=CatInterval())
-    hidden_size = create_int_var(label + " Hidden Size", hidden_size, 1, 20)
-    output = create_int_var(label + " Output", output, 1, 20)
-    if activation is None:
-        activation = activation_var(label + " Activation")
-    assert isinstance(hidden_size,
-                      IntVar), f"{label} hidden size should be an instance of IntVar, got {type(hidden_size)} instead."
-    assert isinstance(output,
-                      IntVar), f"{label} output size should be an instance of IntVar, got {type(output)} instead."
-    assert isinstance(activation,
-                      CatVar), f"{label} activation should be an instance of CatVar, got {type(activation)} instead."
-    assert (isinstance(operations, CatVar) or isinstance(operations,
-                                                         Constant)), f"{label} operations should be an instance" \
-                                                                     f" of CatVar or Constant, got {type(operations)} instead."
-    return ArrayVar(combiner_var(label + " Combiner"), operations, hidden_size, output, activation, label=label, neighbor=ArrayInterval())
+def node_var(label, operation, activation_function):
+    return NodeVariable(label=label, 
+                combiner=Constant(label="out_combiner", value="add", neighbor=ConstantInterval()),
+                operation=operation,
+                activation_function=Constant(label="out_act", value=activation_function, neighbor=ConstantInterval()),
+                neighbor=NodeInterval())

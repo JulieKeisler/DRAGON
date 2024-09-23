@@ -1,6 +1,6 @@
 from operator import attrgetter
 
-from zellij.core.addons import Operator
+from dragon.search_space.addons import Operator
 
 class SelBestWoDuplicate(Operator):
     def __init__(self, search_space=None):

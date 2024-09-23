@@ -1,5 +1,4 @@
 from .neighborhoods import LayersInterval, HierarchicalLayersInterval, AdjMatrixInterval, AdjMatrixHierarchicalInterval
 from .neighborhoods_operators import NNMutation, HierarchicalNNMutation
 from .other_operators import SelBestWoDuplicate, Random
-from .pb_configuration import problem_configuration
 from .variation_operators import DAGTwoPoint
