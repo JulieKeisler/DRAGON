@@ -7,4 +7,4 @@ Search Space
 .. toctree::
 
    variables
-   cell-based search space
+   cell-based
