@@ -52,8 +52,7 @@ Contributors
 * Julie Keisler: julie.keisler.rfo@gmail.com
 References
 ----------
-.. _ref1:
-     [1] Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2024). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. *Journal of Machine Learning Research*, 25(201), 1-33.
+.. [1] Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2024). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. *Journal of Machine Learning Research*, 25(201), 1-33.
 .. [2] Keisler, J., Claudel, S., Cabriel, G., & Brégère, M. (2024). Automated Deep Learning for Load Forecasting. *International Conference on Automated Machine Learning*.
 .. [3] Keisler, J., & Naour, E. L. (2024). WindDragon: Enhancing wind power forecasting with Automated Deep Learning. Workshop paper at *Tackling Climate Change with Machine Learning*, *International Conference on Learning Representations*.
 .. [4] Elsken, T., Metzen, J. H., & Hutter, F. (2019). Neural architecture search: A survey. *Journal of Machine Learning Research*, 20(55), 1-21.
