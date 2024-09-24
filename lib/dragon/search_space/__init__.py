@@ -1,2 +1,1 @@
-from .cells import WeightsAdjCell, Brick
-from .dags import AdjMatrix, AdjMatrixVariable, fill_adj_matrix
+from .cells import AdjMatrix, Node, Brick, fill_adj_matrix

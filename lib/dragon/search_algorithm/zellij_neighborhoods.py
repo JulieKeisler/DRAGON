@@ -4,7 +4,7 @@ from dragon.search_space.zellij_variables import (
     IntVar,
     CatVar,
     Constant,
-    ArrayVar, DynamicBlock,
+    ArrayVar, DynamicBlock, Block
 )
 import random
 import numpy as np
@@ -453,3 +453,49 @@ class Intervals(Neighborhood):
             points.append(inter)
 
         return points
+
+class BlockInterval(VarNeighborhood):
+    """BlockInterval
+
+    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
+    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
+
+    """
+
+    def __init__(self, neighborhood=None, variable=None):
+        self._neighborhood = neighborhood
+        super(BlockInterval, self).__init__(variable)
+
+    def __call__(self, value, size=1):
+        if size == 1:
+            res = copy.deepcopy(value)
+            variables_idx = list(set(np.random.choice(range(self.target.repeat), size=self.target.repeat)))
+            for i in variables_idx:
+                res[i] = self.target.value.neighbor(value[i])
+        else:
+            res = []
+            for _ in size:
+                inter = copy.deepcopy(value)
+                variables_idx = list(set(np.random.choice(range(self.target.repeat), size=self.target.repeat)))
+                for i in variables_idx:
+                    inter[i] = self.target.value.neighbor(value[i])
+                res.append(inter)
+        return res
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+            self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+        assert isinstance(variable, Block) or variable is None, logger.error(
+            f"Target object must be a `Block` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable
+
+        if variable is not None:
+            assert hasattr(self._target.value, "neighbor"), logger.error(
+                f"To use `Block`, value for `Block` must have a `neighbor` method. Use `neighbor` kwarg "
+                f"when defining a variable "
+            )

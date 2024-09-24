@@ -5,27 +5,54 @@ import numpy as np
 from dragon.utils.tools import logger
 from dragon.utils.exceptions import InvalidArgumentError
 
+class AdjMatrix(nn.Module):
+    """AdjMatrix(nn.Module)
 
-class Brick(nn.Module):
-    def __init__(self, input_shape, **args):
-        super().__init__()
-        self.input_shape = input_shape
+    The class `AdjMatrix` is the implementation of the Directed Acyclic Graphs as an adjacency matrix combined with a list of nodes.
 
-    def foward(self, X):
-        raise NotImplementedError
+    Parameters
+    ----------
+    operations : list
+        List of nodes, ie: the operations that would be performed within the graph.
+    matrix: np.array
+        Adjacency matrix. The order of the operations and adjacency matrix's entries should be the same.
+    """
+    def __init__(self, operations, matrix):
+        super(AdjMatrix, self).__init__()
+        self.matrix = matrix
+        self.operations = operations
+        self.assert_adj_matrix()
+
+    def assert_adj_matrix(self):
+        assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
+        assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
+        squared array. Got {self.matrix} instead."""
+        assert self.matrix.shape[0] == len(
+            self.operations), f"""Matrix and operations should have the same dimension got {self.matrix.shape[0]} 
+                and {len(self.operations)} instead. """
+        assert np.sum(np.triu(self.matrix, k=1) != self.matrix) == 0, f"""The adjacency matrix should be upper-triangular with 0s on the
+        diagonal. Got {self.matrix}. """
+        for i in range(self.matrix.shape[0] - 1):
+            assert sum(self.matrix[i]) > 0, f"""Node {i} does not have any child."""
+        for j in range(1, self.matrix.shape[1]):
+            assert sum(self.matrix[:, j]) > 0, f"""Node {j} does not have any parent."""
+
+    def copy(self):
+        new_op = self.operations.copy()
+        new_matrix = self.matrix.copy()
+        return AdjMatrix(new_op, new_matrix)
     
-    def modify_operation(self, input_shape):
-        raise NotImplementedError
+    def set(self, input_shape):
+        # Set the first layer of the DAG
+        self.operations[0].set(input_shape)
 
-    def pad(self, X): 
-        raise NotImplementedError
-
-class WeightsAdjCell(nn.Module):
-    def __init__(self, adj_matrix):
-        super(WeightsAdjCell, self).__init__()
-        self.matrix = adj_matrix.matrix
-        self.layers = nn.ModuleList(adj_matrix.operations)
-        self.output_shape = adj_matrix.operations[-1].output_shape
+        # Set the other layers of the DAG
+        for j in range(1, len(self.operations)):
+            input_shapes = [self.operations[i].output_shape for i in range(j) if self.matrix[i, j] == 1]
+            self.operations[j].set(input_shapes)
+        
+        self.layers = nn.ModuleList(self.operations)
+        self.output_shape = self.operations[-1].output_shape
 
     def forward(self, X):
         device = X.get_device()
@@ -42,7 +69,23 @@ class WeightsAdjCell(nn.Module):
                     logger.error(f'j={j}, layer: {self.layers[j]}, Output: {output}')
             outputs[j] = output
         return output
+
+
+    def __str__(self):
+        if hasattr(self, "layers"):
+            return self.layers.__str__()
+        else:
+            matrix_str = f"NODES: {self.operations.__str__()} | MATRIX:{self.matrix.tolist().__str__()}"
+            return matrix_str
+
+    def __repr__(self):
+        if hasattr(self, "layers"):
+            return self.layers.__repr__()
+        else:
+            matrix_repr = f"NODES: {self.operations.__repr__()} | MATRIX:{self.matrix.tolist().__repr__()}"
+            return matrix_repr
     
+
 class Node(nn.Module):
     def __init__(self, combiner, name, hp, activation=nn.Identity(), input_comp="Pad"):
         super(Node, self).__init__()
@@ -83,6 +126,14 @@ class Node(nn.Module):
             self.output_shape = self.compute_output_shape()
         except Exception as e:
             raise e
+        
+    def set(self, input_shapes):   
+        if not isinstance(input_shapes, list):
+            input_shapes = [input_shapes]
+        if hasattr(self, "operation"):# The layer has already been initialized and trained
+            self.modification(input_shapes=input_shapes) # We only update the input shape
+        else:
+            self.set_operation(input_shapes=input_shapes)# We set the layer with the input shape
 
 
     def forward(self, X, h=None):
@@ -228,20 +279,47 @@ class Node(nn.Module):
                     new_dict[new_key] = value
             self.operation.load_state_dict(new_dict, **kwargs)
 
-def set_node(node, input_shapes):
-    if not isinstance(input_shapes, list):
-        input_shapes = [input_shapes]
-    if hasattr(node, "operation"):# The layer has already been initialized and trained
-        node.modification(input_shapes=input_shapes) # We only update the input shape
-    else:
-        node.set_operation(input_shapes=input_shapes)# We set the layer with the input shape
 
+def fill_adj_matrix(matrix):
+    """fill_adj_matrix(matrix)
+    Add random edges into an adjacency matrix in case it contains orphan nodes (no incoming connection) or nodes having no outgoing connection.
+    Except from the first node, all nodes should have at least one incoming connection, meaning the corresponding column should not sum to zero.
+    Except from the last node, all nodes should have at least one outgoing connection, meaning the corresponding row should not sum to zero.
+
+    Parameters
+    ----------
+    matrix : np.array
+        Adjacency matrix from a directed acyclic graph that may contain orphan nodes.
     
-def set_cell(cell, input_shape):
-    # Set the first layer of the DAG
-    set_node(cell.operations[0], input_shape)
-         
-    # Set the other layers of the DAG
-    for j in range(1, len(cell.operations)):
-        input_shapes = [cell.operations[i].output_shape for i in range(j) if cell.matrix[i, j] == 1]
-        set_node(cell.operations[j], input_shapes)
+    Returns
+    -------
+        matrix: adjacency matrix from a directed acyclic graph that does not contain orphan nodes.
+    """
+    # Add outgoing connections if needed.
+    for i in range(matrix.shape[0] - 1):
+        new_row = matrix[i, i + 1:]
+        while sum(new_row) == 0:
+            new_row = np.random.choice(2, new_row.shape[0])
+        matrix[i, i + 1:] = new_row
+    # Add incoming connections if needed.
+    for j in range(1, matrix.shape[1]):
+        new_col = matrix[:j, j]
+        while sum(new_col) == 0:
+            new_col = np.random.choice(2, new_col.shape[0])
+        matrix[:j, j] = new_col
+    return matrix
+
+class Brick(nn.Module):
+    def __init__(self, input_shape, **args):
+        super().__init__()
+        self.input_shape = input_shape
+
+    def foward(self, X):
+        raise NotImplementedError
+    
+    def modify_operation(self, input_shape):
+        raise NotImplementedError
+
+    def pad(self, X): 
+        raise NotImplementedError
+    

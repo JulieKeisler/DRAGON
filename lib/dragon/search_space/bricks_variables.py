@@ -9,25 +9,8 @@ from dragon.search_space.bricks.dropout import Dropout
 from dragon.search_space.bricks.normalization import BatchNorm1d, BatchNorm2d, LayerNorm1d, LayerNorm2d
 from dragon.search_space.bricks.pooling import AVGPooling1D, AVGPooling2D, MaxPooling1D, MaxPooling2D
 from dragon.search_space.bricks.recurrences import Simple_1DGRU, Simple_1DLSTM, Simple_1DRNN, Simple_2DGRU, Simple_2DLSTM
-from dragon.search_space.dags import EvoDagVariable, HpVar, NodeVariable
+from dragon.search_space.dragon_variables import EvoDagVariable, HpVar, NodeVariable
 from dragon.search_space.zellij_variables import DynamicBlock, FloatVar, IntVar, CatVar, Constant
-
-
-def create_int_var(label, int_var, default_min, default_max):
-    if int_var is None:
-        default_neighborhood = int_neighborhood(default_min, default_max)
-        int_var = IntVar(label, lower=default_min, upper=default_max, neighbor=IntInterval(default_neighborhood))
-    elif isinstance(int_var, int) or isinstance(int_var, np.int64) or (isinstance(int_var, list) and len(int_var) == 1):
-        if isinstance(int_var, list):
-            int_var = int_var[0]
-        int_var = IntVar(label, lower=1, upper=int_var, neighbor=IntInterval(int_neighborhood(1, int_var)))
-    elif isinstance(int_var, list):
-        if len(int_var) == 2:
-            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(
-                int_neighborhood(int_var[0], int_var[1])))
-        if len(int_var) == 3:
-            int_var = IntVar(label, lower=int_var[0], upper=int_var[1], neighbor=IntInterval(int_var[2]))
-    return int_var
 
 def activation_var(label, activations=None):
     if activations is None:
@@ -54,15 +37,15 @@ def identity_var(label):
 def mlp_var(label, max_int=512):
     name = Constant(label=label, value=MLP, neighbor=ConstantInterval())
     hp = {
-        "out_channels": create_int_var(label + " Output", None, 1, max_int)
+        "out_channels": IntVar(label + " Output", lower=1, upper=max_int, neighbor=IntInterval(int_neighborhood(1, max_int)))
     } 
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 def attention_2d(label):
     name = CatVar(label + " Name", [SpatialAttention, TemporalAttention], neighbor=CatInterval())
     hp = {
-            "Nh": create_int_var(label + " Nh", None, 1, 32),
-            "d_out": create_int_var(label + " d_out", None, 1, 30),
+            "Nh": IntVar(label + " Nh", lower=1, upper=32, neighbor=IntInterval(int_neighborhood(1,32))),
+            "d_out": IntVar(label + " d_out", lower=1, upper=30, neighbor=IntInterval(int_neighborhood(1,30))),
             "init": CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval())
             
         }
@@ -72,9 +55,9 @@ def attention_2d(label):
 def attention_1d(label):
     name = Constant(label=label, value=Attention1D, neighbor=ConstantInterval())
     hp = {
-            "Nh": create_int_var(label + " Nh", None, 1, 32),
+            "Nh": IntVar(label + " Nh", lower=1, upper=32, neighbor=IntInterval(int_neighborhood(1,32))),
             "init": CatVar(label + " Initialisation", ["random", "conv"], neighbor=CatInterval()),
-            "d_out": create_int_var(label+" d_out", None, 1, 512)
+            "d_out": IntVar(label + " d_out", lower=1, upper=512, neighbor=IntInterval(int_neighborhood(1,512)))
         }
     
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
@@ -82,8 +65,8 @@ def attention_1d(label):
 def conv_1d(label, max_out, permute=True):
     name = Constant(label=label, value=Conv1d, neighbor=ConstantInterval())
     hp = {
-            "kernel_size": create_int_var(label + " Ker", None, 1, max_out),
-            "out_channels": create_int_var(label + " Output", None, 1, 512),
+            "kernel_size": IntVar(label + " Ker", lower=1, upper=max_out, neighbor=IntInterval(int_neighborhood(1, max_out))),
+            "out_channels": IntVar(label + " d_out", lower=1, upper=512, neighbor=IntInterval(int_neighborhood(1,512))),
             "padding": Constant(label="Padding", value="same", neighbor=ConstantInterval()), 
             "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
         }
@@ -94,7 +77,7 @@ def const_conv_1d(label, kernel, max_out, permute=True):
     name = Constant(label=label, value=Conv1d, neighbor=ConstantInterval())
     hp = {
             "kernel_size": Constant(label="kernel", value=kernel, neighbor=ConstantInterval()),
-            "out_channels": create_int_var(label + " Output", None, 1, max_out),
+            "out_channels": IntVar(label + " d_out", lower=1, upper=max_out, neighbor=IntInterval(int_neighborhood(1, max_out))),
             "padding": Constant(label="Padding", value=0, neighbor=ConstantInterval()),
             "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
         }
@@ -104,12 +87,11 @@ def const_conv_1d(label, kernel, max_out, permute=True):
 def conv_2d(label, max_out=10, permute=True):
     name = Constant(label=label, value=Conv2d, neighbor=ConstantInterval())
     hp = {
-            "kernel_size": create_int_var(label + " Ker1", None, 1, max_out),
-            "out_channels": create_int_var(label + " Out", None, 1, 64),
+            "kernel_size": IntVar(label + " kernel", lower=1, upper=max_out, neighbor=IntInterval(int_neighborhood(1, max_out))),
+            "out_channels": IntVar(label + " d_out", lower=1, upper=64, neighbor=IntInterval(int_neighborhood(1,64))),
             "padding": Constant(label="Padding", value="same", neighbor=ConstantInterval()),
             "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
         }
-    
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
 def norm_2d(label):
@@ -133,7 +115,7 @@ def dropout(label):
 def pooling_1d(label):
     name = CatVar(label + " Name", [AVGPooling1D, MaxPooling1D], neighbor=CatInterval())
     hp = {
-            "pool_size": create_int_var(label + " pooling", None, 1, 32),
+            "pool_size": IntVar(label + " pooling", lower=1, upper=32, neighbor=IntInterval(int_neighborhood(1,32))),
         }
     
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
@@ -141,8 +123,8 @@ def pooling_1d(label):
 def pooling_2d(label):
     name = CatVar(label + " Name", [AVGPooling2D, MaxPooling2D], neighbor=CatInterval())
     hp = {
-            "pool": create_int_var(label + " pooling", None, 1, 10),
-            "stride": create_int_var(label + " pooling", None, 1, 5),
+            "pool": IntVar(label + " pooling", lower=1, upper=10, neighbor=IntInterval(int_neighborhood(1,10))),
+            "stride": IntVar(label + " stride", lower=1, upper=5, neighbor=IntInterval(int_neighborhood(1,5))),
         }
     
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
@@ -150,8 +132,8 @@ def pooling_2d(label):
 def recurrence_1d(label, max_h=20):
     name = CatVar(label + " Name", [Simple_1DGRU, Simple_1DLSTM, Simple_1DRNN], neighbor=CatInterval())
     hp = {
-            "hidden_size": create_int_var(label + " rec", None, 1, max_h),
-            "num_layers": create_int_var(label + " rec", None, 1, 5),
+            "hidden_size": IntVar(label + " hidden_size", lower=1, upper=max_h, neighbor=IntInterval(int_neighborhood(1,max_h))),
+            "num_layers": IntVar(label + " num_layers", lower=1, upper=5, neighbor=IntInterval(int_neighborhood(1,5))),
         }
     
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
@@ -160,8 +142,8 @@ def recurrence_1d(label, max_h=20):
 def recurrence_2d(label):
     name = CatVar(label + " Name", [Simple_2DGRU, Simple_2DLSTM], neighbor=CatInterval())
     hp = {
-            "hidden_size": create_int_var(label + " rec", None, 1, 20),
-            "num_layers": create_int_var(label + " rec", None, 1, 5),
+            "hidden_size": IntVar(label + " hidden_size", lower=1, upper=20, neighbor=IntInterval(int_neighborhood(1,20))),
+            "num_layers": IntVar(label + " num_layers", lower=1, upper=5, neighbor=IntInterval(int_neighborhood(1,5)))
         }
     return HpVar(label=label, name=name, hyperparameters=hp, neighbor=HpInterval())
 
@@ -183,7 +165,7 @@ def pooling_2d_const_var(label, pool=None):
 
 def operations_1d_var(label, size, candidates=None):
     if candidates is None:
-        candidates = [identity_var("Unitary"), attention_1d("Attention"), mlp_var("MLP"), conv_1d("Convolution", max_out), 
+        candidates = [identity_var("Unitary"), attention_1d("Attention"), mlp_var("MLP"), conv_1d("Convolution", 10), 
                       pooling_1d('Pooling'), norm_1d("Norm")]
     return DynamicBlock(
                     label,
