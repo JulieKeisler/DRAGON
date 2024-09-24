@@ -1,9 +1,9 @@
+from operator import attrgetter
 import random
 import numpy as np
 
-from dragon.search_space.addons import Mutator, Crossover
-
-from dragon.search_space.dags import AdjMatrix, fill_adj_matrix
+from dragon.search_space.addons import Operator, Mutator, Crossover
+from dragon.search_space.cells import AdjMatrix, fill_adj_matrix
 
 
 class DAGTwoPoint(Crossover):
@@ -70,14 +70,10 @@ class DAGTwoPoint(Crossover):
                 new_s2[0] += 1
             for i2 in range(1, len(s2)):
                 new_s2.append(min(s2[i2] - s2[i2 - 1] + new_s2[i2-1], len(old_s1) + len(new_s2)))
-            m1_shape_before = m1.shape
-            m2_shape_before = m2.shape
             m1 = np.insert(m1, np.clip(new_s2, 0, m1.shape[0]), 0, axis=0)
             m1 = np.insert(m1, np.clip(new_s2, 0, m1.shape[1]), 0, axis=1)
             m2 = np.insert(m2, np.clip(new_s1, 0, m2.shape[0]), 0, axis=0)
             m2 = np.insert(m2, np.clip(new_s1, 0, m2.shape[1]), 0, axis=1)
-            m1_shape_after = m1.shape
-            m2_shape_after = m2.shape
             for i in range(len(s1)):
                 diff = new_s1[i] - s1[i]
                 if diff >= 0:
@@ -123,3 +119,35 @@ class DAGTwoPoint(Crossover):
     @Mutator.target.setter
     def target(self, search_space):
         self._target = search_space
+
+
+class SelBestWoDuplicate(Operator):
+    def __init__(self, search_space=None):
+        super(SelBestWoDuplicate, self).__init__(search_space)
+
+    def __call__(self, individuals, k, fit_attr="fitness"):
+        """Select the *k* best individuals among the input *individuals*. The
+            list returned contains references to the input *individuals*.
+
+            :param individuals: A list of individuals to select from.
+            :param k: The number of individuals to select.
+            :param fit_attr: The attribute of individuals to use as selection criterion
+            :returns: A list containing the k best individuals.
+            """
+        rpr = []
+        wo_duplicates = []
+        for ind in individuals:
+            if ind.__repr__() not in rpr:
+                rpr.append(ind.__repr__())
+                wo_duplicates.append(ind)
+        out = sorted(wo_duplicates, key=attrgetter(fit_attr), reverse=True)[:k]
+        return out
+
+
+class Random(Operator):
+    def __init__(self, value, searchspace=None):
+        super(Random, self).__init__(searchspace)
+        self.value = value
+
+    def __call__(self, *args, **kwargs):
+        return self.value

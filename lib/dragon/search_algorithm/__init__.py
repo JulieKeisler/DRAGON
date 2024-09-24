@@ -1,4 +1,2 @@
-from .neighborhoods import LayersInterval, HierarchicalLayersInterval, AdjMatrixInterval, AdjMatrixHierarchicalInterval
-from .neighborhoods_operators import NNMutation, HierarchicalNNMutation
-from .other_operators import SelBestWoDuplicate, Random
-from .variation_operators import DAGTwoPoint
+from .neighborhoods import EvoDagInterval, HpInterval, NodeInterval, CatHpInterval
+from .operators import SelBestWoDuplicate, Random, DAGTwoPoint

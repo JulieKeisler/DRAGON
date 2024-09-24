@@ -5,7 +5,7 @@ import pickle
 import random
 import shutil
 from dragon.utils.tools import logger
-from dragon.search_algorithm.variation_operators import DAGTwoPoint
+from dragon.search_algorithm.operators import DAGTwoPoint
 import numpy as np
 import random
 import torch

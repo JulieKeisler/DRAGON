@@ -6,15 +6,12 @@ import numpy as np
 import random
 import copy
 
-from dragon.utils.tools import logger
-
-
 
 @abstractmethod
 class Variable(ABC):
     """Variable
 
-    :ref:`var` is an Abstract class defining what a variable is in a :ref:`sp`.
+    Variable is an Abstract class defining what a variable is in a given search space.
 
     Parameters
     ----------
@@ -23,8 +20,6 @@ class Variable(ABC):
     kwargs : dict
         Kwargs will be the different addons you want to add to a :ref:`var`.
         Known addons are:
-        * to_discrete : VarConverter
-        * to_continuous : VarConverter
         * neighbor : VarNeighborhood
 
     Attributes
@@ -52,10 +47,6 @@ class Variable(ABC):
     def isconstant(self):
         pass
 
-    @abstractmethod
-    def subset(self):
-        pass
-
     def _add_addons(self, **kwargs):
         for k in kwargs:
 
@@ -81,8 +72,7 @@ class Variable(ABC):
 class IntVar(Variable):
     """IntVar
 
-    `IntVar` is a :ref:`var` discribing an Integer variable. T
-    he :code:`lower` and :code:`upper` bounds are included.
+    `IntVar` defines :ref:`var` discribing Integer variables. The user must specify a :code:`lower` and an :code:`upper` bounds for the Integer variable.
 
     Parameters
     ----------
@@ -93,7 +83,7 @@ class IntVar(Variable):
     upper : int
         Upper bound of the variable
     sampler : Callable, default=np.random.randint
-        Function that takes lower bound, upper bound and a size as parameters.
+        Function that takes lower bound, upper bound and a size as parameters and defines how the random values for the variable should be sampled.
 
     Attributes
     ----------
@@ -156,33 +146,7 @@ class IntVar(Variable):
             False otherwise.
 
         """
-        return self.up_bound == self.lo_bounds
-
-    def subset(self, lower, upper):
-        assert isinstance(
-            upper, (int, np.integer)
-        ), f"""Upper bound must be an int, got {upper}"""
-        assert isinstance(
-            lower, (int, np.integer)
-        ), f"""Upper bound must be an int, got {lower}"""
-        assert (
-            lower >= self.low_bound
-        ), f"""
-        Subset lower bound must be higher than the initial lower bound,
-         got {lower}>{self.low_bound}
-        """
-
-        assert (
-            upper <= self.up_bound
-        ), f"""
-        Subset upper bound must be lower than the initial upper bound,
-         got {lower}<{upper}
-        """
-
-        if upper == lower:
-            return Constant(self.label, lower)
-        else:
-            return IntVar(self.label, lower, upper)
+        return self.up_bound == self.low_bound
 
     def __len__(self):
         return 1
@@ -198,7 +162,7 @@ class IntVar(Variable):
 class FloatVar(Variable):
     """FloatVar
 
-    `FloatVar` is a :ref:`var` discribing a Float variable.
+    `FloatVar` defines :ref:`var` discribing Float variables.
 
     Parameters
     ----------
@@ -277,48 +241,7 @@ class FloatVar(Variable):
             False otherwise.
 
         """
-        return self.up_bound == self.lo_bounds
-
-    def subset(self, lower, upper):
-        assert isinstance(
-            upper, (float, int, np.integer, np.floating)
-        ), f"""
-        Upper bound must be an int, got {upper}
-        """
-
-        assert isinstance(lower, int) or isinstance(
-            lower, (float, int, np.integer, np.floating)
-        ), f"""
-        Upper bound must be an int, got {lower}
-        """
-
-        assert (
-            lower - self.low_bound >= -self.tolerance
-            and lower - self.up_bound <= self.tolerance
-        ), f"""
-        Subset lower bound must be higher than the initial lower bound,
-        got {lower}>={self.low_bound}
-        """
-
-        assert (
-            upper - self.up_bound <= self.tolerance
-            and upper - self.low_bound >= -self.tolerance
-        ), f"""
-        Subset upper bound must be lower than the initial upper bound,
-        got {upper}<={self.up_bound}
-        """
-
-        if math.isclose(upper, lower, abs_tol=self.tolerance):
-            return Constant(self.label, float(lower))
-        else:
-            return FloatVar(
-                self.label,
-                lower,
-                upper,
-                sampler=self.sampler,
-                tolerance=self.tolerance,
-                **self.kwargs,
-            )
+        return self.up_bound == self.low_bound
 
     def __len__(self):
         return 1
@@ -334,7 +257,7 @@ class FloatVar(Variable):
 class CatVar(Variable):
     """CatVar(Variable)
 
-    `CatVar` is a :ref:`var` discribing what a categorical variable is.
+    `CatVar` defines :ref:`var` discribing categorical variables.
 
     Parameters
     ----------
@@ -423,32 +346,6 @@ class CatVar(Variable):
 
         return len(self.features) == 1
 
-    def subset(self, lower, upper):
-        assert (
-            upper in self.features
-        ), f"""
-        Upper bound is not in features of CatVar, got {upper}"""
-
-        assert (
-            lower in self.features
-        ), f"""
-        Lower bound is not in features of CatVar, got {lower}"""
-
-        if upper == lower:
-            return Constant(self.label, lower)
-        else:
-
-            lo_idx = self.features.index(lower)
-            up_idx = self.features.index(upper)
-
-            if lo_idx > up_idx:
-                return CatVar(
-                    self.label,
-                    self.features[lo_idx:] + self.features[: up_idx + 1],
-                )
-            else:
-                return CatVar(self.label, self.features[lo_idx : up_idx + 1])
-
     def __len__(self):
         return 1
 
@@ -460,7 +357,7 @@ class CatVar(Variable):
 class ArrayVar(Variable):
     """ArrayVar(Variable)
 
-    :code:`ArrayVar` is a :ref:`var` describing a list of :ref:`var`. This class is
+    :code:`ArrayVar` defines :ref:`var` describing lists of :ref:`var`. This class is
     iterable.
 
     Parameters
@@ -527,27 +424,6 @@ class ArrayVar(Variable):
 
         """
         return all(v.isconstant for v in self.values)
-
-    def subset(self, lower, upper):
-        assert isinstance(lower, (list, np.ndarray)) and (
-            len(lower) == len(self)
-        ), f"""
-            Lower bound must be a list containing lower bound of each
-            :ref:`var` composing :code:`ArrayVar`, got {lower}
-            """
-
-        assert isinstance(upper, (list, np.ndarray)) and (
-            len(upper) == len(self)
-        ), f"""
-        Upper bound must be a list containing lower bound of each
-        :ref:`var` composing :code:`ArrayVar`, got {upper}
-        """
-
-        new_values = []
-        for v, l, u in zip(self.values, lower, upper):
-            new_values.append(v.subset(l, u))
-
-        return ArrayVar(*new_values, label=self.label, **self.kwargs)
 
     def index(self, value):
         """index(value)
@@ -620,7 +496,7 @@ class ArrayVar(Variable):
 class Block(Variable):
     """Block(Variable)
 
-    A `Block` is a :ref:`var` which will repeat multiple times a :ref:`var`.
+    `Block` defines :ref:`var` which will repeat multiple times a :ref:`var`.
 
     Parameters
     ----------
@@ -639,7 +515,7 @@ class Block(Variable):
         assert isinstance(
             value, Variable
         ), f"""
-        Value must inherit from :ref:`var`, got {args}
+        Value must inherit from :ref:`var`, got {value}
         """
         assert (
             isinstance(repeat, int) and repeat > 0
@@ -697,12 +573,6 @@ class Block(Variable):
         """
 
         return self.value.isconstant()
-
-    def subset(self, lower, upper):
-
-        new_values = v.subset(l, u)
-
-        return Block(self.label, new_values)
 
     def __repr__(self):
         values_reprs = ""
@@ -844,9 +714,6 @@ class Constant(Variable):
 
         """
         return True
-
-    def subset(self, l, u):
-        return self
 
     def __repr__(self):
         return super(Constant, self).__repr__() + f"{self.value})"
