@@ -1,6 +1,5 @@
 import numpy as np
 import torch.nn as nn
-import torch
 from dragon.search_space import Brick
 from dragon.utils.tools import logger
 
@@ -240,59 +239,3 @@ class Simple_1DGRU(Brick):
         T = state_dict['gru.weight_ih_l0'].shape[-1]
         self.modify_operation((T,))
         super(Simple_1DGRU, self).load_state_dict(state_dict, **kwargs)      
-
-
-class ESBrick(Brick):
-    def __init__(self, input_shape, thetas=None):
-        super().__init__(input_shape)
-        # 48, f
-        self.input_shape = input_shape
-        self.thetas = thetas
-        if thetas is not None:
-            self.theta = nn.Parameter(torch.Tensor(thetas))
-        else:
-            self.theta = nn.Parameter(torch.randint(1, 11, (input_shape[-1],)).float()) #torch.Tensor([10 for _ in range(input_shape[-1])])) #torch.Tensor(thetas))
-    
-    def forward(self, x, h=None):
-        # x: 32, 48, f
-        if h is None:
-            h = x[0,0].unsqueeze(0)
-            # h: 1, f
-        bs, seq_len, _ = x.size()
-        N = bs*seq_len + 1
-        i,j = torch.tril_indices(N, N)
-        theta = nn.Sigmoid()(self.theta)
-        M = torch.zeros((N, N, theta.shape[0]))
-        powers = -(j - i).unsqueeze(1).expand(-1, theta.shape[0])
-
-        if theta.get_device()>-1:
-            M = M.to(f"cuda:{theta.get_device()}")
-            powers = powers.to(f"cuda:{theta.get_device()}")
-        M[i, j] = theta ** powers
-        if h.shape[1] != theta.shape[0]:
-            hshape = h.shape
-            h = torch.stack(tuple([h for _ in range(theta.shape[0])]), dim=1).squeeze(-1)
-        if x.shape[-1] != theta.shape[0]:
-            x = torch.stack(tuple([x for _ in range(theta.shape[0])]), dim=2).squeeze(-1)
-        x = torch.mul(x,(1-theta))
-        x = x.reshape(-1, theta.shape[0])
-        x = torch.cat([h,x], dim=0)
-        out = torch.mul(M, x).sum(axis=1)
-        if torch.isnan(out).sum()> 0:
-            logger.error(f'{theta}, {M.min()}, {M.max()}, {powers}')
-        out = out[1:].reshape(bs, seq_len, theta.shape[0])
-        h = out[-1,-1].detach().unsqueeze(0)
-        return out, h
-
-    def modify_operation(self, input_shape):
-        if self.thetas is None:
-            d_in = input_shape[-1]
-            diff = d_in - self.input_shape[-1]
-            sign = diff / np.abs(diff) if diff !=0 else 1
-
-            pad = (int(sign * np.ceil(np.abs(diff)/2)), int(sign * np.floor(np.abs(diff))/2))
-            self.theta.data = nn.functional.pad(self.theta, pad)
-            self.input_shape = input_shape
-
-    def load_state_dict(self, state_dict, **kwargs):
-        pass
