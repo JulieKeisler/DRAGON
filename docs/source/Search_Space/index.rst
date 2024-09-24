@@ -27,7 +27,6 @@ Finally, we show in the `cell-based <cell-based.ipynb>`_ tutorial that this sear
    :caption: Candidate Operations
 
    bricks
-   bricks_variables
 
 .. toctree::
 
