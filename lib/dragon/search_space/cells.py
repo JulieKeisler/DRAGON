@@ -26,10 +26,10 @@ class AdjMatrix(nn.Module):
     def assert_adj_matrix(self):
         """ assert_adj_matrix()
         The `operations` and `matrix` variables should verify some properties such as:
-            * The `operations` variable should be a list.
-            * The `matrix` variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
-            * The `matrix` variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
-            * The `matrix` variable and the :node: operations variable should have the same dimension.
+            - The `operations` variable should be a list.
+            - The `matrix` variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
+            - The `matrix` variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
+            - The `matrix` variable and the :node: operations variable should have the same dimension.
         """
         assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
         assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
