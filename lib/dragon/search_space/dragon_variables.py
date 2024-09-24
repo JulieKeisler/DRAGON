@@ -107,6 +107,20 @@ class NodeVariable(Variable):
         self.activation_function = activation_function
         
     def random(self, size=1):
+        """random(size=1)
+
+            Create random nodes. The combiner, the operation and the activation function are sequentally randomly selected.
+            
+            Parameters
+            ----------
+            size : int, default=1
+                Number of draws.
+
+            Returns
+            -------
+            matrices: list or `Node`
+                List containing the randomly created nodes, or a single node if size=1.
+        """
         if size == 1:
             c = self.combiner.random()
             op = self.operation.random()
@@ -137,29 +151,44 @@ class NodeVariable(Variable):
         return f"Combiner: {self.combiner.__repr__()} - Operation: {self.operation.__repr__()} - Act. Function: {self.activation_function.__repr__()}"
     
 class HpVar(Variable):
-    """EvoDagVariable(Variable)
+    """HpVar(Variable)
 
-    The class `EvoDagVariable` defines :ref:`var` which represent Directed Acyclic Graph by creating objects from the `AdjMatrix` class.
-    The candidate operations should be gathered within a `DynamicBlock`. The maximum size of this `DynamicBlock` will set the graph maximum number of nodes.
+    The class `HpVar` defines :ref:`var` which represent a node operation. 
+    The operation can be a `Constant` or a `CatVar`. In the second case, the multiple operations should share the same hyperparameters.
 
     Parameters
     ----------
     label : str
         Name of the variable.
-    operations : `DynamicBlock`
-        `DynamicBlock` containing :ref:`var` corresponding to the candidate operations.
-    init_complexity : int
-        Maximum number of nodes that the randomly created DAGs should have.
+    operation : `Constant` or `CatVar`
+        One or several candidate operations encoded as `Brick` variable. If operation is a `CatVar`, the multiple operations should share the same hyperparameters.
+    hyperparameters : dict
+        Dictionary of `Variables`, one for each hyperparameter.
     """
-    def __init__(self, label, name, hyperparameters, **kwargs):
+    def __init__(self, label, operation, hyperparameters, **kwargs):
         super().__init__(label, **kwargs)
         for h in hyperparameters:
             assert isinstance(hyperparameters[h], Variable), f"The hyperparameters should be instances of Variable but got {h} instead."
-        self.name = name
+        self.name = operation
         self.label = label
         self.hyperparameters = hyperparameters
 
     def random(self, size = 1):
+        """random(size=1)
+
+            Create random operation. First, if the operation is a `CatVar`, an operation is randomly selected among the different possibilities.
+            Then, one random value per hyperparameter is drawn.
+            
+            Parameters
+            ----------
+            size : int, default=1
+                Number of draws.
+
+            Returns
+            -------
+            matrices: list or AdjMatrix
+                List containing the randomly created operations, or a single operation if size=1.
+        """
         if size == 1:
             if isinstance(self.name, Variable):
                 name = self.name.random()
@@ -194,7 +223,3 @@ class HpVar(Variable):
             if not self.hyperparameters[h].isconstant():
                 isconstant = False
         return isconstant
-
-    def subset(self, lower, upper):
-        pass
-
