@@ -8,7 +8,7 @@ from dragon.utils.exceptions import InvalidArgumentError
 class AdjMatrix(nn.Module):
     """AdjMatrix(nn.Module)
 
-    The class `AdjMatrix` is the implementation of the Directed Acyclic Graphs as an adjacency matrix combined with a list of nodes.
+    The class :code: AdjMatrix is the implementation of an Directed Acyclic Graph (DAG) using its adjacency matrix combined with the nodes list.
 
     Parameters
     ----------
@@ -24,25 +24,54 @@ class AdjMatrix(nn.Module):
         self.assert_adj_matrix()
 
     def assert_adj_matrix(self):
+        """ assert_adj_matrix()
+        The :code: operations and :code: matrix variables should verify some properties such as:
+            * The :code: operations variable should be a list.
+            * The :code: matrix variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
+            * The :code: matrix variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
+            * The :code: matrix variable and the :node: operations variable should have the same dimension.
+        """
         assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
         assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
         squared array. Got {self.matrix} instead."""
-        assert self.matrix.shape[0] == len(
-            self.operations), f"""Matrix and operations should have the same dimension got {self.matrix.shape[0]} 
-                and {len(self.operations)} instead. """
+    
         assert np.sum(np.triu(self.matrix, k=1) != self.matrix) == 0, f"""The adjacency matrix should be upper-triangular with 0s on the
         diagonal. Got {self.matrix}. """
         for i in range(self.matrix.shape[0] - 1):
-            assert sum(self.matrix[i]) > 0, f"""Node {i} does not have any child."""
+            assert sum(self.matrix[i]) > 0, f"""Node {i} does not have any outgoing connections."""
         for j in range(1, self.matrix.shape[1]):
-            assert sum(self.matrix[:, j]) > 0, f"""Node {j} does not have any parent."""
+            assert sum(self.matrix[:, j]) > 0, f"""Node {j} does not have any incoming connections."""
+        assert self.matrix.shape[0] == len(
+            self.operations), f"""Matrix and operations should have the same dimension got {self.matrix.shape[0]} 
+                and {len(self.operations)} instead. """
 
     def copy(self):
+        """copy()
+        Creates an new :code: AdjMatrix variable which is a copy of this one.
+
+        Returns
+        -------
+        adj_matrix
+            Copy of the actual variable.
+
+        """
         new_op = self.operations.copy()
         new_matrix = self.matrix.copy()
-        return AdjMatrix(new_op, new_matrix)
+        adj_matrix = AdjMatrix(new_op, new_matrix)
+        return adj_matrix
     
     def set(self, input_shape):
+        """set(input_shape)
+
+        Initialize the :code: nn.Module within the :code: operations list, with the :code: input shape.
+        If the layers have already been initialized, they may be modified if the :code: input_shape has changed since their initialization.
+        The layers are initialized or modified one after the other, in the :node: operations list order.
+
+        Parameters
+        ----------
+        input_shape : int or tuple
+            Shape of the DAG's input tensor.
+        """
         # Set the first layer of the DAG
         self.operations[0].set(input_shape)
 
@@ -55,18 +84,33 @@ class AdjMatrix(nn.Module):
         self.output_shape = self.operations[-1].output_shape
 
     def forward(self, X):
+        """forward(X)
+
+        Forward pass through the DAG. The latent vectors are processed layer by layer, following the :node: operations list order.
+
+        Parameters
+        ----------
+        X : torch.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        output
+            Network output tensor.
+        """
         device = X.get_device()
         N = len(self.layers)
+        # Store the outputs of each layer.
         outputs = np.empty(N, dtype=object)
         outputs[0] = X
         for j in range(1, N):
+            # Get the inputs from the different incoming connections of layer j
             inputs = [outputs[i] for i in range(j) if self.matrix[i, j] == 1]
+            # Compute the layer output
             output = self.layers[j](inputs)
             if device >= 0:
-                try:
-                    output = output.to(device)
-                except Exception as e:
-                    logger.error(f'j={j}, layer: {self.layers[j]}, Output: {output}')
+                # Make sure the output is on the right device
+                output = output.to(device)
             outputs[j] = output
         return output
 
@@ -87,70 +131,105 @@ class AdjMatrix(nn.Module):
     
 
 class Node(nn.Module):
-    def __init__(self, combiner, name, hp, activation=nn.Identity(), input_comp="Pad"):
+    """Node(nn.Module)
+
+    The class :code: Node is the implementation of a DAG node. Each node is made of a combiner, an operation and an activation function.
+    The operation is parametrized by a set of hyperparameters.
+
+    Parameters
+    ----------
+    combiner: str
+        Name of the combiner. The only combiner implemented for now within DRAGON are: 'add', 'concat' and 'mul'
+    operation: :code: Brick
+        Operation that will be performed within the node.
+    hp: dict
+        Dictionary containing the hyperparameters. The keys name should match the arguments of the :code: operation class :code: __init__ function.
+    activation: nn.Module, default=nn.Identity()
+        Activation function.
+    input_comp: ['Pad', 'Crop'], default='Pad'
+        Defines how the combiner will compute the input shape.
+        When set to 'Pad', the maximum input shape from all the incoming tensors will be taken.
+        When set to 'Crop' the mean input shape will be taken.
+
+    """
+    def __init__(self, combiner, operation, hp, activation=nn.Identity(), input_comp="Pad"):
         super(Node, self).__init__()
         assert combiner in ['add', 'concat', 'mul'], f"Invalid combiner argument, got: {combiner}."
         self.combiner = combiner
-        self.name = name
+        self.name = operation
         self.hp = hp
-        self.input_comp = input_comp
-        
         self.activation = activation
+        self.input_comp = input_comp
+    
 
     def copy(self):
-        args = {"combiner": self.combiner, "name": self.name, "hp": self.hp, "activation": self.activation}
+        """copy()
+        Creates an new :code: Node variable which is a copy of this one.
+
+        Returns
+        -------
+        new_node
+            Copy of the actual Node.
+        """
+        args = {"combiner": self.combiner, "operation": self.name, "hp": self.hp, "activation": self.activation}
         new_node = Node(**args)
         if hasattr(self, "input_shape"):
             new_node.set_operation([self.input_shape], self.device)
         return new_node
 
     def set_operation(self, input_shapes, device=None):
-        assert isinstance(input_shapes, list), f'Input shapes should be a list.'
+        """set_operation(input_shapes, device=None)
+
+        Initialize the operation using the :code: input shape.
+        First, the global input shape of the operation is computed, using the :code: combiner type and the :code: input_comp attribute
+        Then, the operation is initialized with the global input shape and the hyperparameters. The operation parameters are modified with the xavier_uniform initialization.
+        Finally, the node ouput shape is computed.
+
+        Parameters
+        ----------
+        input_shapes: list, tuple or int
+            Input shapes of the multiple (or single) input vectors of the node.
+        device: str, default=None
+            Device on which the node operation should be computed.
+        """
+        # Convert the input_shapes to a list
+        if isinstance(input_shapes, tuple):
+            input_shapes = [input_shapes]
+        elif isinstance(input_shapes, int):
+            input_shapes = [(input_shapes,)]
+
         self.input_shapes = input_shapes
+        # Compute global input shape with the combiner and self.input_comp
         self.input_shape = self.compute_input_shape(input_shapes)
-        try:
-            self.operation = self.name(self.input_shape, **self.hp)
-        except Exception as e:
-            logger.error(f'Name: {self.name}, hp: {self.hp}, input_shape: {self.input_shape}')
-            raise e
+        # Initialize the operation
+        self.operation = self.name(self.input_shape, **self.hp)
+        # Initialize the weights
         for n, p in self.operation.named_parameters():
-            if "theta" not in n:
                 if p.dim() > 1:
                     nn.init.xavier_uniform_(p)
+        # Pass the operation on the device
         if device is not None:
             self.operation = self.operation.to(device)
             self.device = device
         else:
             self.device = "cpu"
-        try:
-            self.output_shape = self.compute_output_shape()
-        except Exception as e:
-            raise e
-        
-    def set(self, input_shapes):   
-        if not isinstance(input_shapes, list):
-            input_shapes = [input_shapes]
-        if hasattr(self, "operation"):# The layer has already been initialized and trained
-            self.modification(input_shapes=input_shapes) # We only update the input shape
-        else:
-            self.set_operation(input_shapes=input_shapes)# We set the layer with the input shape
+        # Compute the layer output shape
+        self.output_shape = self.compute_output_shape()
 
-
-    def forward(self, X, h=None):
-        X = self.combine(X)
-        try:
-            X = self.operation(X, h)
-        except Exception as e:
-            X = self.operation(X)
-        if isinstance(X, tuple):
-            X, h = X
-            X = self.activation(X)
-            return X, h
-        else:
-            X = self.activation(X)
-            return X
-    
     def compute_input_shape(self, input_shapes):
+        """compute_input_shape(X, h=None)
+
+        Compute the global input shape for the operation, given the (possibly) multiple input shapes.
+        The global shape depends on the combiner type and the value of :code: self.input_comb.
+
+        Parameters
+        ----------
+        input_shapes: list
+            List containing the input shapes of the different input tensors.
+        Returns
+        -------
+            Global input shape.
+        """
         if self.combiner in ["add", "mul"]:
             if self.input_comp == "Crop":
                 return tuple(np.mean(input_shapes, axis=0).astype(int))
@@ -167,6 +246,19 @@ class Node(nn.Module):
             raise InvalidArgumentError('Combiner', self.combiner, input_shapes)
             
     def combine(self, X):
+        """combine(X)
+
+        Use the combiner to combine the input vectors. First the vectors are modified to have the global input shape using the :code: self.padding function.
+        Then they are combined by addition, multiplication or concatenation.
+
+        Parameters
+        ----------
+        X: list
+            List containing the input tensors.
+        Returns
+        -------
+            Combined vector.
+        """
         if isinstance(X, list):
             assert self.combiner in ['concat', 'add', 'mul'], f"Invalid combiner: {self.combiner}"
             if self.combiner == "concat":
@@ -186,6 +278,24 @@ class Node(nn.Module):
             return self.padding(X)
 
     def padding(self, X, start=-1, pad_start=()):
+        """padding(X, start=-1, pad_start=())
+
+        Modify the input tensors gathered in X so they all have the global input shape.
+        The padding is performed over all dimensions for the 'add' and 'mul' combiners, but not on the last one for the 'concat' combiner.
+
+        Parameters
+        ----------
+        X: list or torch.Tensor
+            List containing the input tensors.
+        start: int, default=-1
+            Dimension where to start the padding. It depends on the combiner.
+        pad_start: tuple, default=()
+            Default padding over the last dimension. It depends on the combiner.
+        Returns
+        -------
+            pad_X: list
+            List containing the tensors with the right shape.
+        """
         if isinstance(X, list):
             pad_X = []
             for x in X:
@@ -208,7 +318,17 @@ class Node(nn.Module):
         return pad_X
     
     def compute_output_shape(self):
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # Set CuBLAS_WORKSPACE_CONFIG
+        """compute_output_shape()
+
+        Compute the output shape of the node. A fake vector is created with a shape equals to the global input shape.
+        This fake vector is processed by the operation. The output vector shape will be the node output shape.
+
+        Returns
+        -------
+            The node output shape.
+        """
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        # We create an fake vector with the global input shape, and a batch of size two (a batch size > 1 is required by some operations)
         X = torch.zeros((2, ) + self.input_shape)
         if torch.cuda.is_available():
             model = self.to('cuda')
@@ -216,41 +336,132 @@ class Node(nn.Module):
         else:
             model = self.to('cpu')
             X = X.to('cpu')
+        # We pass this fake vector to the operation.
         out = model.forward(X)
+        # We return the ouput shape
         if isinstance(out, tuple):
             out, h = out
         shape = tuple(out.shape[1:])
         return shape
     
-    def modification(self, combiner=None, name=None, hp=None, input_shapes=None, device=None):
+    def modification(self, combiner=None, operation=None, hp=None, input_shapes=None, device=None):
+        """modification(combiner=None, name=None, hp=None, input_shapes=None, device=None)
 
+        Modify the node. The modifications can be applied to the combiner, the operation, the operation's hyperparameters or the input shapes.
+        The values set to None will stay unchanged.
+        If the operation and the hyperparameters do not change, the operation is just modified. Otherwise a new one will be created.
+
+        Parameters
+        ----------
+        combiner: str, default=None
+            Name of the new combiner.
+        operation: :code: Brick, default=None
+            New operation that will be performed within the node.
+        hp: dict, default=None
+            Dictionary containing the new hyperparameters. The keys name should match the arguments of the :code: operation class :code: __init__ function.
+        input_shape: list, tuple or int, default=None
+            List of the new input shapes.
+        device: str, default=None
+            Name of the device where the node is computed.
+        """
         if device is not None:
             self.device = device
         if combiner is not None:
             self.combiner = combiner
         if input_shapes is None:
             input_shapes = self.input_shapes
-        assert isinstance(input_shapes, list), f'Input shapes should be a list.'
+        # Convert the input_shapes to a list
+        if isinstance(input_shapes, tuple):
+            input_shapes = [input_shapes]
+        elif isinstance(input_shapes, int):
+            input_shapes = [(input_shapes,)]
         self.input_shapes = input_shapes
+
+        # Compute the new input shapes
         self.input_shape = self.compute_input_shape(input_shapes)
-        if ((name is None) or (name == self.name)) and ((hp is None) or (hp == self.hp)):
+
+        # If the operation and the hyperparameters do not change, they are just modified.
+        if ((operation is None) or (operation == self.name)) and ((hp is None) or (hp == self.hp)):
             self.modify_operation(self.input_shape)
+        
+        # Otherwise, a new one is created.
         else:
-            if name is not None:
-                self.name = name
+            if operation is not None:
+                self.name = operation
             if hp is not None: 
                 self.hp = hp
             self.operation = self.name(self.input_shape, **self.hp)
             for n, p in self.operation.named_parameters():
-                if "theta" not in n:
-                    if p.dim() > 1:
-                        nn.init.xavier_uniform_(p)
+                if p.dim() > 1:
+                    nn.init.xavier_uniform_(p)
             self.operation = self.operation.to(self.device)
+        
+        # We compute the new output shape.
         self.output_shape = self.compute_output_shape()
 
 
     def modify_operation(self, input_shape):
+        """modify_operation(input_shape)
+
+        Modify the operation so it can take as input a tensor of shape :code: input_shape.
+
+        Parameters
+        ----------
+        input_shape: tuple
+            New input shape.
+        """
         self.operation.modify_operation(input_shape)
+
+    def set(self, input_shapes):
+        """set(input_shapes)
+
+        Initialize or modify the node with the incoming shapes :code: input_shapes .
+        
+        Parameters
+        ----------
+        input_shapes: list, tuple or int
+            Input shapes of the multiple (or single) input vectors of the node.
+        """
+        if not isinstance(input_shapes, list):
+            input_shapes = [input_shapes]
+        if hasattr(self, "operation"): # The layer has already been initialized and trained
+            self.modification(input_shapes=input_shapes) # We only update the input shape
+        else:
+            self.set_operation(input_shapes=input_shapes)# We set the layer with the input shape
+
+
+
+    def forward(self, X, h=None):
+        """forward(X, h=None)
+
+        Forward pass of the layer. The inputs are first combined by the combiner, then processed by the operation and the activation function.
+
+        Parameters
+        ----------
+        X: torch.Tensor or list
+            Input tensor or list of input tensors.
+        h: torch.Tensor, default=None
+            Hidden state, used in the case of recurrent layer.
+        Returns
+        -------
+        X or (X,h)
+            Processed tensor(s).
+        """
+        # Combiner
+        X = self.combine(X)
+        # Operation: we first test if the operation is recurrent, if not an exception is catched.
+        try:
+            X = self.operation(X, h)
+        except Exception as e:
+            X = self.operation(X)
+        # The output tensor is processed by an activation function.
+        if isinstance(X, tuple):
+            X, h = X
+            X = self.activation(X)
+            return X, h
+        else:
+            X = self.activation(X)
+            return X
 
     def __repr__(self):
         line = "\n"
@@ -310,16 +521,42 @@ def fill_adj_matrix(matrix):
     return matrix
 
 class Brick(nn.Module):
+    """Brick(nn.Module)
+
+    The Meta class :code: Brick serves as a basis to incorporate the :code: nn.Module layers from PyTorch into DRAGON.
+    In addition to the :code: __init__ and :code: forward functions, they should have a method to modify the layer given an input shape.
+    The :code: **args correspond to the layer hyperparameters.
+
+    Parameters
+    ----------
+    input_shape : tuple
+        Shape of the input tensor.
+    """
     def __init__(self, input_shape, **args):
         super().__init__()
         self.input_shape = input_shape
 
     def foward(self, X):
+        """forward(X)
+
+        Forward pass.
+
+        Parameters
+        ----------
+        X : torch.Tensor
+            Input tensor.
+        """
         raise NotImplementedError
     
     def modify_operation(self, input_shape):
-        raise NotImplementedError
+        """modify_operation(input_shape)
+        
+        Modify the operation so it can take a tensor of shape :code: input_shape as input.
 
-    def pad(self, X): 
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
+        """
         raise NotImplementedError
     
