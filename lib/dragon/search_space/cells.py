@@ -51,7 +51,7 @@ class AdjMatrix(nn.Module):
 
         Returns
         -------
-        adj_matrix
+        adj_matrix: `AdjMatrix`
             Copy of the actual variable.
 
         """
@@ -95,7 +95,7 @@ class AdjMatrix(nn.Module):
 
         Returns
         -------
-        output
+        output: `torch.Tensor`
             Network output tensor.
         """
         device = X.get_device()
@@ -168,7 +168,7 @@ class Node(nn.Module):
 
         Returns
         -------
-        new_node
+        new_node: `Node`
             Copy of the actual Node.
         """
         args = {"combiner": self.combiner, "operation": self.name, "hp": self.hp, "activation": self.activation}
@@ -228,7 +228,7 @@ class Node(nn.Module):
             List containing the input shapes of the different input tensors.
         Returns
         -------
-            Global input shape.
+            tuple
         """
         if self.combiner in ["add", "mul"]:
             if self.input_comp == "Crop":
@@ -257,7 +257,7 @@ class Node(nn.Module):
             List containing the input tensors.
         Returns
         -------
-            Combined vector.
+            `torch.Tensor`
         """
         if isinstance(X, list):
             assert self.combiner in ['concat', 'add', 'mul'], f"Invalid combiner: {self.combiner}"
@@ -294,7 +294,7 @@ class Node(nn.Module):
         Returns
         -------
             pad_X: list
-            List containing the tensors with the right shape.
+                List containing the tensors with the right shape.
         """
         if isinstance(X, list):
             pad_X = []
@@ -325,7 +325,8 @@ class Node(nn.Module):
 
         Returns
         -------
-            The node output shape.
+            shape: tuple
+                The node output shape.
         """
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
         # We create an fake vector with the global input shape, and a batch of size two (a batch size > 1 is required by some operations)
@@ -444,7 +445,7 @@ class Node(nn.Module):
             Hidden state, used in the case of recurrent layer.
         Returns
         -------
-        X or (X,h)
+        X or (X,h): `torch.Tensor`
             Processed tensor(s).
         """
         # Combiner
@@ -500,11 +501,12 @@ def fill_adj_matrix(matrix):
     Parameters
     ----------
     matrix : np.array
-        Adjacency matrix from a directed acyclic graph that may contain orphan nodes.
+        Adjacency matrix from a DAG that may contain orphan nodes.
     
     Returns
     -------
-        matrix: adjacency matrix from a directed acyclic graph that does not contain orphan nodes.
+        matrix: `np.array`
+            Adjacency matrix from a DAG that does not contain orphan nodes.
     """
     # Add outgoing connections if needed.
     for i in range(matrix.shape[0] - 1):

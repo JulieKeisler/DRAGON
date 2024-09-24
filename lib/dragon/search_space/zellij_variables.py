@@ -89,7 +89,8 @@ class IntVar(Variable):
     ----------
     up_bound : int
         Lower bound of the variable
-    low_bound : int
+    
+      : int
         Upper bound of the variable
     """
 
