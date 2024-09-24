@@ -8,7 +8,7 @@ from dragon.utils.exceptions import InvalidArgumentError
 class AdjMatrix(nn.Module):
     """AdjMatrix(nn.Module)
 
-    The class :code: AdjMatrix is the implementation of an Directed Acyclic Graph (DAG) using its adjacency matrix combined with the nodes list.
+    The class `AdjMatrix` is the implementation of an Directed Acyclic Graph (DAG) using its adjacency matrix combined with the nodes list.
 
     Parameters
     ----------
@@ -25,11 +25,11 @@ class AdjMatrix(nn.Module):
 
     def assert_adj_matrix(self):
         """ assert_adj_matrix()
-        The :code: operations and :code: matrix variables should verify some properties such as:
-            * The :code: operations variable should be a list.
-            * The :code: matrix variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
-            * The :code: matrix variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
-            * The :code: matrix variable and the :node: operations variable should have the same dimension.
+        The `operations` and `matrix` variables should verify some properties such as:
+            * The `operations` variable should be a list.
+            * The `matrix` variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
+            * The `matrix` variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
+            * The `matrix` variable and the :node: operations variable should have the same dimension.
         """
         assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
         assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
@@ -47,7 +47,7 @@ class AdjMatrix(nn.Module):
 
     def copy(self):
         """copy()
-        Creates an new :code: AdjMatrix variable which is a copy of this one.
+        Creates an new `AdjMatrix` variable which is a copy of this one.
 
         Returns
         -------
@@ -63,8 +63,8 @@ class AdjMatrix(nn.Module):
     def set(self, input_shape):
         """set(input_shape)
 
-        Initialize the :code: nn.Module within the :code: operations list, with the :code: input shape.
-        If the layers have already been initialized, they may be modified if the :code: input_shape has changed since their initialization.
+        Initialize the `nn.Module` within the `operations` list, with the new input shape.
+        If the layers have already been initialized, they may be modified if the `input_shape` has changed since their initialization.
         The layers are initialized or modified one after the other, in the :node: operations list order.
 
         Parameters
@@ -133,17 +133,17 @@ class AdjMatrix(nn.Module):
 class Node(nn.Module):
     """Node(nn.Module)
 
-    The class :code: Node is the implementation of a DAG node. Each node is made of a combiner, an operation and an activation function.
+    The class `Node` is the implementation of a DAG node. Each node is made of a combiner, an operation and an activation function.
     The operation is parametrized by a set of hyperparameters.
 
     Parameters
     ----------
     combiner: str
         Name of the combiner. The only combiner implemented for now within DRAGON are: 'add', 'concat' and 'mul'
-    operation: :code: Brick
+    operation: `Brick`
         Operation that will be performed within the node.
     hp: dict
-        Dictionary containing the hyperparameters. The keys name should match the arguments of the :code: operation class :code: __init__ function.
+        Dictionary containing the hyperparameters. The keys name should match the arguments of the `operation` class `__init__` function.
     activation: nn.Module, default=nn.Identity()
         Activation function.
     input_comp: ['Pad', 'Crop'], default='Pad'
@@ -164,7 +164,7 @@ class Node(nn.Module):
 
     def copy(self):
         """copy()
-        Creates an new :code: Node variable which is a copy of this one.
+        Creates an new `Node` variable which is a copy of this one.
 
         Returns
         -------
@@ -180,8 +180,8 @@ class Node(nn.Module):
     def set_operation(self, input_shapes, device=None):
         """set_operation(input_shapes, device=None)
 
-        Initialize the operation using the :code: input shape.
-        First, the global input shape of the operation is computed, using the :code: combiner type and the :code: input_comp attribute
+        Initialize the operation using the new input shapes.
+        First, the global input shape of the operation is computed, using the `combiner` type and the `input_comp` attribute
         Then, the operation is initialized with the global input shape and the hyperparameters. The operation parameters are modified with the xavier_uniform initialization.
         Finally, the node ouput shape is computed.
 
@@ -220,7 +220,7 @@ class Node(nn.Module):
         """compute_input_shape(X, h=None)
 
         Compute the global input shape for the operation, given the (possibly) multiple input shapes.
-        The global shape depends on the combiner type and the value of :code: self.input_comb.
+        The global shape depends on the combiner type and the value of `self.input_comb`.
 
         Parameters
         ----------
@@ -248,7 +248,7 @@ class Node(nn.Module):
     def combine(self, X):
         """combine(X)
 
-        Use the combiner to combine the input vectors. First the vectors are modified to have the global input shape using the :code: self.padding function.
+        Use the combiner to combine the input vectors. First the vectors are modified to have the global input shape using the `self.padding` function.
         Then they are combined by addition, multiplication or concatenation.
 
         Parameters
@@ -355,10 +355,10 @@ class Node(nn.Module):
         ----------
         combiner: str, default=None
             Name of the new combiner.
-        operation: :code: Brick, default=None
+        operation: `Brick`, default=None
             New operation that will be performed within the node.
         hp: dict, default=None
-            Dictionary containing the new hyperparameters. The keys name should match the arguments of the :code: operation class :code: __init__ function.
+            Dictionary containing the new hyperparameters. The keys name should match the arguments of the `operation` class `__init__` function.
         input_shape: list, tuple or int, default=None
             List of the new input shapes.
         device: str, default=None
@@ -403,7 +403,7 @@ class Node(nn.Module):
     def modify_operation(self, input_shape):
         """modify_operation(input_shape)
 
-        Modify the operation so it can take as input a tensor of shape :code: input_shape.
+        Modify the operation so it can take as input a tensor of shape `input_shape`.
 
         Parameters
         ----------
@@ -415,7 +415,7 @@ class Node(nn.Module):
     def set(self, input_shapes):
         """set(input_shapes)
 
-        Initialize or modify the node with the incoming shapes :code: input_shapes .
+        Initialize or modify the node with the incoming shapes `input_shape`s .
         
         Parameters
         ----------
@@ -523,9 +523,9 @@ def fill_adj_matrix(matrix):
 class Brick(nn.Module):
     """Brick(nn.Module)
 
-    The Meta class :code: Brick serves as a basis to incorporate the :code: nn.Module layers from PyTorch into DRAGON.
-    In addition to the :code: __init__ and :code: forward functions, they should have a method to modify the layer given an input shape.
-    The :code: **args correspond to the layer hyperparameters.
+    The Meta class `Brick` serves as a basis to incorporate the `nn.Module` layers from PyTorch into DRAGON.
+    In addition to the `__init__` and `forward` functions, they should have a method to modify the layer given an input shape.
+    The `**args` correspond to the layer hyperparameters.
 
     Parameters
     ----------
@@ -550,8 +550,8 @@ class Brick(nn.Module):
     
     def modify_operation(self, input_shape):
         """modify_operation(input_shape)
-        
-        Modify the operation so it can take a tensor of shape :code: input_shape as input.
+
+        Modify the operation so it can take a tensor of shape `input_shape` as input.
 
         Parameters
         ----------
