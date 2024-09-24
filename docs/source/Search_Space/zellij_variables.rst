@@ -1,13 +1,15 @@
+.. _zellij_var:
+
+============
+Zellij Variables
+============
+
+**DRAGON** search space is based on the class :ref:`var`, retrieved from the `zellij <https://zellij.readthedocs.io/en/latest/>`_ package.
+
 .. _var:
 
-============
-Variables
-============
-
-**DRAGON** search space is based on :ref:`var`, retrieved from the `zellij <https://zellij.readthedocs.io/en/latest/>`_ package.
-
 ******************
-Abstract variables
+Variable
 ******************
 
 :ref:`var` functionnalities can be extended with :ref:`addons`.

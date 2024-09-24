@@ -17,7 +17,7 @@ Finally, we show in the `cell-based <cell-based.ipynb>`_ tutorial that this sear
 ..
 
 .. toctree::
-   :caption: **DRAGON** search space elements
+   :caption: DRAGON search space elements
 
    classes
    dragon_variables

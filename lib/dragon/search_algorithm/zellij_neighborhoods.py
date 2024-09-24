@@ -79,24 +79,6 @@ class ArrayInterval(VarNeighborhood):
                 f"when defining a variable "
             )
 
-
-class BlockInterval(VarNeighborhood):
-    """BlockInterval
-
-    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
-    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
-
-    Not yet implemented...
-
-    """
-
-    def __call__(self, value, size=1):
-        raise NotImplementedError(
-            f"{self.__class__.__name__}\
-        neighborhood is not yet implemented"
-        )
-
-
 class DynamicBlockInterval(VarNeighborhood):
     """BlockInterval
 
@@ -104,10 +86,6 @@ class DynamicBlockInterval(VarNeighborhood):
     neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
 
     """
-
-    #def __init__(self, neighborhood=None, variable=None):
-    #    self._neighborhood = neighborhood
-    #    super(DynamicBlockInterval, self).__init__(variable)
 
     def __call__(self, value, size=1, new_repeat=None):
         res = []
