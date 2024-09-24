@@ -47,6 +47,7 @@ extensions = [
     "sphinx_rtd_theme",
     "sphinx_copybutton",
     "sphinx_togglebutton",
+    "nbsphinx"
 ]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
