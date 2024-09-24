@@ -20,7 +20,6 @@ Finally, we show in the `cell-based <cell-based.ipynb>`_ tutorial that this sear
    :caption: DRAGON search space elements
 
    classes
-   dragon_variables
 
 ..
 

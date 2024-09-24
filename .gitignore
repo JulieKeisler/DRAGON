@@ -1,4 +1,5 @@
-/experiments/monash_archive/raw_data/
+# save directories
+docs/source/Quickstart/save/
 # Ignore pickles
 *.pkl
 **/*.pkl
