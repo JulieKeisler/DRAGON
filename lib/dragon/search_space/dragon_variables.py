@@ -109,6 +109,21 @@ class NodeVariable(Variable):
         `DynamicBlock` containing :ref:`var` corresponding to the candidate operations.
     init_complexity : int
         Maximum number of nodes that the randomly created DAGs should have.
+    
+    Examples
+    ----------
+    >>> from dragon.search_space.dragon_variables import NodeVariable, HpVar
+    >>> from dragon.search_space.bricks import MLP
+    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar
+    >>> from dragon.search_space.bricks_variables import activation_var
+    >>> combiner = CatVar("Combiner", features = ['add', 'mul'])
+    >>> operation = HpVar("Operation", Constant("Mlp operation", MLP), hyperparameters={"out_channels": IntVar("out_channels", 1, 10)})
+    >>> node = NodeVariable(label="Node variable", 
+    ...                 combiner=combiner,
+    ...                 operation=operation,
+    ...                 activation_function=activation_var("Activation"))
+    >>> node.random()
+    (combiner) mul -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 2} -- (activation) SiLU() --
     """
     def __init__(self, label, combiner, operation, activation_function, **kwargs):
         super().__init__(label, **kwargs)
@@ -140,7 +155,7 @@ class NodeVariable(Variable):
             op = self.operation.random()
             name, hp = op[0], op[1]
             f = self.activation_function.random()
-            return Node(combiner=c, name=name, hp=hp, activation=f)
+            return Node(c, name, hp, f)
         else:
             res = []
             for _ in range(size):
@@ -178,6 +193,27 @@ class EvoDagVariable(Variable):
         `DynamicBlock` containing :ref:`var` corresponding to the candidate operations.
     init_complexity : int
         Maximum number of nodes that the randomly created DAGs should have.
+    
+    Examples
+    ----------
+    >>> from dragon.search_space.dragon_variables import HpVar, NodeVariable, EvoDagVariable
+    >>> from dragon.search_space.bricks import MLP, MaxPooling1D, AVGPooling1D
+    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar, DynamicBlock
+    >>> from dragon.search_space.bricks_variables import activation_var
+    >>> mlp = HpVar("Operation", Constant("MLP operation", MLP), hyperparameters={"out_channels": IntVar("out_channels", 1, 10)})
+    >>> pooling = HpVar("Operation", CatVar("Pooling operation", [MaxPooling1D, AVGPooling1D]), hyperparameters={"pool_size": IntVar("pool_size", 1, 5)})
+    >>> candidates = NodeVariable(label = "Candidates", 
+    ...                         combiner=CatVar("Combiner", features=['add', 'concat']),
+    ...                         operation=CatVar("Candidates", [mlp, pooling]),
+    ...                         activation_function=activation_var("Activation"))
+    >>> operations = DynamicBlock("Operations", candidates, repeat=5)
+    >>> dag = EvoDagVariable(label="DAG", operations=operations)
+    >>> dag.random()
+    NODES: [
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.Identity'> -- (hp) {} -- (activation) Identity() -- , 
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.pooling.MaxPooling1D'> -- (hp) {'pool_size': 2} -- (activation) Sigmoid() -- , 
+    (combiner) concat -- (name) <class 'dragon.search_space.bricks.pooling.MaxPooling1D'> -- (hp) {'pool_size': 3} -- (activation) ELU(alpha=1.0) -- , 
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.pooling.AVGPooling1D'> -- (hp) {'pool_size': 4} -- (activation) ReLU() -- ] | MATRIX:[[0, 1, 1, 1], [0, 0, 1, 1], [0, 0, 0, 1], [0, 0, 0, 0]]
     """
     def __init__(self, label, operations, init_complexity=None, **kwargs):
         assert isinstance(operations, DynamicBlock), f"""
@@ -212,7 +248,7 @@ class EvoDagVariable(Variable):
             if self.complexity is not None:
                 operations = operations[: min(self.complexity, len(operations))]
             from dragon.search_space.bricks import Identity
-            operations = [Node(combiner="add", name=Identity, hp={})] + operations
+            operations = [Node("add", Identity, {})] + operations
             matrix = np.random.randint(0, 2, (len(operations), len(operations)))
             matrix = np.triu(matrix, k=1)
             matrix = fill_adj_matrix(matrix)
