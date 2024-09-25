@@ -5,143 +5,46 @@ import numpy as np
 from dragon.utils.tools import logger
 from dragon.utils.exceptions import InvalidArgumentError
 
-class AdjMatrix(nn.Module):
-    """AdjMatrix(nn.Module)
 
-    The class `AdjMatrix` is the implementation of an Directed Acyclic Graph (DAG) using its adjacency matrix combined with the nodes list.
+class Brick(nn.Module):
+    """Brick(nn.Module)
+
+    The Meta class `Brick` serves as a basis to incorporate the `nn.Module` layers from PyTorch into DRAGON.
+    In addition to the `__init__` and `forward` functions, they should have a method to modify the layer given an input shape.
+    The `**args` correspond to the layer hyperparameters.
 
     Parameters
     ----------
-    operations : list
-        List of nodes, ie: the operations that would be performed within the graph.
-    matrix: np.array
-        Adjacency matrix. The order of the operations and adjacency matrix's entries should be the same.
-    
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from dragon.search_space.dragon_variables import AdjMatrix
-
-    >>> operations = ['Identity', 'MLP1', ['MLP2']]
-    >>> matrix = np.array([[0, 1, 1],
-                           [0, 0, 1],
-                           [0, 0, 0]])
-    >>> print(AdjMatrix(operations, matrix))
-    NODES: ['Identity', 'MLP1', ['MLP2']] | MATRIX:[[0, 1, 1], [0, 0, 1], [0, 0, 0]]
-
+    input_shape : tuple
+        Shape of the input tensor.
     """
-    def __init__(self, operations, matrix):
-        super(AdjMatrix, self).__init__()
-        self.matrix = matrix
-        self.operations = operations
-        self.assert_adj_matrix()
+    def __init__(self, input_shape, **args):
+        super().__init__()
+        self.input_shape = input_shape
 
-    def assert_adj_matrix(self):
-        """ assert_adj_matrix()
-        The `operations` and `matrix` variables should verify some properties such as:
-            - The `operations` variable should be a list.
-            - The `matrix` variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
-            - The `matrix` variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
-            - The `matrix` variable and the :node: operations variable should have the same dimension.
-        """
-        assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
-        assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
-        squared array. Got {self.matrix} instead."""
-    
-        assert np.sum(np.triu(self.matrix, k=1) != self.matrix) == 0, f"""The adjacency matrix should be upper-triangular with 0s on the
-        diagonal. Got {self.matrix}. """
-        for i in range(self.matrix.shape[0] - 1):
-            assert sum(self.matrix[i]) > 0, f"""Node {i} does not have any outgoing connections."""
-        for j in range(1, self.matrix.shape[1]):
-            assert sum(self.matrix[:, j]) > 0, f"""Node {j} does not have any incoming connections."""
-        assert self.matrix.shape[0] == len(
-            self.operations), f"""Matrix and operations should have the same dimension got {self.matrix.shape[0]} 
-                and {len(self.operations)} instead. """
-
-    def copy(self):
-        """copy()
-        Creates an new `AdjMatrix` variable which is a copy of this one.
-
-        Returns
-        -------
-        adj_matrix: `AdjMatrix`
-            Copy of the actual variable.
-
-        """
-        new_op = self.operations.copy()
-        new_matrix = self.matrix.copy()
-        adj_matrix = AdjMatrix(new_op, new_matrix)
-        return adj_matrix
-    
-    def set(self, input_shape):
-        """set(input_shape)
-
-        Initialize the `nn.Module` within the `operations` list, with the new input shape.
-        If the layers have already been initialized, they may be modified if the `input_shape` has changed since their initialization.
-        The layers are initialized or modified one after the other, in the :node: operations list order.
-
-        Parameters
-        ----------
-        input_shape : int or tuple
-            Shape of the DAG's input tensor.
-        """
-        # Set the first layer of the DAG
-        self.operations[0].set(input_shape)
-
-        # Set the other layers of the DAG
-        for j in range(1, len(self.operations)):
-            input_shapes = [self.operations[i].output_shape for i in range(j) if self.matrix[i, j] == 1]
-            self.operations[j].set(input_shapes)
-        
-        self.layers = nn.ModuleList(self.operations)
-        self.output_shape = self.operations[-1].output_shape
-
-    def forward(self, X):
+    def foward(self, X):
         """forward(X)
 
-        Forward pass through the DAG. The latent vectors are processed layer by layer, following the :node: operations list order.
+        Forward pass.
 
         Parameters
         ----------
         X : torch.Tensor
             Input tensor.
-
-        Returns
-        -------
-        output: `torch.Tensor`
-            Network output tensor.
         """
-        device = X.get_device()
-        N = len(self.layers)
-        # Store the outputs of each layer.
-        outputs = np.empty(N, dtype=object)
-        outputs[0] = X
-        for j in range(1, N):
-            # Get the inputs from the different incoming connections of layer j
-            inputs = [outputs[i] for i in range(j) if self.matrix[i, j] == 1]
-            # Compute the layer output
-            output = self.layers[j](inputs)
-            if device >= 0:
-                # Make sure the output is on the right device
-                output = output.to(device)
-            outputs[j] = output
-        return output
-
-
-    def __str__(self):
-        if hasattr(self, "layers"):
-            return self.layers.__str__()
-        else:
-            matrix_str = f"NODES: {self.operations.__str__()} | MATRIX:{self.matrix.tolist().__str__()}"
-            return matrix_str
-
-    def __repr__(self):
-        if hasattr(self, "layers"):
-            return self.layers.__repr__()
-        else:
-            matrix_repr = f"NODES: {self.operations.__repr__()} | MATRIX:{self.matrix.tolist().__repr__()}"
-            return matrix_repr
+        raise NotImplementedError
     
+    def modify_operation(self, input_shape):
+        """modify_operation(input_shape)
+
+        Modify the operation so it can take a tensor of shape `input_shape` as input.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input tensor.
+        """
+        raise NotImplementedError
 
 class Node(nn.Module):
     """Node(nn.Module)
@@ -171,8 +74,8 @@ class Node(nn.Module):
     >>> from dragon.search_space.bricks import MLP
     >>> from dragon.search_space.dragon_variables import Node
 
-    >>> print(Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU))
-    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) <class 'torch.nn.modules.activation.ReLU'> -- 
+    >>> print(Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU()))
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) ReLU() -- 
     """
     def __init__(self, combiner, operation, hp, activation=nn.Identity(), input_comp="Pad"):
         super(Node, self).__init__()
@@ -514,6 +417,151 @@ class Node(nn.Module):
             self.operation.load_state_dict(new_dict, **kwargs)
 
 
+class AdjMatrix(nn.Module):
+    """AdjMatrix(nn.Module)
+
+    The class `AdjMatrix` is the implementation of an Directed Acyclic Graph (DAG) using its adjacency matrix combined with the nodes list.
+
+    Parameters
+    ----------
+    operations : list
+        List of nodes, ie: the operations that would be performed within the graph.
+    matrix: np.array
+        Adjacency matrix. The order of the operations and adjacency matrix's entries should be the same.
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from dragon.search_space.dragon_variables import AdjMatrix
+    >>> import torch.nn as nn
+    >>> from dragon.search_space.bricks import MLP, Identity
+    >>> from dragon.search_space.dragon_variables import Node
+    >>> node_1 = Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU())
+    >>> node_2 = Node(combiner="add", operation=MLP, hp={"out_channels": 5}, activation=nn.ReLU())
+    >>> node_3 = Node(combiner="concat", operation=Identity, hp={}, activation=nn.Softmax())
+    >>> operations = [node_1, node_2, node_3]
+    >>> matrix = np.array([[0, 1, 1],
+                           [0, 0, 1],
+                           [0, 0, 0]])
+    >>> print(AdjMatrix(operations, matrix))
+    NODES: [
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) ReLU() -- , 
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 5} -- (activation) ReLU() -- , 
+    (combiner) concat -- (name) <class 'dragon.search_space.bricks.basics.Identity'> -- (hp) {} -- (activation) Softmax(dim=None) -- ] | MATRIX:[[0, 1, 1], [0, 0, 1], [0, 0, 0]]
+    """
+    
+    def __init__(self, operations, matrix):
+        super(AdjMatrix, self).__init__()
+        self.matrix = matrix
+        self.operations = operations
+        self.assert_adj_matrix()
+
+    def assert_adj_matrix(self):
+        """ assert_adj_matrix()
+        The `operations` and `matrix` variables should verify some properties such as:
+            - The `operations` variable should be a list.
+            - The `matrix` variable should be a squared upper-triangular numpy array filled with 0s on the diagonal.
+            - The `matrix` variable should not contain empty rows beside the last one and empty columns beside the first one. It would indeed emply nodes without incoming or outgoing connections.
+            - The `matrix` variable and the :node: operations variable should have the same dimension.
+        """
+        assert isinstance(self.operations, list), f"""Operations should be a list, got {self.operations} instead."""
+        assert isinstance(self.matrix, np.ndarray) and (self.matrix.shape[0] == self.matrix.shape[1]), f"""Matrix should be a 
+        squared array. Got {self.matrix} instead."""
+    
+        assert np.sum(np.triu(self.matrix, k=1) != self.matrix) == 0, f"""The adjacency matrix should be upper-triangular with 0s on the
+        diagonal. Got {self.matrix}. """
+        for i in range(self.matrix.shape[0] - 1):
+            assert sum(self.matrix[i]) > 0, f"""Node {i} does not have any outgoing connections."""
+        for j in range(1, self.matrix.shape[1]):
+            assert sum(self.matrix[:, j]) > 0, f"""Node {j} does not have any incoming connections."""
+        assert self.matrix.shape[0] == len(
+            self.operations), f"""Matrix and operations should have the same dimension got {self.matrix.shape[0]} 
+                and {len(self.operations)} instead. """
+
+    def copy(self):
+        """copy()
+        Creates an new `AdjMatrix` variable which is a copy of this one.
+
+        Returns
+        -------
+        adj_matrix: `AdjMatrix`
+            Copy of the actual variable.
+
+        """
+        new_op = self.operations.copy()
+        new_matrix = self.matrix.copy()
+        adj_matrix = AdjMatrix(new_op, new_matrix)
+        return adj_matrix
+    
+    def set(self, input_shape):
+        """set(input_shape)
+
+        Initialize the `nn.Module` within the `operations` list, with the new input shape.
+        If the layers have already been initialized, they may be modified if the `input_shape` has changed since their initialization.
+        The layers are initialized or modified one after the other, in the :node: operations list order.
+
+        Parameters
+        ----------
+        input_shape : int or tuple
+            Shape of the DAG's input tensor.
+        """
+        # Set the first layer of the DAG
+        self.operations[0].set(input_shape)
+
+        # Set the other layers of the DAG
+        for j in range(1, len(self.operations)):
+            input_shapes = [self.operations[i].output_shape for i in range(j) if self.matrix[i, j] == 1]
+            self.operations[j].set(input_shapes)
+        
+        self.layers = nn.ModuleList(self.operations)
+        self.output_shape = self.operations[-1].output_shape
+
+    def forward(self, X):
+        """forward(X)
+
+        Forward pass through the DAG. The latent vectors are processed layer by layer, following the :node: operations list order.
+
+        Parameters
+        ----------
+        X : torch.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        output: `torch.Tensor`
+            Network output tensor.
+        """
+        device = X.get_device()
+        N = len(self.layers)
+        # Store the outputs of each layer.
+        outputs = np.empty(N, dtype=object)
+        outputs[0] = X
+        for j in range(1, N):
+            # Get the inputs from the different incoming connections of layer j
+            inputs = [outputs[i] for i in range(j) if self.matrix[i, j] == 1]
+            # Compute the layer output
+            output = self.layers[j](inputs)
+            if device >= 0:
+                # Make sure the output is on the right device
+                output = output.to(device)
+            outputs[j] = output
+        return output
+
+
+    def __str__(self):
+        if hasattr(self, "layers"):
+            return self.layers.__str__()
+        else:
+            matrix_str = f"NODES: {self.operations.__str__()} | MATRIX:{self.matrix.tolist().__str__()}"
+            return matrix_str
+
+    def __repr__(self):
+        if hasattr(self, "layers"):
+            return self.layers.__repr__()
+        else:
+            matrix_repr = f"NODES: {self.operations.__repr__()} | MATRIX:{self.matrix.tolist().__repr__()}"
+            return matrix_repr
+    
 def fill_adj_matrix(matrix):
     """fill_adj_matrix(matrix)
     Add random edges into an adjacency matrix in case it contains orphan nodes (no incoming connection) or nodes having no outgoing connection.
@@ -543,44 +591,3 @@ def fill_adj_matrix(matrix):
             new_col = np.random.choice(2, new_col.shape[0])
         matrix[:j, j] = new_col
     return matrix
-
-class Brick(nn.Module):
-    """Brick(nn.Module)
-
-    The Meta class `Brick` serves as a basis to incorporate the `nn.Module` layers from PyTorch into DRAGON.
-    In addition to the `__init__` and `forward` functions, they should have a method to modify the layer given an input shape.
-    The `**args` correspond to the layer hyperparameters.
-
-    Parameters
-    ----------
-    input_shape : tuple
-        Shape of the input tensor.
-    """
-    def __init__(self, input_shape, **args):
-        super().__init__()
-        self.input_shape = input_shape
-
-    def foward(self, X):
-        """forward(X)
-
-        Forward pass.
-
-        Parameters
-        ----------
-        X : torch.Tensor
-            Input tensor.
-        """
-        raise NotImplementedError
-    
-    def modify_operation(self, input_shape):
-        """modify_operation(input_shape)
-
-        Modify the operation so it can take a tensor of shape `input_shape` as input.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input tensor.
-        """
-        raise NotImplementedError
-    
