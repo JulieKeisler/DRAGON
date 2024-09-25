@@ -73,7 +73,6 @@ class Node(nn.Module):
     >>> import torch.nn as nn
     >>> from dragon.search_space.bricks import MLP
     >>> from dragon.search_space.dragon_variables import Node
-
     >>> print(Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU()))
     (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) ReLU() -- 
     """
@@ -449,7 +448,7 @@ class AdjMatrix(nn.Module):
     (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 5} -- (activation) ReLU() -- , 
     (combiner) concat -- (name) <class 'dragon.search_space.bricks.basics.Identity'> -- (hp) {} -- (activation) Softmax(dim=None) -- ] | MATRIX:[[0, 1, 1], [0, 0, 1], [0, 0, 0]]
     """
-    
+
     def __init__(self, operations, matrix):
         super(AdjMatrix, self).__init__()
         self.matrix = matrix
