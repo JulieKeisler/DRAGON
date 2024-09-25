@@ -230,8 +230,8 @@ def conv_1d(label, max_out, permute=True):
 
     Creates a `HpVar` corresponding to the one-dimensional convolution operation.
     By default the input is of shape `(batch_size, L, C_in)`. Use `permute=False` if your input will be of size `(batch_size, C_in, L)`.
-    By default `C_out` will go from 1 to 512.
-    
+    By default `C_out` will go from 1 to 512. By default the padding is set to `same`.
+
     Parameters
     ----------
     label : str
