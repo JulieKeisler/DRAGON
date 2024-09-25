@@ -16,6 +16,19 @@ class AdjMatrix(nn.Module):
         List of nodes, ie: the operations that would be performed within the graph.
     matrix: np.array
         Adjacency matrix. The order of the operations and adjacency matrix's entries should be the same.
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from dragon.search_space.dragon_variables import AdjMatrix
+
+    >>> operations = ['Identity', 'MLP1', ['MLP2']]
+    >>> matrix = np.array([[0, 1, 1],
+                           [0, 0, 1],
+                           [0, 0, 0]])
+    >>> print(AdjMatrix(operations, matrix))
+    NODES: ['Identity', 'MLP1', ['MLP2']] | MATRIX:[[0, 1, 1], [0, 0, 1], [0, 0, 0]]
+
     """
     def __init__(self, operations, matrix):
         super(AdjMatrix, self).__init__()
@@ -151,6 +164,15 @@ class Node(nn.Module):
         When set to 'Pad', the maximum input shape from all the incoming tensors will be taken.
         When set to 'Crop' the mean input shape will be taken.
 
+    Examples
+    ---------
+
+    >>> import torch.nn as nn
+    >>> from dragon.search_space.bricks import MLP
+    >>> from dragon.search_space.dragon_variables import Node
+
+    >>> print(Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU))
+    (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) <class 'torch.nn.modules.activation.ReLU'> -- 
     """
     def __init__(self, combiner, operation, hp, activation=nn.Identity(), input_comp="Pad"):
         super(Node, self).__init__()

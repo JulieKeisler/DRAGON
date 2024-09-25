@@ -7,7 +7,7 @@ DRAGON
 Key Features
 ------------
 
- - :doc:`A flexible seach space <../Search_space/index.rst>`
+- :ref:`A flexible seach space <../Search_space/index.rst>`
      - The search space based on Directed Acyclic Graphs (DAGs) where the nodes can be any **PyTorch** layer (custom or not) and the edges are the connections between them. 
      - The code to implement the DAGs-based search space was inspired by the `zellij <https://zellij.readthedocs.io/en/latest/>`__ package developed for hyperparameters optimization. 
      - **DRAGON** search space includes cell-based search spaces [4]_.
@@ -26,8 +26,8 @@ Key Features
 Basic Concepts
 ------------
 
-- The search space is a mix-variable search space. Numerical, categorical and graph objects may be jointly optimized. Each object is associated with a *variable*, which defines what values an object can take.
-- Base on this search space, several search operators are defined, showing how the objects can be manipulate to find the neighboring values.
+- The **Search Space** is a mix-variable search space. Numerical, categorical and graph objects may be jointly optimized. Each object is associated with a **variable**, which defines what values an object can take.
+- Base on this search space, several **Search Operators** are defined, showing how the objects can be manipulate to find the neighboring values.
 
 Install DRAGON
 --------------
