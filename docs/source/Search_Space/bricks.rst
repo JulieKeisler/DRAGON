@@ -34,3 +34,43 @@ Two-dimensional Operations
    :undoc-members:
    :show-inheritance:
    :noindex:
+
+******************
+Operations Variables
+******************
+
+Meta Variables
+*********************
+
+.. automodule:: dragon.search_space.bricks_variables
+   :members: dag_var, node_var, activation_var, operations_var
+   :undoc-members:
+   :show-inheritance:
+   :noindex:
+
+Basic Variables
+*********************
+
+.. automodule:: dragon.search_space.bricks_variables
+   :members: identity_var, mlp_var, mlp_const_var, dropout
+   :undoc-members:
+   :show-inheritance:
+   :noindex:
+
+One-dimensional Variables
+*********************
+
+.. automodule:: dragon.search_space.bricks_variables
+   :members: conv_1d, const_conv_1d, pooling_1d, attention_1d, norm_1d, recurrence_1d
+   :undoc-members:
+   :show-inheritance:
+   :noindex:
+
+Two-dimensional Variables
+*********************
+
+.. automodule:: dragon.search_space.bricks_variables
+   :members: conv_2d, pooling_2d, pooling_2d_const_var, norm_2d, recurrence_2d, attention_2d
+   :undoc-members:
+   :show-inheritance:
+   :noindex:

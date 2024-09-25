@@ -44,7 +44,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx.ext.imgmath",
-    "sphinx_rtd_theme",
+    "pytorch_sphinx_theme",
     "sphinx_copybutton",
     "sphinx_togglebutton",
     "nbsphinx"
