@@ -8,16 +8,6 @@
 ..
 
 .. toctree::
-  :caption: Applications
-  :maxdepth: 2
-  :hidden:
-
-  ../Applications/image
-  ../Applications/load_forecasting
-
-..
-
-.. toctree::
   :caption: Search Space
   :maxdepth: 2
   :hidden:
@@ -36,3 +26,13 @@
   ../Search_Algorithm/ssea
   ../Search_Algorithm/mutant_ucb
   ../Search_Algorithm/hyperband
+
+..
+
+.. toctree::
+  :caption: Applications
+  :maxdepth: 2
+  :hidden:
+
+  ../Applications/image
+  ../Applications/load_forecasting

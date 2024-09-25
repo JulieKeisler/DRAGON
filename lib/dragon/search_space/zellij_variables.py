@@ -25,6 +25,7 @@ class Variable(ABC):
     Attributes
     ----------
     label
+
     """
 
     def __init__(self, label, **kwargs):
@@ -92,6 +93,16 @@ class IntVar(Variable):
     
       : int
         Upper bound of the variable
+    
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import IntVar
+    >>> a = IntVar("test", 0, 5)
+    >>> print(a)
+    IntVar(test, [0;5])
+    >>> a.random()
+    1
+
     """
 
     def __init__(
@@ -182,6 +193,15 @@ class FloatVar(Variable):
         Lower bound of the variable
     low_bound : {int,float}
         Upper bound of the variable
+    
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import FloatVar
+    >>> a = FloatVar("test", 0, 5.0)
+    >>> print(a)
+    FloatVar(test, [0;5.0])
+    >>> a.random()
+    2.2011985711663056
     """
 
     def __init__(
@@ -274,6 +294,15 @@ class CatVar(Variable):
     ----------
     features
     weights
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import CatVar, IntVar
+    >>> a = CatVar("test", ['a', 1, 2.56, IntVar("int", 100 , 200)])
+    >>> print(a)
+    CatVar(test, ['a', 1, 2.56, IntVar(int, [100;200])])
+    >>> a.random(10)
+    ['a', 180, 2.56, 'a', 'a', 2.56, 185, 2.56, 105, 1]
     """
 
     def __init__(self, label, features, weights=None, **kwargs):
@@ -367,6 +396,21 @@ class ArrayVar(Variable):
         Name of the variable.
     *args : list[Variable]
         Elements of the :code:`ArrayVar`. All elements must be of type :ref:`var`
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import ArrayVar, IntVar, FloatVar, CatVar
+    >>> a = ArrayVar(IntVar("int_1", 0,8),
+    ...              IntVar("int_2", 4,45),
+    ...              FloatVar("float_1", 2,12),
+    ...              CatVar("cat_1", ["Hello", 87, 2.56]))
+    >>> print(a)
+    ArrayVar(, [IntVar(int_1, [0;8]),
+                IntVar(int_2, [4;45]),
+                FloatVar(float_1, [2;12]),
+                CatVar(cat_1, ['Hello', 87, 2.56])])
+    >>> a.random()
+    [5, 15, 8.483221226216427, 'Hello']
     """
 
     def __init__(self, *args, label="", **kwargs):
@@ -507,6 +551,30 @@ class Block(Variable):
         :ref:`var` that will be repeated
     repeat : int
         Number of repeats.
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import Block, ArrayVar, FloatVar, IntVar
+    >>> content = ArrayVar("test",
+    ...                     IntVar("int_1", 0,8),
+    ...                     IntVar("int_2", 4,45),
+    ...                     FloatVar("float_1", 2,12))
+    >>> a = Block("size 3 Block", content, 3)
+    >>> print(a)
+    Block(size 3 Block, [IntVar(int_1, [0;8]),
+                         IntVar(int_2, [4;45]),
+                         FloatVar(float_1, [2;12]),])
+    >>> a.random(3)
+    [[[7, 22, 6.843164591359903],
+        [5, 18, 10.608957810018786],
+        [4, 21, 10.999649079045858]],
+    [[5, 9, 9.773288692746476],
+        [1, 12, 6.1909724243671445],
+        [4, 12, 9.404313234593669]],
+    [[4, 10, 2.72648188721585],
+        [1, 44, 5.319257221471118],
+        [4, 24, 9.153357213126071]]]
+
     """
 
     def __init__(self, label, value, repeat, **kwargs):
@@ -600,6 +668,26 @@ class DynamicBlock(Block):
         :ref:`var` that will be repeated
     repeat : int
         Maximum number of repeats.
+    
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import DynamicBlock, ArrayVar, FloatVar, IntVar
+    >>> content = ArrayVar(IntVar("int_1", 0,8),
+    ...                    IntVar("int_2", 4,45),
+    ...                    FloatVar("float_1", 2,12))
+    >>> a = DynamicBlock("max size 10 Block", content, 10)
+    >>> print(a)
+    DynamicBlock(max size 10 Block, [IntVar(int_1, [0;8]),
+                                     IntVar(int_2, [4;45]),
+                                     FloatVar(float_1, [2;12]),])
+    >>> a.random()
+    [[[3, 12, 10.662362255103403],
+          [7, 9, 5.496860842510198],
+          [3, 37, 7.25449459082227],
+          [4, 28, 4.912883181322568]],
+    [[3, 23, 5.150228671772998]],
+    [[6, 30, 6.1181372194738515]]]
+
     """
 
     def __init__(self, label, value, repeat, **kwargs):
@@ -677,6 +765,15 @@ class Constant(Variable):
         Name of the variable.
     value : object
         Constant value
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import Constant
+    >>> a = Constant("test", 5)
+    >>> print(a)
+    Constant(test, 5)
+    >>> a.random()
+    5
     """
 
     def __init__(self, label, value, **kwargs):
