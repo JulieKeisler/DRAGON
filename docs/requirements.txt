@@ -2,7 +2,6 @@ numpydoc
 sphinx-togglebutton
 sphinx-copybutton
 sphinx-book-theme
-pytorch_sphinx_theme
 nbsphinx
 pillow>=6.2.0
 -e .[docs]
