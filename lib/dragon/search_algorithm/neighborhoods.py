@@ -201,7 +201,7 @@ class NodeInterval(VarNeighborhood):
                     changed["combiner"] = self._target.combiner.neighbor(node.combiner)
                 if 1 in idx_list:
                     op = self._target.operation.neighbor(node.name, node.hp, node.operation)
-                    changed["name"], changed["hp"] = op[0], op[1]
+                    changed["operation"], changed["hp"] = op[0], op[1]
                 new_node.modification(**changed)
                 if 2 in idx_list:
                     new_node.activation = self._target.activation_function.neighbor(node.activation)
@@ -215,7 +215,7 @@ class NodeInterval(VarNeighborhood):
                 changed["combiner"] = self._target.combiner.neighbor(node.combiner)
             if 1 in idx_list:
                 op = self._target.operation.neighbor(node.name, node.hp)
-                changed["name"], changed["hp"] = op[0], op[1]
+                changed["operation"], changed["hp"] = op[0], op[1]
             node.modification(**changed)
             if 2 in idx_list:
                 node.activation = self._target.activation_function.neighbor(node.activation)
@@ -250,7 +250,7 @@ class CatHpInterval(VarNeighborhood):
                 p = random.uniform()
                 if p>self._neighborhood:
                     # Draw completely new layer with a probability of p
-                    new_layer = self._target.neighbor(name=name, hp=hp)
+                    new_layer = self._target.neighbor(name, hp)
                 else:
                     # Neighbor of layer
                     for f in self._target.features:
@@ -271,7 +271,7 @@ class CatHpInterval(VarNeighborhood):
             p = np.random.uniform()
             if p>self._neighborhood:
                 # Draw completely new layer with a probability of p
-                new_layer = self._target.neighbor(name=name, hp=hp)
+                new_layer = self._target.neighbor(name, hp)
             else:
                 # Neighbor of layer
                 for f in self._target.features:

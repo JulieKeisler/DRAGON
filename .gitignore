@@ -3,7 +3,11 @@ docs/source/Quickstart/save/
 # Ignore pickles
 *.pkl
 **/*.pkl
-/template_stability.py
+*.pth
+**/*.pth
+*.csv
+**/*.csv
+
 .idea
 # Byte-compiled / optimized / DLL files
 __pycache__/

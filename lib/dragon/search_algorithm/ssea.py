@@ -95,14 +95,14 @@ class SteadyStateEA:
                 not_muted = False
             except Exception as e:
                 logger.error(f"While mutating, an exception was raised: {e}")
-                logger.error(f'Parent 1 is: {offspring_1}')
+                raise e
         while not_muted:
             try:
                 offspring_2 = self.search_space.neighbor(deepcopy(offspring_2))
                 not_muted = False
             except Exception as e:
                 logger.error(f"While mutating, an exception was raised: {e}")
-                logger.error(f'Parent 2 is: {offspring_2}')
+                raise e
         logger.info(f"Evolving {best_1} and {best_2} to {K+1} and {K+2}")
         return offspring_1, offspring_2   
 
@@ -141,12 +141,11 @@ class SteadyStateEA:
             t+=2
         return min_loss
         
-
-        
     def run_mpi(self):
-        os.makedirs(self.save_dir+"/best_model/", exist_ok=True)
+        from mpi4py import MPI
         rank = self.comm.Get_rank()
         if rank == 0:
+            os.makedirs(self.save_dir+"/best_model/", exist_ok=True)
             logger.info(f"Master here ! start steady state EA algorithm.")
 
             ### Create first population
@@ -242,7 +241,7 @@ class SteadyStateEA:
                     os.remove(f"{self.save_dir}/x_{idx_max_loss}.pkl")
                 min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
                     
-            logger.info(f"Steady-State EA ending: min loss = {min_loss}")
+            logger.info(f"Steady-State EA is done. Min Loss = {min_loss}")
             for i in range(1, self.p):
                 self.comm.send(dest=i, tag=0, obj=(None,None, None))
             return min_loss
@@ -260,6 +259,7 @@ class SteadyStateEA:
                     stop = False
 
     def evaluate_first_population(self, population):
+        from mpi4py import MPI
         storage = {}
         nb_send = 0
         min_loss = np.inf
