@@ -104,6 +104,7 @@ class Mutant_UCB:
             storage[idx] = sent.pop(idx)
             min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
             t+=1
+        logger.info(f"Mutant-UCB is done. Min Loss = {min_loss}")
         return min_loss
 
     def run_initialization(self):

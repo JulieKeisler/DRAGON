@@ -139,6 +139,7 @@ class SteadyStateEA:
                 min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
             K+=2
             t+=2
+        logger.info(f"Steady-State EA is done. Min Loss = {min_loss}")
         return min_loss
         
     def run_mpi(self):

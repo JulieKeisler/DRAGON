@@ -54,16 +54,18 @@ Dependencies
 ------------
 
 * **Python** >=3.9
-* `numpy <https://numpy.org/>`__>=1.21.4
-* `DEAP <https://deap.readthedocs.io/en/master/>`__>=1.3.1
-* `botorch <https://botorch.org/>`__>=0.6.3.1
-* `gluonts <https://ts.gluon.ai/stable/>`__>=0.11.3
-* `gpytorch <https://gpytorch.ai/>`__>=1.6.0
-* `graphviz <https://graphviz.org/>`__>=0.8.4
-* `pandas <https://pandas.pydata.org/>`__>=1.3.4
-* `enlighten <https://python-enlighten.readthedocs.io/en/stable/>`__>=1.10.2
-* [mpi]: `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`__>=3.1.2
-
+* `numpy <https://numpy.org/>`__<2.0.0
+* `torch <https://pytorch.org/>`__
+* `graphviz <https://graphviz.org/>`__
+* `pandas <https://pandas.pydata.org/>`__
+* [mpi]: `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`__
+* [docs]: 
+     * `openml <https://www.openml.org/>`__
+     * `sklearn <https://scikit-learn.org>`__
+     * `optuna <https://optuna.org/>`__
+     * `matplotlib <https://matplotlib.org/>`__
+     * `skorch <https://skorch.readthedocs.io/en/stable/>`__
+     
 Contributors
 ------------
 * Julie Keisler: julie.keisler.rfo@gmail.com

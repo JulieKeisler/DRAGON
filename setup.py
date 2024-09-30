@@ -15,6 +15,10 @@ docs_extras = [
     "sphinx-panels",
     "sphinx-rtd-theme",
     "pillow>=6.2.0",
+    "openml",
+    "optuna",
+    "matplotlib",
+    "skorch"
 ]
 
 
@@ -46,16 +50,14 @@ setup(
     author='Julie Keisler',
     author_email='julie.keisler.rfo@gmail.com',
     install_requires=[
-        'numpy',
+        'numpy<2.0.0',
         'pandas',
         'torch',
         'graphviz'
     ],
     extras_require={
-        "gluonts": ['gluonts[torch,pro]'],
         "mpi": ["mpi4py>=3.1.2"],
-        "gluontsmpi": ['gluonts[torch,pro]', 'mpi4py>=3.1.2'],
-        "docs": docs_extras,
+        "docs": docs_extras
     },
     python_requires=">=3.9",
 )
