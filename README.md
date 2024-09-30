@@ -40,7 +40,7 @@ Install DRAGON
 
 After cloning the git repository, install **DRAGON**, using:
 
-     pip install -e dragon
+     pip install dragon-autodl==1.0
 
 **Distributed version**
 
@@ -48,11 +48,15 @@ If you plan on using the distributed version, you have to install the mpi4py pac
 
      pip install mpi4py
 
+or 
+
+     pip install dragon-autodl[mpi]
+
 **Documentation**
 
 Additional dependencies are required to run the documentation notebooks:
 
-     pip install -e dragon[docs]
+     pip install dragon-autodl[docs]
 
 Dependencies
 ------------

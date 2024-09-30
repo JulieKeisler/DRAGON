@@ -23,7 +23,7 @@ docs_extras = [
 
 
 setup(
-    name="dragon",
+    name="dragon_autodl",
     version="1.0",
     description='Implementation of the algorithmic framework from <An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters>',
     long_description=long_description,
