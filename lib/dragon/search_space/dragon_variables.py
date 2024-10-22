@@ -41,7 +41,7 @@ class HpVar(Variable):
         super().__init__(label, **kwargs)
         for h in hyperparameters:
             assert isinstance(hyperparameters[h], Variable), f"The hyperparameters should be instances of Variable but got {h} instead."
-        self.name = operation
+        self.operation = operation
         self.label = label
         self.hyperparameters = hyperparameters
 
@@ -62,10 +62,10 @@ class HpVar(Variable):
                 List containing the randomly created operations, or a single operation if size=1.
         """
         if size == 1:
-            if isinstance(self.name, Variable):
-                name = self.name.random()
+            if isinstance(self.operation, Variable):
+                name = self.operation.random()
             else:
-                name = self.name
+                name = self.operation
             hp = {}
             for h in self.hyperparameters:
                 hp[h] = self.hyperparameters[h].random()
@@ -73,10 +73,10 @@ class HpVar(Variable):
         else:
             res = []
             for _ in range(size):
-                if isinstance(self.name, Variable):
-                    name = self.name.random()
+                if isinstance(self.operation, Variable):
+                    name = self.operation.random()
                 else:
-                    name = self.name
+                    name = self.operation
                 hp = {}
                 for h in self.hyperparameters:
                     hp[h] = h.random(1)
@@ -90,7 +90,7 @@ class HpVar(Variable):
         out: False
 
         """
-        isconstant = self.name.isconstant()
+        isconstant = self.operation.isconstant()
         for h in self.hyperparameters:
             if not self.hyperparameters[h].isconstant():
                 isconstant = False
