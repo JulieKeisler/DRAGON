@@ -11,11 +11,11 @@ Main Objects
 **DRAGON** search space is base on Directed Acyclic Graphs (DAGs) implemented using an adjacency matrix combined with a set of node.
 The nodes represent the network layers and the edges the connexion between them.
 
-.. automodule:: dragon.search_space.cells
+.. tomodule:: dragon.search_space.cells
    :members: Brick, Node, EvoDagVariable, fill_adj_matrix
    :undoc-members:
    :show-inheritance:
-   :noindex:
+   :noindex:au
 
 ******************
 DRAGON variables

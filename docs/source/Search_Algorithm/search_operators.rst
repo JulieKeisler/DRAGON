@@ -4,9 +4,7 @@
 Zellij Neighborhoods
 ============
 
-Once the search space is defined, each :ref:`var` should be changeable (ie: be replaced by a value from its neighborhood, mutated). Those modifications (mutations) are used by the search algorithms. 
-The mutations are designed specifically for each :ref:`var`, and comes as an argument. They are all subclasses of :ref:`varneigh`.
-
+Here are presented example of neighborhoods that can be used for the basic :code:`zellij_var`.
 
 .. _intervals:
 
