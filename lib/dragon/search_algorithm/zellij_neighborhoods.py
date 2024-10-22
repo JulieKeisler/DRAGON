@@ -152,7 +152,7 @@ class CatInterval(VarNeighborhood):
 
     Parameters
     ----------
-    variable : FlaotVar, default=None
+    variable : CatVar, default=None
         Targeted :ref:`var`.
     neighborhood : int, default=None
         Undefined, for CatVar it draws a random feature.
