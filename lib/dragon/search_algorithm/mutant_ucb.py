@@ -57,17 +57,51 @@ class Mutant_UCB:
         min_loss = np.inf
         population = self.search_space.random(self.K)
         # First round
-        losses = [self.evaluation(e, idx=i) for i, e in enumerate(population)]
-        storage = {i: {"Individual": p, "N": 1, "N_bar":1} for i,p in enumerate(population)}
-        for i in storage.keys():
-            storage[i]['Loss'] = losses[i]
-            storage[i]['UCBLoss'] = losses[i]
+        storage = {}
+        for i, x in enumerate(population):
+            x_path = os.path.join(self.save_dir, f"{i}")
+            os.makedirs(x_path, exist_ok=True)
+            loss = self.evaluation(x, idx=i)
+            if not isinstance(loss, float):
+                if len(loss) ==2:
+                    loss, model = loss
+                    if hasattr(model, "save"):
+                        model.save(x_path)
+                elif len(loss) == 3:
+                    loss, model, x = loss
+                    if hasattr(model, "save"):
+                        model.save(x_path)
+                with open(x_path + "/x.pkl", 'wb') as f:
+                    pickle.dump(x, f)
+                x = x_path
+            storage[i] = {"Individual": x, "N": 1, "N_bar":1, "Loss": loss, "UCBLoss": loss}
+            min_loss = save_best_model(storage, min_loss, self.save_dir, i)
         t = self.K
         sent = {}
         while t < self.T:
             storage, sent, idx = self.ucb_iteration(storage, sent)
             x = sent[idx]['Individual']
+            if isinstance(x, str):
+                x_path = x
+                with open(x_path+"/x.pkl", 'rb') as f:
+                    x = pickle.load(f)
+                os.remove(x_path+"/x.pkl")
+            else:
+                x_path = os.path.join(self.save_dir, f"{idx}")
+            os.makedirs(x_path, exist_ok=True)
             loss = self.evaluation(x, idx=idx)
+            if not isinstance(loss, float):
+                if len(loss) ==2:
+                    loss, model = loss
+                    if hasattr(model, "save"):
+                        model.save(x_path)
+                elif len(loss) == 3:
+                    loss, model, x = loss
+                    if hasattr(model, "save"):
+                        model.save(x_path)
+                with open(x_path + "/x.pkl", 'wb') as f:
+                    pickle.dump(x, f)
+                x = x_path
             sent[idx]['Individual'] = x
             sent[idx]['Loss'] = loss
             sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
@@ -131,7 +165,6 @@ class Mutant_UCB:
         rank = self.comm.Get_rank()  
         if rank ==0:
             os.makedirs(self.save_dir, exist_ok=True)
-            save_file = self.save_dir+"/best_model.csv"
             logger.info(f"Master here ! start UCB algorithm.")
             if rs_pop is None:
                 storage, min_loss = self.run_initialization()

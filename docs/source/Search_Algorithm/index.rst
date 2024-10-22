@@ -4,6 +4,10 @@
 Search Algorithm
 =============================
 
+******************
+Search Operators
+******************
+
 Once the search space is defined, it is possible to use a simple Random Search to look for good configuration.
 However, the Random Search is usually not very efficient. **DRAGON** gives access to several search algorithms based on the evolution of the representations.
 Each :ref:`var` from the Search Space should come with a *Mutation*, also called *Neighborhood* attribute.
@@ -19,8 +23,16 @@ The mutations are designed specifically for each :ref:`var`, and are implemented
 
 ..
 
-   
+******************
+Algorithms
+******************
+
+.. toctree::
+   :maxdepth: 1 
+
    random_search
    ssea
    mutant_ucb
    hyperband
+   
+..
