@@ -5,6 +5,7 @@ import shutil
 import numpy as np
 import pandas as pd
 import torch
+import signal
 from dragon.utils.tools import logger
 
 def save_best_model(storage, min_loss, save_dir, idx):
@@ -31,7 +32,7 @@ def save_best_model(storage, min_loss, save_dir, idx):
     return min_loss
 
 class Mutant_UCB:
-    def __init__(self, search_space, save_dir, T, N, K, E, evaluation, **args):
+    def __init__(self, search_space, save_dir, T, N, K, E, evaluation, init_args=None, **args):
         self.T = T
         self.N = N
         self.K = K
@@ -50,53 +51,24 @@ class Mutant_UCB:
             self.run = self.run_no_mpi
         self.evaluation = evaluation
         self.save_dir = save_dir
+        self.init_args=init_args
 
     def run_no_mpi(self):
         min_loss = np.inf
         population = self.search_space.random(self.K)
         # First round
-        storage = {}
-        for idx, x in enumerate(population):
-            x_path = os.path.join(self.save_dir, f"{idx}")
-            loss = self.evaluation(x, idx=idx)
-            os.makedirs(x_path, exist_ok=True)
-            if not isinstance(loss, float):
-                if len(loss) ==2:
-                    loss, model = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                elif len(loss) == 3:
-                    loss, model, x = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-            with open(x_path + "/x.pkl", 'wb') as f:
-                pickle.dump(x, f)
-                del x
-            storage[idx]= {"Individual": x_path, "N": 1, "N_bar":1, "UCBLoss": loss, "Loss": loss}
+        losses = [self.evaluation(e, idx=i) for i, e in enumerate(population)]
+        storage = {i: {"Individual": p, "N": 1, "N_bar":1} for i,p in enumerate(population)}
+        for i in storage.keys():
+            storage[i]['Loss'] = losses[i]
+            storage[i]['UCBLoss'] = losses[i]
         t = self.K
         sent = {}
         while t < self.T:
             storage, sent, idx = self.ucb_iteration(storage, sent)
             x = sent[idx]['Individual']
-            if isinstance(x, str):
-                with open(x+"/x.pkl", 'rb') as f:
-                    x = pickle.load(f)
-                    os.remove(x_path+"/x.pkl")
             loss = self.evaluation(x, idx=idx)
-            os.makedirs(x_path, exist_ok=True)
-            if not isinstance(loss, float):
-                if len(loss) ==2:
-                    loss, model = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                elif len(loss) == 3:
-                    loss, model, x = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-            with open(x_path + "/x.pkl", 'wb') as f:
-                pickle.dump(x, f)
-                del x
-            sent[idx]['Individual'] = x_path
+            sent[idx]['Individual'] = x
             sent[idx]['Loss'] = loss
             sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
             sent[idx]['N'] +=1
@@ -104,15 +76,20 @@ class Mutant_UCB:
             storage[idx] = sent.pop(idx)
             min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
             t+=1
-        logger.info(f"Mutant-UCB is done. Min Loss = {min_loss}")
+        logger.info(f"Mutant-UCB is done. Min loss = {min_loss}")
         return min_loss
 
     def run_initialization(self):
         from mpi4py import MPI
         rank = self.comm.Get_rank()  
         min_loss = np.inf
+        
         storage = {}
-        population = self.search_space.random(self.K)
+        if self.init_args is not None:
+            population = self.init_args
+        else:
+            population = []
+        population+=self.search_space.random(self.K-len(population))
         logger.info(f'The whole population has been created (size = {len(population)})')
         nb_send = 0
         t = 0
@@ -216,7 +193,7 @@ class Mutant_UCB:
                     source=MPI.ANY_SOURCE, tag=0, status=self.status
                 )
                 source = self.status.Get_source()
-                logger.info(f"Master {rank}, last round for processus number {source}")
+                logger.info(f"Last round for processus number {source}")
                 sent[idx]["Individual"] =  x_path
                 sent[idx]['Loss'] = loss
                 sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
@@ -236,25 +213,29 @@ class Mutant_UCB:
             while stop:
                 x, idx = self.comm.recv(source=0, tag=0, status=self.status)
                 if idx != None:
-                    x_path = os.path.join(self.save_dir, f"{idx}")
-                    if isinstance(x, str):
-                        with open(x+"/x.pkl", 'rb') as f:
-                            x = pickle.load(f)
-                            os.remove(x_path+"/x.pkl")
-                    loss = self.evaluation(x, idx=idx)
-                    os.makedirs(x_path, exist_ok=True)
-                    if not isinstance(loss, float):
-                        if len(loss) ==2:
-                            loss, model = loss
-                            if hasattr(model, "save"):
-                                model.save(x_path)
-                        elif len(loss) == 3:
-                            loss, model, x = loss
-                            if hasattr(model, "save"):
-                                model.save(x_path)
+                    try:
+                        x_path = os.path.join(self.save_dir, f"{idx}")
+                        if isinstance(x, str):
+                            with open(x+"/x.pkl", 'rb') as f:
+                                x = pickle.load(f)
+                                os.remove(x_path+"/x.pkl")
+                        loss = timed_evaluation(x, idx, 10*60, self.evaluation)
+                        os.makedirs(x_path, exist_ok=True)
+                        if not isinstance(loss, float):
+                            if len(loss) ==2:
+                                loss, model = loss
+                                if hasattr(model, "save"):
+                                    model.save(x_path)
+                            elif len(loss) == 3:
+                                loss, model, x = loss
+                                if hasattr(model, "save"):
+                                    model.save(x_path)
 
-                    with open(x_path + "/x.pkl", 'wb') as f:
-                        pickle.dump(x, f)
+                        with open(x_path + "/x.pkl", 'wb') as f:
+                            pickle.dump(x, f)
+                    except Exception as e:
+                        logger.error(f'Worker {rank} with individual {idx} failed with {e}, set loss to inf')
+                        loss = np.inf
                     self.comm.send(dest=0, tag=0, obj=[loss, x_path, idx])
                 else:
                     logger.info(f'Worker {rank} has been stopped')
@@ -262,38 +243,50 @@ class Mutant_UCB:
 
     def ucb_iteration(self, storage, sent):
         # Compute ucb loss
-        ucb_losses = [storage[i]['UCBLoss'] - np.sqrt(self.E/storage[i]['N']) for i in storage.keys()]
-        idx = list(storage.keys())[np.argmin(ucb_losses)]
-        # Mutation probability
-        mutation_p = storage[idx]['N_bar'] / self.N
-        # Random variable
-        r = np.random.binomial(1, mutation_p, 1)[0]
-        if r == 0:
-            # Keep Training, remove the model from the storage
-            logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, training {idx} instead')
-            sent[idx] = storage.pop(idx) 
-        else:
-            # Mutate the model
-            logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, mutating {idx} to {self.K}')
-            storage[idx]['N'] +=1
-            # Load model
-            if isinstance(storage[idx]['Individual'], str):
-                with open(storage[idx]['Individual']+"/x.pkl", 'rb') as f:
-                    old_x = pickle.load(f)
-            else:
-                old_x = storage[idx]['Individual']
-            # mutate the model
-            not_muted = True
-            while not_muted:
-                try:
+        iterated = False
+        while not iterated:
+            tries = 0
+            ucb_losses = [storage[i]['UCBLoss'] - np.sqrt(self.E/storage[i]['N']) for i in storage.keys()]
+            idx = list(storage.keys())[np.argmin(ucb_losses)]
+            try:
+                # Mutation probability
+                mutation_p = storage[idx]['N_bar'] / self.N
+                # Random variable
+                r = np.random.binomial(1, mutation_p, 1)[0]
+                if r == 0:
+                    # Keep Training, remove the model from the storage
+                    logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, training {idx} instead')
+                    sent[idx] = storage.pop(idx) 
+                else:
+                    # Mutate the model
+                    logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, mutating {idx} to {self.K}')
+                    storage[idx]['N'] +=1
+                    # Load model
+                    if isinstance(storage[idx]['Individual'], str):
+                        with open(storage[idx]['Individual']+"/x.pkl", 'rb') as f:
+                            old_x = pickle.load(f)
+                    else:
+                        old_x = storage[idx]['Individual']
+                    # mutate the model
                     x = self.search_space.neighbor(deepcopy(old_x))
-                    not_muted = False
-                except Exception as e:
-                    logger.error(f"While mutating, an exception was raised: {e}")
-                    logger.error(f'Old x is: {old_x}')
-            idx = self.K
-            self.K += 1
-            sent[idx] = {"Individual": x, "N": 0, "N_bar": 0, "UCBLoss": 0}
+                    idx = self.K
+                    x_path = os.path.join(self.save_dir, f"{idx}")
+                    os.makedirs(x_path, exist_ok=True)
+                    with open(x_path + "/x.pkl", 'wb') as f:
+                        pickle.dump(x, f)
+                    del x
+                    self.K += 1
+                    sent[idx] = {"Individual": x_path, "N": 0, "N_bar": 0, "UCBLoss": 0}
+                iterated = True
+            except Exception as e:
+                tries +=1
+                if tries < 5:
+                    logger.error(f"While ucb iration, an exception was raised: {e}, attempt {tries}/5.", exc_info=True)
+                else:
+                    ind = storage.pop(idx)
+                    if isinstance(ind['Individual'], str):
+                        shutil.rmtree(ind['Individual'])
+                    logger.error(f"While ucb iration, an exception was raised: {e}, removing {idx} from population. Size storage: {len(storage)}.")
         return storage, sent, idx
 
 def generate_rs_pop(rs_pop):
@@ -311,3 +304,20 @@ def generate_rs_pop(rs_pop):
             except Exception as e:
                 logger.error(f"Error when recovering rs pop: {e}", exc_info=True)
         return storage, min_loss
+
+def timed_evaluation(x, idx, max_duration, evaluation):
+    def handler(signum, frame):
+        print(f'Evaluation of model {idx} took more than {max_duration} seconds. Stopping evaluation.')
+        raise TimeoutError()
+
+    signal.signal(signal.SIGALRM, handler)
+
+    try:
+        signal.alarm(max_duration)
+        result = evaluation(x, idx)
+    except TimeoutError:
+        result = np.inf, None 
+    finally:
+        signal.alarm(0)
+    return result
+

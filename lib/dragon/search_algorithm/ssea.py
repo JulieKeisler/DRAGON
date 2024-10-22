@@ -12,7 +12,6 @@ import torch
 
 def save_best_model(x_path, loss, min_loss, save_dir, idx):
     try:
-        shutil.copy(x_path+ "/x.pkl", f"{save_dir}/x_{idx}.pkl")
         if loss < min_loss:
             logger.info(f"Best found ! {loss} < {min_loss}")
             min_loss = loss
@@ -95,14 +94,12 @@ class SteadyStateEA:
                 not_muted = False
             except Exception as e:
                 logger.error(f"While mutating, an exception was raised: {e}")
-                raise e
         while not_muted:
             try:
                 offspring_2 = self.search_space.neighbor(deepcopy(offspring_2))
                 not_muted = False
             except Exception as e:
                 logger.error(f"While mutating, an exception was raised: {e}")
-                raise e
         logger.info(f"Evolving {best_1} and {best_2} to {K+1} and {K+2}")
         return offspring_1, offspring_2   
 
@@ -136,6 +133,8 @@ class SteadyStateEA:
                     logger.info(f'Replacing {idx_max_loss} by {idx}')
                     storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
                     os.remove(f"{self.save_dir}/x_{idx_max_loss}.pkl")
+                else:
+                    os.remove(f"{self.save_dir}/x_{idx}.pkl")
                 min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
             K+=2
             t+=2
@@ -197,9 +196,11 @@ class SteadyStateEA:
                 idx_max_loss = list(storage.keys())[np.argmax([storage[i]['Loss'] for i in storage.keys()])]
                 if loss < storage[idx_max_loss]['Loss']:
                     storage.pop(idx_max_loss)
-                    logger.info(f'Replacing {idx_max_loss} by {idx}')
+                    logger.info(f'Replacing {idx_max_loss} by {idx}, removing {self.save_dir}/x_{idx_max_loss}.pkl')
                     storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
                     os.remove(f"{self.save_dir}/x_{idx_max_loss}.pkl")
+                else:
+                    os.remove(f"{self.save_dir}/x_{idx}.pkl")
                 min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
 
                 if len(to_evaluate) == 0:
@@ -236,10 +237,11 @@ class SteadyStateEA:
 
                 if loss < storage[idx_max_loss]['Loss']:
                     storage.pop(idx_max_loss)
-                    shutil.rmtree(x_path)     
                     logger.info(f'Replacing {idx_max_loss} by {idx}')
                     storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
                     os.remove(f"{self.save_dir}/x_{idx_max_loss}.pkl")
+                else:
+                    os.remove(f"{self.save_dir}/x_{idx}.pkl")
                 min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
                     
             logger.info(f"Steady-State EA is done. Min Loss = {min_loss}")
@@ -274,6 +276,7 @@ class SteadyStateEA:
         while nb_send < len(population):
             loss, x_path, idx = self.comm.recv(source=MPI.ANY_SOURCE, tag=0, status=self.status)
             source = self.status.Get_source()
+            shutil.copy(x_path + "/x.pkl", f"{self.save_dir}/x_{idx}.pkl")
             storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
             min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
             x = population[nb_send]
@@ -286,6 +289,7 @@ class SteadyStateEA:
                 source=MPI.ANY_SOURCE, tag=0, status=self.status
             )
             source = self.status.Get_source()
+            shutil.copy(x_path + "/x.pkl", f"{self.save_dir}/x_{idx}.pkl")
             storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
             min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
             nb_receive+=1
@@ -317,19 +321,23 @@ def evaluate(x, idx, save_dir, evaluation, timed=False):
         os.remove(x_path)
     x_path = os.path.join(save_dir, f"{idx}")
     os.makedirs(x_path, exist_ok=True)
-    if timed:
-        loss = timed_evaluation(x, idx, 45*60, evaluation)
-    else:
-        loss = evaluation(x, idx)
-    if not isinstance(loss, float):
-        if len(loss) ==2:
-            loss, model = loss
-            if hasattr(model, "save"):
-                model.save(x_path)
-        elif len(loss) == 3:
-            loss, model, x = loss
-            if hasattr(model, "save"):
-                model.save(x_path)
+    try:
+        if timed:
+            loss = timed_evaluation(x, idx, 45*60, evaluation)
+        else:
+            loss = evaluation(x, idx)
+        if not isinstance(loss, float):
+            if len(loss) ==2:
+                loss, model = loss
+                if hasattr(model, "save"):
+                    model.save(x_path)
+            elif len(loss) == 3:
+                loss, model, x = loss
+                if hasattr(model, "save"):
+                    model.save(x_path)
+    except Exception as e:
+        logger.error(f'Worker with individual {idx} failed with {e}, set loss to inf')
+        loss = np.inf
     with open(x_path + "/x.pkl", 'wb') as f:
-        pickle.dump(x, f)
+            pickle.dump(x, f)
     return loss, x_path, idx
