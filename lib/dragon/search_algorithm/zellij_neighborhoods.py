@@ -1,4 +1,4 @@
-from dragon.search_space.addons import VarNeighborhood, Neighborhood
+from dragon.search_space.addons import VarNeighborhood
 from dragon.search_space.zellij_variables import (
     FloatVar,
     IntVar,
@@ -11,22 +11,283 @@ import numpy as np
 from dragon.utils.tools import logger
 import copy
 
+class IntInterval(VarNeighborhood):
+    """IntInterval
+
+    :ref:`varadd`, used to determine the neighbor of an IntVar.
+    Draw a random point in :math:`x \pm neighborhood`.
+
+    Parameters
+    ----------
+    variable : IntVar, default=None
+        Targeted :ref:`var`.
+    neighborhood : int, default=None
+        :math:`x \pm neighborhood`
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import IntVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import IntInterval
+    >>> a = IntVar("test", 0, 5, neighbor=IntInterval(neighborhood=1))
+    >>> print(a)
+    IntVar(test, [0;6])
+    >>> a_test = a.random()
+    >>> print(a_test)
+    4
+    >>> a.neighbor(a_test)
+    5
+
+    """
+
+    def __call__(self, value, size=1):
+        upper = np.min([value + self.neighborhood + 1, self.target.up_bound])
+        lower = np.max([value - self.neighborhood, self.target.low_bound])
+
+        if size > 1:
+            res = []
+            for _ in range(size):
+                v = np.random.randint(lower, upper)
+                while v == value:
+                    v = np.random.randint(lower, upper)
+                res.append(int(v))
+            return res
+        else:
+            v = np.random.randint(lower, upper)
+            while v == value:
+                v = np.random.randint(lower, upper)
+
+            return v
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood):
+        assert isinstance(neighborhood, int) or isinstance(
+            neighborhood, float
+        ), logger.error(
+            f"`neighborhood` must be an int, for `IntInterval`,\
+            got{neighborhood}"
+        )
+
+        self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+
+        assert isinstance(variable, IntVar) or variable == None, logger.error(
+            f"Target object must be a `IntInterval` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable
+
+class FloatInterval(VarNeighborhood):
+    """FloatInterval
+
+    :ref:`varadd`, used to determine the neighbor of a FloatVar.
+    Draw a random point in :math:`x \pm neighborhood`.
+
+    Parameters
+    ----------
+    variable : FloatVar, default=None
+        Targeted :ref:`var`.
+    neighborhood : float, default=None
+        :math:`x \pm neighborhood`
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import FloatVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import FloatInterval
+    >>> a = FloatVar("test", 0, 5, neighbor=FloatInterval(neighborhood=1))
+    >>> print(a)
+    FloatVar(test, [0;5])
+    >>> a_test = a.random()
+    >>> print(a_test)
+    4.0063806879878925
+    >>> a.neighbor(a_test)
+    4.477278307217116
+    """
+
+    def __call__(self, value, size=1):
+        upper = np.min([value + self.neighborhood, self.target.up_bound])
+        lower = np.max([value - self.neighborhood, self.target.low_bound])
+
+        if size > 1:
+            res = []
+            for _ in range(size):
+                v = np.random.uniform(lower, upper)
+                while v == value:
+                    v = np.random.uniform(lower, upper)
+                res.append(float(v))
+            return res
+        else:
+            v = np.random.uniform(lower, upper)
+            while v == value:
+                v = np.random.uniform(lower, upper)
+
+            return v
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood):
+        assert isinstance(neighborhood, int) or isinstance(
+            neighborhood, float
+        ), logger.error(
+            f"`neighborhood` must be a float or an int, for `FloatInterval`,\
+            got{neighborhood}"
+        )
+
+        self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+
+        assert isinstance(variable, FloatVar) or variable == None, logger.error(
+            f"Target object must be a `FloatVar` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable
+
+class CatInterval(VarNeighborhood):
+    """CatInterval
+
+    :ref:`varadd`, used to determine the neighbor of a CatVar.
+    Draw a random feature in CatVar.
+
+    Parameters
+    ----------
+    variable : FlaotVar, default=None
+        Targeted :ref:`var`.
+    neighborhood : int, default=None
+        Undefined, for CatVar it draws a random feature.
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import CatVar, IntVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import CatInterval, IntInterval
+    >>> a = CatVar("test", ['a', 1, 2.56, IntVar("int", 100 , 200, neighbor=IntInterval(10))], neighbor=CatInterval())
+    >>> print(a)
+    CatVar(test, ['a', 1, 2.56, IntVar(int, [100;201])])
+    >>> a.neighbor(120, 10) # 10 neighbors for the value '120' within this search space
+    [188, 2.56, 'a', 1, 'a', 1, 2.56, 151, 151, 1]
+    """
+
+    def __init__(self, variable=None, neighborhood=None):
+        super(CatInterval, self).__init__(variable)
+        self.neighborhood = neighborhood
+
+    def __call__(self, value, size=1):
+        if size > 1:
+            res = []
+            for _ in range(size):
+                v = self.target.random()
+                while v == value:
+                    v = self.target.random()
+                res.append(v)
+            return res
+        else:
+            v = self.target.random()
+            while v == value:
+                v = self.target.random()
+            return v
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+        if neighborhood != None:
+            logger.warning(
+                f"`neighborhood`= {neighborhood} is useless for \
+            {self.__class__.__name__}, it will be replaced by None"
+            )
+
+        self._neighborhood = None
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+
+        assert isinstance(variable, CatVar) or variable == None, logger.error(
+            f"Target object must be a `CatInterval` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable
+
+class ConstantInterval(VarNeighborhood):
+    """ConstantInterval
+
+    :ref:`varadd`, used to determine the neighbor of a Constant.
+    Do nothing. Return the constant.
+
+    Parameters
+    ----------
+    variable : Constant, default=None
+        Targeted :ref:`var`.
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import Constant
+    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval
+    >>> a = Constant("test", 5, neighbor=ConstantInterval())
+    >>> print(a)
+    Constant(test, 5)
+    >>> a_test = a.random()
+    >>> print(a_test)
+    5
+    >>> a.neighbor(a_test)
+    5
+    """
+
+    def __init__(self, variable=None, neighborhood=None):
+        super(ConstantInterval, self).__init__(variable)
+        self.neighborhood = neighborhood
+
+    def __call__(self, value, size=1):
+        if size > 1:
+            return [self.target.value for _ in range(size)]
+        else:
+            return self.target.value
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+        if neighborhood != None:
+            logger.warning(
+                f"`neighborhood`= {neighborhood} is useless for \
+            {self.__class__.__name__}, it will be replaced by None"
+            )
+
+        self._neighborhood = None
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+
+        assert isinstance(variable, Constant) or variable == None, logger.error(
+            f"Target object must be a `ConstantInterval` for {self.__class__.__name__}\
+            , got {variable}"
+        )
+        self._target = variable
+
 class ArrayInterval(VarNeighborhood):
     """ArrayInterval
 
     :ref:`spadd`, used to determine the neighbor of an ArrayVar.
     neighbor kwarg must be implemented for all :ref:`var` of the ArrayVar.
+    One :ref:`var` is modified for each neighbor drawn.
 
     Parameters
     ----------
     variable : ArrayVar, default=None
         Targeted :ref:`var`.
-    neighborhood : list, default=None
-        Not yet implemented
 
-    Attributes
+    Examples
     ----------
-    neighborhood
+    >>> from dragon.search_space.zellij_variables import ArrayVar, IntVar, FloatVar, CatVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import IntInterval, FloatInterval, CatInterval, ArrayInterval
+    >>> a = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)), 
+    ...              FloatVar("float_1", 2,12, neighbor=FloatInterval(0.5)), CatVar("cat_1", ["Hello", 87, 2.56], neighbor=CatInterval()), neighbor=ArrayInterval())
+    >>> print(a)
+    ArrayVar(, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),CatVar(cat_1, ['Hello', 87, 2.56])])
+    >>> a_test = a.random()
+    >>> print(a_test)
+    [7, 25, 7.631003022147808, 87]
+    >>> a.neighbor(a_test, 10)
+    [[7, 25, 8.003980345265523, 87], [8, 25, 7.631003022147808, 87], [7, 25, 7.631003022147808, 2.56], 
+    [8, 25, 7.631003022147808, 87], [7, 25, 7.631003022147808, 'Hello'], [7, 17, 7.631003022147808, 87], 
+    [7, 25, 7.631003022147808, 2.56], [7, 25, 7.254907155441848, 87], [7, 25, 7.602659938485088, 87], 
+    [7, 25, 7.631003022147808, 'Hello']]
 
     """
 
@@ -79,365 +340,30 @@ class ArrayInterval(VarNeighborhood):
                 f"when defining a variable "
             )
 
-class DynamicBlockInterval(VarNeighborhood):
-    """BlockInterval
-
-    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
-    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
-
-    """
-
-    def __call__(self, value, size=1, new_repeat=None):
-        res = []
-        for _ in range(size):
-            if new_repeat is None:
-                new_repeat = np.random.randint(self.target.repeat - self._neighborhood,
-                                           self.target.repeat + self._neighborhood+1)
-            inter = copy.deepcopy(value)
-            if new_repeat > len(inter):
-                inter = inter + [l if not isinstance(l, list) else l[0] for l in self.target.random(new_repeat - len(inter))]
-            if new_repeat < len(inter):
-                deleted_idx = list(set(random.sample(range(len(inter)), len(inter) - new_repeat)))
-                for index in sorted(deleted_idx, reverse=True):
-                    del inter[index]
-            variables_idx = list(set(np.random.choice(range(new_repeat), size=new_repeat)))
-            for i in variables_idx:
-                inter[i] = self.target.value.neighbor(inter[i])
-            res.append(inter)
-        if size == 1:
-            return res[0]
-        else:
-            return res
-
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood=None):
-        if isinstance(neighborhood, list):
-            self._neighborhood = neighborhood[0]
-            self.target.value.neighborhood = neighborhood[1]
-        else:
-            self._neighborhood = neighborhood
-
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-        assert isinstance(variable, DynamicBlock) or variable is None, logger.error(
-            f"Target object must be a `DynamicBlock` for {self.__class__.__name__},\
-             got {variable}"
-        )
-        self._target = variable
-
-        if variable is not None:
-            assert hasattr(self._target.value, "neighbor"), logger.error(
-                f"To use `DynamicBlock`, value for `DynamicBlock` must have a `neighbor` method. Use `neighbor` kwarg "
-                f"when defining a variable "
-            )
-
-class FloatInterval(VarNeighborhood):
-    """FloatInterval
-
-    :ref:`varadd`, used to determine the neighbor of a FloatVar.
-    Draw a random point in :math:`x \pm neighborhood`.
-
-    Parameters
-    ----------
-    variable : FloatVar, default=None
-        Targeted :ref:`var`.
-    neighborhood : float, default=None
-        :math:`x \pm neighborhood`
-
-    Attributes
-    ----------
-    neighborhood
-
-    """
-
-    def __call__(self, value, size=1):
-        upper = np.min([value + self.neighborhood, self.target.up_bound])
-        lower = np.max([value - self.neighborhood, self.target.low_bound])
-
-        if size > 1:
-            res = []
-            for _ in range(size):
-                v = np.random.uniform(lower, upper)
-                while v == value:
-                    v = np.random.uniform(lower, upper)
-                res.append(float(v))
-            return res
-        else:
-            v = np.random.uniform(lower, upper)
-            while v == value:
-                v = np.random.uniform(lower, upper)
-
-            return v
-
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood):
-        assert isinstance(neighborhood, int) or isinstance(
-            neighborhood, float
-        ), logger.error(
-            f"`neighborhood` must be a float or an int, for `FloatInterval`,\
-            got{neighborhood}"
-        )
-
-        self._neighborhood = neighborhood
-
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-
-        assert isinstance(variable, FloatVar) or variable == None, logger.error(
-            f"Target object must be a `FloatVar` for {self.__class__.__name__},\
-             got {variable}"
-        )
-        self._target = variable
-
-
-class IntInterval(VarNeighborhood):
-    """IntInterval
-
-    :ref:`varadd`, used to determine the neighbor of an IntVar.
-    Draw a random point in :math:`x \pm neighborhood`.
-
-    Parameters
-    ----------
-    variable : IntVar, default=None
-        Targeted :ref:`var`.
-    neighborhood : int, default=None
-        :math:`x \pm neighborhood`
-
-    Attributes
-    ----------
-    neighborhood
-
-    """
-
-    def __call__(self, value, size=1):
-
-        upper = np.min([value + self.neighborhood + 1, self.target.up_bound])
-        lower = np.max([value - self.neighborhood, self.target.low_bound])
-
-        if size > 1:
-            res = []
-            for _ in range(size):
-                v = np.random.randint(lower, upper)
-                while v == value:
-                    v = np.random.randint(lower, upper)
-                res.append(int(v))
-            return res
-        else:
-            v = np.random.randint(lower, upper)
-            while v == value:
-                v = np.random.randint(lower, upper)
-
-            return v
-
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood):
-        assert isinstance(neighborhood, int) or isinstance(
-            neighborhood, float
-        ), logger.error(
-            f"`neighborhood` must be an int, for `IntInterval`,\
-            got{neighborhood}"
-        )
-
-        self._neighborhood = neighborhood
-
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-
-        assert isinstance(variable, IntVar) or variable == None, logger.error(
-            f"Target object must be a `IntInterval` for {self.__class__.__name__},\
-             got {variable}"
-        )
-        self._target = variable
-
-
-class CatInterval(VarNeighborhood):
-    """CatInterval
-
-    :ref:`varadd`, used to determine the neighbor of a CatVar.
-    Draw a random feature in CatVar.
-
-    Parameters
-    ----------
-    variable : FlaotVar, default=None
-        Targeted :ref:`var`.
-    neighborhood : int, default=None
-        Undefined, for CatVar it draws a random feature.
-
-    Attributes
-    ----------
-    neighborhood
-
-    """
-
-    def __init__(self, variable=None, neighborhood=None):
-        super(CatInterval, self).__init__(variable)
-        self.neighborhood = neighborhood
-
-    def __call__(self, value, size=1):
-        if size > 1:
-            res = []
-            for _ in range(size):
-                v = self.target.random()
-                while v == value:
-                    v = self.target.random()
-                res.append(v)
-            return res
-        else:
-            v = self.target.random()
-            while v == value:
-                v = self.target.random()
-            return v
-
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood=None):
-        if neighborhood != None:
-            logger.warning(
-                f"`neighborhood`= {neighborhood} is useless for \
-            {self.__class__.__name__}, it will be replaced by None"
-            )
-
-        self._neighborhood = None
-
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-
-        assert isinstance(variable, CatVar) or variable == None, logger.error(
-            f"Target object must be a `CatInterval` for {self.__class__.__name__},\
-             got {variable}"
-        )
-        self._target = variable
-
-
-class ConstantInterval(VarNeighborhood):
-    """ConstantInterval
-
-    :ref:`varadd`, used to determine the neighbor of a Constant.
-    Do nothing. Return the constant.
-
-    Parameters
-    ----------
-    variable : Constant, default=None
-        Targeted :ref:`var`.
-    neighborhood : int, default=None
-        Not implemented.
-
-    Attributes
-    ----------
-    neighborhood
-
-    """
-
-    def __init__(self, variable=None, neighborhood=None):
-        super(ConstantInterval, self).__init__(variable)
-        self.neighborhood = neighborhood
-
-    def __call__(self, value, size=1):
-        if size > 1:
-            return [self.target.value for _ in range(size)]
-        else:
-            return self.target.value
-
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood=None):
-        if neighborhood != None:
-            logger.warning(
-                f"`neighborhood`= {neighborhood} is useless for \
-            {self.__class__.__name__}, it will be replaced by None"
-            )
-
-        self._neighborhood = None
-
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-
-        assert isinstance(variable, Constant) or variable == None, logger.error(
-            f"Target object must be a `ConstantInterval` for {self.__class__.__name__}\
-            , got {variable}"
-        )
-        self._target = variable
-
-
-class Intervals(Neighborhood):
-    """Intervals
-
-    :ref:`spadd`, used to determine the neighbor of a given point.
-    All :ref:`var` of the :ref:`sp` must have the neighbor addon implemented.
-
-    Parameters
-    ----------
-    variable : :ref:`sp`, default=None
-        Targeted :ref:`sp`.
-    neighborhood : list, default=None
-        If a list of the shape of the values from the :ref:`sp`.
-        Modify the neighborhood attribute of all :ref:`varadd` of type
-        VarNeighborhood, for each :ref:`var`.
-
-
-    Attributes
-    ----------
-    neighborhood
-
-    """
-
-    def __init__(self, search_space=None, neighborhood=None):
-        super(Intervals, self).__init__(search_space, neighborhood)
-
-    @Neighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood):
-        if neighborhood:
-            for var, neig in zip(self.target.values, neighborhood):
-                var.neighbor.neighborhood = neig
-
-        self._neighborhood = None
-
-    @Neighborhood.target.setter
-    def target(self, object):
-        self._target = object
-        if object:
-            assert hasattr(self.target.values, "neighbor"), logger.error(
-                f"To use `Intervals`, values in Searchspace must have a `neighbor` method. Use `neighbor` kwarg when defining a variable"
-            )
-
-    def __call__(self, point, size=1):
-
-        """__call__(point, size=1)
-
-        Draw a neighbor of a solution, according to the :ref:`var` neighbor
-        function.
-
-        Parameters
-        ----------
-
-        point : list
-            Initial point.
-        size : int, default=1
-            Draw <size> neighbors of <point>.
-
-        Returns
-        -------
-
-        out : list
-            List of neighbors of <point>.
-
-        """
-        attribute = self.target.random_attribute(size=size, exclude=Constant)
-
-        points = []
-
-        for att in attribute:
-
-            inter = copy.deepcopy(point)
-            inter[att._idx] = att.neighbor(point[att._idx])
-            points.append(inter)
-
-        return points
-
 class BlockInterval(VarNeighborhood):
     """BlockInterval
 
     :ref:`spadd`, used to determine the neighbor of an BlockInterval.
     neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
+    
+    Parameters
+    ----------
+    variable : Block, default=None
+        Targeted :ref:`var`.
 
+    Examples
+    ----------
+    >>> from dragon.search_space.zellij_variables import Block, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import BlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
+    >>> a = Block("max size 10 Block", content, 3, neighbor=BlockInterval())
+    >>> print(a)
+    Block(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> test_a = a.random()
+    >>> print(test_a)
+    [[5, 4, 10.780991223247005], [1, 11, 11.446866387945619], [8, 44, 2.9377647083768217]]
+    >>> a.neighbor(test_a)
+    [[5, 7, 10.780991223247005], [0, 11, 11.446866387945619], [8, 44, 2.9377647083768217]]
     """
 
     def __init__(self, neighborhood=None, variable=None):
@@ -475,5 +401,79 @@ class BlockInterval(VarNeighborhood):
         if variable is not None:
             assert hasattr(self._target.value, "neighbor"), logger.error(
                 f"To use `Block`, value for `Block` must have a `neighbor` method. Use `neighbor` kwarg "
+                f"when defining a variable "
+            )
+
+class DynamicBlockInterval(VarNeighborhood):
+    """BlockInterval
+
+    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
+    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
+
+    Parameters
+    ----------
+    variable : IntVar, default=None
+        Targeted :ref:`var`.
+    neighborhood : int
+        Neighborhood of the DynamicBlock size
+
+    Example
+    ----------
+    
+    >>> from dragon.search_space.zellij_variables import DynamicBlock, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_algorithm.zellij_neighborhoods import DynamicBlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
+    >>> a = DynamicBlock("max size 10 Block", content, 5, neighbor=DynamicBlockInterval(1))
+    >>> print(a)
+    DynamicBlock(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> test_a = a.random()
+    >>> print(test_a)
+    [[4, 10, 7.476654992446498]]
+    >>> a.neighbor(test_a)
+    [[4, 17, 7.476654992446498], [2, 5, 8.057170687346623], [2, 19, 7.316509989314727], [8, 9, 8.294482483654278], [2, 31, 5.36321423474537]]
+
+    """
+
+    def __call__(self, value, size=1, new_repeat=None):
+        res = []
+        for _ in range(size):
+            if new_repeat is None:
+                new_repeat = np.random.randint(self.target.repeat - self._neighborhood,
+                                           self.target.repeat + self._neighborhood+1)
+            inter = copy.deepcopy(value)
+            if new_repeat > len(inter):
+                inter+=[l if (new_repeat - len(inter))==1 else l[0] for l in self.target.random(new_repeat - len(inter))]
+            if new_repeat < len(inter):
+                deleted_idx = list(set(random.sample(range(len(inter)), len(inter) - new_repeat)))
+                for index in sorted(deleted_idx, reverse=True):
+                    del inter[index]
+            variables_idx = list(set(np.random.choice(range(new_repeat), size=new_repeat)))
+            for i in variables_idx:
+                inter[i] = self.target.value.neighbor(inter[i])
+            res.append(inter)
+        if size == 1:
+            return res[0]
+        else:
+            return res
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+        if isinstance(neighborhood, list):
+            self._neighborhood = neighborhood[0]
+            self.target.value.neighborhood = neighborhood[1]
+        else:
+            self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+        assert isinstance(variable, DynamicBlock) or variable is None, logger.error(
+            f"Target object must be a `DynamicBlock` for {self.__class__.__name__},\
+             got {variable}"
+        )
+        self._target = variable
+
+        if variable is not None:
+            assert hasattr(self._target.value, "neighbor"), logger.error(
+                f"To use `DynamicBlock`, value for `DynamicBlock` must have a `neighbor` method. Use `neighbor` kwarg "
                 f"when defining a variable "
             )

@@ -382,6 +382,76 @@ class CatVar(Variable):
     def __repr__(self):
         return super(CatVar, self).__repr__() + f"{self.features})"
 
+# Constant
+class Constant(Variable):
+    """Constant
+
+    :code:`Constant` is a :ref:`var` discribing a constant of any type.
+
+    Parameters
+    ----------
+    label : str
+        Name of the variable.
+    value : object
+        Constant value
+
+    Attributes
+    ----------
+    label : str
+        Name of the variable.
+    value : object
+        Constant value
+
+    Examples
+    --------
+    >>> from dragon.search_space.zellij_variables import Constant
+    >>> a = Constant("test", 5)
+    >>> print(a)
+    Constant(test, 5)
+    >>> a.random()
+    5
+    """
+
+    def __init__(self, label, value, **kwargs):
+        super(Constant, self).__init__(label, **kwargs)
+        assert not isinstance(
+            value, Variable
+        ), f"Element must not be of Variable type, got {value}"
+        self.value = value
+
+    def random(self, size=1):
+        """random(size=None)
+
+        Parameters
+        ----------
+        size : int, default=None
+            Number of draws.
+
+        Returns
+        -------
+        out: int or list[int]
+            Return an int if :code:`size`=1, a :code:`list[self.value]` else.
+
+        """
+        if size > 1:
+            return [self.value] * size
+        else:
+            return self.value
+
+    def isconstant(self):
+        """isconstant()
+
+        Returns
+        -------
+        out: boolean
+            Return True
+
+        """
+        return True
+
+    def __repr__(self):
+        return super(Constant, self).__repr__() + f"{self.value})"
+
 
 # Array of variables
 class ArrayVar(Variable):
@@ -744,74 +814,3 @@ class DynamicBlock(Block):
 
         """
         return False
-
-
-# Constant
-class Constant(Variable):
-    """Constant
-
-    :code:`Constant` is a :ref:`var` discribing a constant of any type.
-
-    Parameters
-    ----------
-    label : str
-        Name of the variable.
-    value : object
-        Constant value
-
-    Attributes
-    ----------
-    label : str
-        Name of the variable.
-    value : object
-        Constant value
-
-    Examples
-    --------
-    >>> from dragon.search_space.zellij_variables import Constant
-    >>> a = Constant("test", 5)
-    >>> print(a)
-    Constant(test, 5)
-    >>> a.random()
-    5
-    """
-
-    def __init__(self, label, value, **kwargs):
-        super(Constant, self).__init__(label, **kwargs)
-        assert not isinstance(
-            value, Variable
-        ), f"Element must not be of Variable type, got {value}"
-        self.value = value
-
-    def random(self, size=1):
-        """random(size=None)
-
-        Parameters
-        ----------
-        size : int, default=None
-            Number of draws.
-
-        Returns
-        -------
-        out: int or list[int]
-            Return an int if :code:`size`=1, a :code:`list[self.value]` else.
-
-        """
-        if size > 1:
-            return [self.value] * size
-        else:
-            return self.value
-
-    def isconstant(self):
-        """isconstant()
-
-        Returns
-        -------
-        out: boolean
-            Return True
-
-        """
-        return True
-
-    def __repr__(self):
-        return super(Constant, self).__repr__() + f"{self.value})"

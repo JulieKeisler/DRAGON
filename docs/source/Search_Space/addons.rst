@@ -31,6 +31,8 @@ Variable Addon
    :show-inheritance:
    :noindex:
 
+.. _varneigh:
+
 **********
 Subclasses
 **********
