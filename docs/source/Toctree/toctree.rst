@@ -12,10 +12,8 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Space/index_1
-  ../Search_Space/index_2
-
-
+  ../Search_Space/index
+  
 ..
 
 .. toctree::
@@ -23,7 +21,8 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Algorithm/index
+  ../Search_Algorithm/index_1
+  ../Search_Algorithm/index_2
 
 ..
 
