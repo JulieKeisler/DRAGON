@@ -208,7 +208,7 @@ class Mutator(SearchspaceAddon):
 class Crossover(SearchspaceAddon):
     """Crossover
 
-    Abstract class describing what an MCrossover is for a :ref:`sp`.
+    Abstract class describing what an Crossover is for a :ref:`sp`.
     :ref:`addons` where the target must be of type :ref:`sp`.
 
     Parameters

@@ -1,12 +1,10 @@
-.. _search_algorithm:
+.. _search_operators:
 
 =============================
-Search Algorithm
-=============================
-
-******************
 Search Operators
-******************
+=============================
+
+
 
 Once the search space is defined, it is possible to use a simple Random Search to look for good configuration.
 However, the Random Search is usually not very efficient. **DRAGON** gives access to several search algorithms based on the evolution of the representations.
@@ -21,18 +19,9 @@ The mutations are designed specifically for each :ref:`var`, and are implemented
    search_operators
    dragon_operators
 
-..
-
-******************
-Algorithms
-******************
+Besides the mutation operators, other search operators have been implemented to use **DRAGON** with an evolutionary algorithm.
 
 .. toctree::
-   :maxdepth: 1 
+   :maxdepth: 1
 
-   random_search
-   ssea
-   mutant_ucb
-   hyperband
-   
-..
+   other_operators
