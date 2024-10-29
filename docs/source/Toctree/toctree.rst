@@ -12,7 +12,9 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Space/index
+  ../Search_Space/index_1
+  ../Search_Space/index_2
+
 
 ..
 
