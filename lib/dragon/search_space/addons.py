@@ -157,32 +157,6 @@ class VarNeighborhood(VarAddon):
     def __call__(self, point, size=1):
         pass
 
-class Operator(SearchspaceAddon):
-    """Operator
-
-    Abstract class describing what an operator is for a :ref:`sp`.
-    :ref:`addons` where the target must be of type :ref:`sp`.
-
-    Parameters
-    ----------
-    target : :ref:`sp`, default=None
-        Object targeted by the addons
-
-    Attributes
-    ----------
-    target : :ref:`sp`, default=None
-        Object targeted by the addons
-
-    """
-
-    def __init__(self, search_space=None):
-        super(Operator, self).__init__(search_space)
-
-    @abstractmethod
-    def __call__(self):
-        pass
-
-
 class Mutator(SearchspaceAddon):
     """Mutator
 

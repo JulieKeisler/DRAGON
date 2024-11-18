@@ -111,6 +111,7 @@ class SteadyStateEA:
         logger.info(f'We start by evaluating the whole population (size={len(population)})')
         for idx, x in enumerate(population):
             loss, x_path, idx = evaluate(x, idx, self.save_dir, self.evaluation)
+            shutil.copy(x_path + "/x.pkl", f"{self.save_dir}/x_{idx}.pkl")
             storage[idx] = {"Individual": f"{self.save_dir}/x_{idx}.pkl", "Loss": loss}
             min_loss = save_best_model(x_path, loss, min_loss, self.save_dir, idx)
         logger.info(f"All models have been at least evaluated once, t = {len(population)} < {self.n_iterations}.")
@@ -127,6 +128,7 @@ class SteadyStateEA:
             for i, x in enumerate([p1, p2]):
                 idx = K+i
                 loss, x_path, idx = evaluate(x, idx, self.save_dir, self.evaluation)
+                shutil.copy(x_path + "/x.pkl", f"{self.save_dir}/x_{idx}.pkl")
                 idx_max_loss = list(storage.keys())[np.argmax([storage[i]['Loss'] for i in storage.keys()])]
                 if loss < storage[idx_max_loss]['Loss']:
                     storage.pop(idx_max_loss)

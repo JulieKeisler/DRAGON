@@ -1,8 +1,7 @@
-from operator import attrgetter
 import random
 import numpy as np
 
-from dragon.search_space.addons import Operator, Mutator, Crossover
+from dragon.search_space.addons import Mutator, Crossover
 from dragon.search_space.cells import AdjMatrix, fill_adj_matrix
 
 
@@ -77,9 +76,6 @@ class DAGTwoPoint(Crossover):
     def __init__(self, search_space=None, size=10):
         self.size = size
         super(DAGTwoPoint, self).__init__(search_space)
-
-    def _build(self, toolbox):
-        toolbox.register("mate", self)
 
     def __call__(self, ind1, ind2):
         """

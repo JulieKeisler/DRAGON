@@ -1,12 +1,4 @@
-.. _zellij_var:
-
-============
-Zellij Variables
-============
-
-**DRAGON** search space is based on the class :ref:`var`, retrieved from the `zellij <https://zellij.readthedocs.io/en/latest/>`_ package.
-
-.. _var:
+.. _base_variables:
 
 ******************
 Variable
@@ -27,19 +19,6 @@ Basic :ref:`var` are the low level bricks to compose a search space in **DRAGON*
 
 .. automodule:: dragon.search_space.zellij_variables
    :members: IntVar, FloatVar, CatVar, Constant
-   :undoc-members:
-   :show-inheritance:
-   :noindex:
-
-
-******************
-Composed variables
-******************
-
-Composed :ref:`var` are :ref:`var` made of other :ref:`var`.
-
-.. automodule:: dragon.search_space.zellij_variables
-   :members: ArrayVar, Block, DynamicBlock
    :undoc-members:
    :show-inheritance:
    :noindex:
