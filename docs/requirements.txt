@@ -4,4 +4,5 @@ sphinx-copybutton
 sphinx-book-theme
 nbsphinx
 pillow>=6.2.0
+sphinxcontrib-tikz
 -e .[docs]
