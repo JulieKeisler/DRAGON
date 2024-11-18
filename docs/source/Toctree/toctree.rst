@@ -34,8 +34,7 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Algorithm/index_1
-  ../Search_Algorithm/index_2
+  ../Search_Algorithm/index
 
 ..
 
