@@ -1,5 +1,9 @@
 # save directories
 docs/source/Quickstart/save/
+data/
+test_wind.py
+paper_eds.ipynb
+logs/
 # Ignore pickles
 *.pkl
 **/*.pkl

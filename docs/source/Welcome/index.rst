@@ -1,33 +1,32 @@
 DRAGON
 ====================
 
-**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [1]_. 
-**DRAGON** is not a *no code* package, but you can get familiar with it quickly thanks to the `Quickstart <../Quickstart/quickstart.ipynb>`_ tutorial. 
+**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [1]_.
+**DRAGON** is not a *no code* package. It can be considered as a toolbox for the creation of Automated Deep Learning frameworks for various applications.
 
-Key Features
+You can get familiar with it quickly thanks to the `Quickstart <../Quickstart/quickstart.ipynb>`_ tutorial. 
+
+Structure
 ------------
 
-- :ref:`A flexible seach space <../Search_space/index.rst>`
-     - The search space based on Directed Acyclic Graphs (DAGs) where the nodes can be any **PyTorch** layer (custom or not) and the edges are the connections between them. 
-     - The code to implement the DAGs-based search space was inspired by the `zellij <https://zellij.readthedocs.io/en/latest/>`__ package developed for hyperparameters optimization. 
-     - **DRAGON** search space includes cell-based search spaces [4]_.
- 
-- Flexible optimization algorithms
-     - The search algorithms defined in **DRAGON** are based on search operators used to modify elements of the search space (e.g., mutations, neighborhoods, crossover), which can be used to develop new search algorithms.
-     - Efficient algorithms are also implemented in **DRAGON** such as the `Random Search <../Search_Algorithm/random_search.ipynb>`_, `Evolutionary Algorithm <../Search_Algorithm/ssea.ipynb>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [5]_, and `HyperBand <../Search_Algorithm/hyperband.ipynb>`_ [6]_.
+- `Search Space <../Search_space/index.rst>`.
+     - **DRAGON** provides tools to create custom search spaces. Various *Python* objects called *Variables* are available to encode different elements such as integers or arrays. These elements come from the `zellij <https://zellij.readthedocs.io/en/latest/>`__ package developed for hyperparameter optimisation.
+     - Based on these elements, the search space based Directed Acyclic Graphs (DAGs) are proposed to encode the deep neural networks. The nodes can be any *PyTorch* layer (custom or not) and the edges are the connections between them. 
 
-- Applications to various tasks
-     - The flexibility of **DRAGON** makes it usable for various applications.
-     - For example: `image classification <../Applications/image.ipynb>`_, time series forecasting [1]_, `electricity consumption forecasting <../Applications/load_forecasting.ipynb>`_ [2]_, wind power forecasting [3]_ or tabular data.
+- `Search Operators <../Search_Operators/index.rst>`.
+     - Each *variable* can be given a *neighbor* attribute which is used to modify the current object. This function can be seen as a neighbourhood or mutation operator. The **DRAGON** package provides default mutations for each *Variable*, but the user is free to implement his own.
+     - A crossover operator is also implemented, allowing both arrays and graph-like variables to be mixed.
 
-- Easy parallelization over multiple GPUs
-     - The distributed version requires a MPI library, such as `MPICH <https://www.mpich.org/>`_ or `Open MPI <https://www.open-mpi.org/>`_ and is based on `mpi4py <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`_.
+- `Search Algorithms <../Search_Algorithm/index.rst>`.
+     - **DRAGON** provides the implementation of several search algorithms: the `Random Search <../Search_Algorithm/random_search.ipynb>`_, the `Evolutionary Algorithm <. ./Search_Algorithm/ssea.ipynb>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [5]_ and `Hyperband <../Search_Algorithm/hyperband.ipynb>`_ [6]_.
+     - Mutant-UCB and the Evolutionary Algorithm use the *neighbor* attributes to modify the configurations. Other search algorithms such as local search or simulated annealing could be implemented in a similar way.
+     - Each search algorithm comes with a storage system to keep RAM memory small and an optional distributed version on multiple processors. The distributed version requires an MPI library such as `MPICH <https://www.mpich.org/>`_ or `Open MPI <https://www.open-mpi.org/>`_ and is based on the `mpi4py package <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`_.
 
-Basic Concepts
-------------
+- `Performance evaluation <../applications/index.rst>`.
+     - Evaluating a configuration from a search space built with **DRAGON** is done by building the model (i.e. the neural networks) with the configuration elements. Then the model should be trained, evaluated and return a loss (the search algorithms minimise losses).
+     - The process of building - training - evaluating a model based on a configuration depends on the applications and has to be implemented by the user.
+     - Examples are given for `image classification <../applications/image.ipynb>`_ with the package *skorch* and `electricity consumption forecasting <../applications/load_forecasting.ipynb>`_ [2]_.
 
-- The **Search Space** is a mix-variable search space. Numerical, categorical and graph objects may be jointly optimized. Each object is associated with a **variable**, which defines what values an object can take.
-- Base on this search space, several **Search Operators** are defined, showing how the objects can be manipulate to find the neighboring values.
 
 Install DRAGON
 --------------

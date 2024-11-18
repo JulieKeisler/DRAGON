@@ -413,11 +413,12 @@ class Constant(Variable):
     """
 
     def __init__(self, label, value, **kwargs):
-        super(Constant, self).__init__(label, **kwargs)
         assert not isinstance(
             value, Variable
         ), f"Element must not be of Variable type, got {value}"
         self.value = value
+        super(Constant, self).__init__(label, **kwargs)
+        
 
     def random(self, size=1):
         """random(size=None)
