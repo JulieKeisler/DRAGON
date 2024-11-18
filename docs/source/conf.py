@@ -50,8 +50,8 @@ extensions = [
     "nbsphinx",
     "sphinxcontrib.tikz"
 ]
-tikz_proc_suite = 'pdflatex'
-tikz_libraries = 'arrows,shapes'
+#tikz_proc_suite = 'pdflatex'
+#tikz_libraries = 'arrows,shapes'
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
