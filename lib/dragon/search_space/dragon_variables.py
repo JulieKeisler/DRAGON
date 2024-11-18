@@ -106,7 +106,7 @@ class NodeVariable(Variable):
     label : str
         Name of the variable.
     operations : `DynamicBlock`
-        `DynamicBlock` containing :ref:`var` corresponding to the candidate operations.
+        `HpVar` containing the candidate operations.
     init_complexity : int
         Maximum number of nodes that the randomly created DAGs should have.
     

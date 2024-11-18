@@ -1,10 +1,6 @@
 .. _composed_var:
 
-******************
-Composed variables
-******************
-
-Composed :ref:`var` are :ref:`var` made of other :ref:`var`.
+Composed `Variables` are `Variables` made of other `Variables`.
 
 .. automodule:: dragon.search_space.zellij_variables
    :members: ArrayVar, Block, DynamicBlock

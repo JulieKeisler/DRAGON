@@ -1,6 +1,4 @@
 import torch
-import torch.nn as nn
-
 from dragon.search_space.cells import Brick
 
 class Dropout(Brick):

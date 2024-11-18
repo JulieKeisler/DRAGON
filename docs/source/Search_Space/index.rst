@@ -65,17 +65,14 @@ The base variables can be composed to create more complex objects such as arrays
     ...              IntVar("int_2", 4,45),
     ...              FloatVar("float_1", 2,12),
     ...              CatVar("cat_1", ["Hello", 87, 2.56]))
-   print(a)
-   ArrayVar(, [IntVar(int_1, [0;8]),
-                IntVar(int_2, [4;45]),
-                FloatVar(float_1, [2;12]),
-                CatVar(cat_1, ['Hello', 87, 2.56])])
-
    a.random()
    [5, 15, 8.483221226216427, 'Hello']
 
 Here we created an array made of four distinct elements: two integers respectively between 0 and 8 and 4 and 45, a float between 2 and 12 and a categorical variable which can take values within ["Hello", 87, 2.56].
-In opposition to the `CatVar` features attribute which might mix variables and non-variables elements, the attribute from the composed variables have to be variables. It means we cannot create an array with a simple 5. To inclue a constant integer, we have to pass through the `Constant` variable.
+An ArrayVar may represent a list of hyperparameters of a given machine learning for example.
+In opposition to the `CatVar` features attribute which might mix variables and non-variables elements, the attributes from the composed variables have to be variables. 
+It means we cannot create an array with a simple 5. 
+To inclue a constant integer, we have to use the `Constant` variable.
 
 .. list-table:: Composed variables
    :widths: 25 25 50
@@ -96,7 +93,7 @@ In opposition to the `CatVar` features attribute which might mix variables and n
 
 The implementation of the composed variables is detailed in the `Composed Variables <composed_variables.rst>`_ section.
 
-DAGs Encoding
+Deep Neural Networks Encoding
 ------------
 
 Both the base and composed variables have been used to encode Deep Neural Networks architecture and hyperparameters.
@@ -163,8 +160,51 @@ If a `CatVar` is given as input operation, all the `Bricks` contained in the `Ca
 +--------------------------------------------------------------------+-----------------------------------------------------------------------+
 
 These two examples show how to use `HpVar` with a `Constant` and a `CatVar` operation respectively.
-The `CatVar` is made of two versions of normalization layers which share the same hyperparameters (none here).
+The `CatVar` is made here of two versions of normalization layers which share the same hyperparameters (none here).
+The only hyperparameter that can be optimized for the `MLP` layer is the size of the output channel.
+It is here an integer between 1 and 10.
 To facilitate the use of **DRAGON**, operations as `Brick` and their variable `HpVar` are already implemented in the package and detailed in the `bricks section <bricks.rst>`_.
+
+Node encoding
+~~~~~~~~~~~~~~~~~~~~~~
+
+**DRAGON** implements Deep Neural Networks as computational graphs, where the nodes are a succession of a combiner, an operation and an activation function.
+The operation is implemented as a `Brick`, as mentionned above.
+The combiner is used to unify the (possible) multiple inputs that the node might have into one unique tensor.
+The combiners available in **DRAGON** are *add*, *mul* and *concat* and are encoded as a string.
+The activation function can be any `PyTorch` implemented or custom activation function.
+An `nn.Module` object called `Node` takes as input these three elements to create a node.
+A `Node` implements a lot of methods. The main ones are:
+- `set_operation`: takes as input a variable `input_shapes` containing the input shapes of the incoming tensors. The method use the combiner to compute the operation input shape and initialize the operation weights with the right shape. The initialized operation is then used to compute the node output shape.  This value will be used by the `set_operations` methods from the child nodes of the current one.
+- `modification`: modify the node combiner, operation, hyperparameters or output shape. The modification may happened after a mutation or because the tensor input shape has changed. If the operation is not modified, the method `modify_operation` from the `Brick` operation is called to only change the weights. 
+- `set`: automatically choose between the `set_operation` and `modification` methods.
+- `forward`: compute the node forward pass from the combiner to the activation function.
+
+The variable corresponding to a `Node` is called `NodeVariable.` 
+It takes as input a `Variables` for the combiner and the activation functions which may be `Constant` or `CatVar`.
+The operation is implemented an `HpVar` as mentioned above. 
+In some cases, the node might take several candidate operations. Therefore, the operation is encoded as a `CatVar` of `HpVar`, containing the various candidates. 
+The `random` method from the `NodeVariable` randomly select a combiner and an activation function. Then it randomly selects the operation (in case of a `CatVar` operation) and drawn random hyperparameters.
+
+DAG encoding
+~~~~~~~~~~~~~~~~~~~~~~
+
+Finally, the last structure that has to be presented is the Directed Acyclic Graph which (partially) encodes a Deep Neural Network.
+The object encoding the graphs is called `AdjMatrix` and is also a `nn.Module`. It takes as input a list of nodes and an adjacency matrix representing the edges between those nodes. 
+A method `assert_adj_matrix` is used to assess the good format of the adjacency matrix (e.g, right number of rows and columns, upper-triangular, diagonal full of zeros).
+The directed acyclic structure of the graph allow an ordering of the nodes. 
+Just like the `Node` object, the `AdjMatrix` implements a method `set` which takes as input a argument `input_shape` and call the method `set` from each node following this order.
+The `forward` pass computation is also made following this order.
+During the forward computation, the outputs are stored in a list to be used for later nodes- from the graph having them as input.
+
+The `Variable` able to create random `AdjMatrix` is called `EvoDagVariable`. 
+It takes as input a `DynamicBlock` whose repeated variable would be a `NodeVariable`.
+Usually this `NodeVariable` will have its operation encoded as a `CatVar` to have several candidate layers.
+A random `AdjMatrix` is created by first randomly drawing the number of nodes from the graph. Then, a random value of the `NodeVariable` is drawn for each node.
+Finally, an adjacency matrix of the right dimension is created.
+
+The implementation of the objects and variables use to encode the Deep Neural Networks (e.g `Brick`, `Node`, `EvoDagsVariable`) is detailed in `This section <dag_encoding.rst>`_.
+The Figure below illustrates how the elements are linked together.
 
 .. tikz::
 
@@ -215,7 +255,7 @@ To facilitate the use of **DRAGON**, operations as `Brick` and their variable `H
    % Text Node
    \draw (14.25,282) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{81.6pt}\setlength\topsep{0pt}
    \begin{center}
-   Operation and hp\\=\\\textcolor[rgb]{0.56,0.07,1}{HpVar}
+   Operation and hyperparameters\\=\\\textcolor[rgb]{0.56,0.07,1}{HpVar}
    \end{center}
 
    \end{minipage}};
