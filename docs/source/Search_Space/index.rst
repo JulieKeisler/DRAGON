@@ -4,7 +4,7 @@
 Presentation
 =============================
 
-The search space design is based on an abstract class called *Variable*, originally proposed within an hyper-parameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
+The search space design is based on an abstract class called *Variable*, originally proposed within an hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
 A variable should implements a *random* method detailing how to create a random value and an *isconstant* method specifying if the variable is a constant or not.
 A variable can take *Addons* to implement additional features such as the `Search Operators <../Search_Operators/index.rst>`_.
 The search space is made of base and composed variables to create more or less complex search spaces.
@@ -99,49 +99,72 @@ The implementation of the composed variables is detailed in the `Composed Variab
 DAGs Encoding
 ------------
 
-Both the base and composed variables have been used to encode Deep Neural Networks architecture and hyper-parameters.
+Both the base and composed variables have been used to encode Deep Neural Networks architecture and hyperparameters.
 
 Operations and hyperparameters encoding
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The Deep Neural Networks are made of layers. In **DRAGON**'s case, those layers are *nn.Module* from *PyTorch*.
 The user can use any base or custom *nn.Module*, but as to wrap it into a *Brick* object. 
-A brick takes as input an input shape and some hyper-parameters and initialize a given *nn.Module* with these hyperparameters so it can pocess a tensor of the given input shape.
+A brick takes as input an input shape and some hyperparameters and initialize a given *nn.Module* with these hyperparameters so it can pocess a tensor of the given input shape.
 The forward pass of a *Brick* can just apply the layer to an input tensor, or be more complex to transform the input data before the operation.
 Finally, the abstract class *Brick* also implements a *modify_operation* method. 
 It takes as input an `input_shape` tuple and modifies the operation weights shape, so that the operation may take as input a vector of shape `input_shape`.
 This method is applied when the Deep Neural Network is created or modified.
 The applications case will be detailled below.
 
-+---------------------------------------------------+-----------------------------------------------------------------------------------------+
-|                                                   |                                                                                         |
-|.. code-block::                                    |.. code-block::                                                                          |
-|                                                   |                                                                                         |
-|  import torch.nn as nn                            | from dragon.search_space.cells import Brick                                             |
-|  from dragon.search_space.cells import Brick      | import torch.nn as nn                                                                   |
-|                                                   |                                                                                         |
-|  class Dropout(Brick):                            | class MLP(Brick):                                                                       |
-|     def __init__(self, input_shape, rate):        |    def __init__(self, input_shape, out_channels):                                       |
-|        super(Dropout, self).__init__(input_shape) |       super(MLP, self).__init__(input_shape)                                            |
-|        self.dropout = nn.Dropout(p=rate)          |       self.in_channels = input_shape[-1]                                                |
-|     def forward(self, X):                         |       self.linear = nn.Linear(self.in_channels, out_channels)                           |
-|        X = self.dropout(X)                        |    def forward(self, X):                                                                |
-|        return X                                   |       X = self.linear(X)                                                                |
-|     def modify_operation(self, input_shape):      |       return X                                                                          |
-|        pass                                       |    def modify_operation(self, input_shape):                                             |
-|                                                   |       d_in = input_shape[-1]                                                            |
-|                                                   |       diff = d_in - self.in_channels                                                    |
-|                                                   |       sign = diff / np.abs(diff) if diff !=0 else 1                                     |
-|                                                   |       pad = (int(sign * np.ceil(np.abs(diff)/2)), int(sign * np.floor(np.abs(diff))/2)) |
-|                                                   |       self.in_channels = d_in                                                           |
-|                                                   |       self.linear.weight.data = nn.functional.pad(self.linear.weight, pad)              |
-+---------------------------------------------------+-----------------------------------------------------------------------------------------+
++--------------------------------------------------+--------------------------------------------------------------+
+|                                                  |                                                              |
+|.. code-block::                                   |.. code-block::                                               |
+|                                                  |                                                              |
+|  import torch.nn as nn                           | from dragon.search_space.cells import Brick                  |
+|  from dragon.search_space.cells import Brick     | import torch.nn as nn                                        |
+|                                                  |                                                              |
+|  class Dropout(Brick):                           | class MLP(Brick):                                            |
+|     def __init__(self, input_shape, rate):       |    def __init__(self, input_shape, out_channels):            |
+|        super(Dropout, self).__init__(input_shape)|       super(MLP, self).__init__(input_shape)                 |
+|        self.dropout = nn.Dropout(p=rate)         |       self.in_channels = input_shape[-1]                     |
+|     def forward(self, X):                        |       self.linear = nn.Linear(self.in_channels, out_channels)|
+|        X = self.dropout(X)                       |    def forward(self, X):                                     |
+|        return X                                  |       X = self.linear(X)                                     |
+|     def modify_operation(self, input_shape):     |       return X                                               |
+|        pass                                      |    def modify_operation(self, input_shape):                  |
+|                                                  |       d_in = input_shape[-1]                                 |
+|                                                  |       diff = d_in - self.in_channels                         |
+|                                                  |       sign = diff / np.abs(diff) if diff !=0 else 1          |
+|                                                  |       pad = (int(sign * np.ceil(np.abs(diff)/2)),            |
+|                                                  |              int(sign * np.floor(np.abs(diff))/2))           |
+|                                                  |       self.in_channels = d_in                                |
+|                                                  |       self.linear.weight.data =                              |
+|                                                  |             nn.functional.pad(self.linear.weight, pad)       |
++--------------------------------------------------+--------------------------------------------------------------+
 
 The codes just above show respectively the implementation of a `Dropout` and an `MLP` layer. 
 While the wrapping of the `Dropout` layer into a `Brick` object requires minimal modifications, the `MLP` wrapping necessitates some effort to implement the `modify_operation` layer.
 Indeed, the weights of an `nn.Linear` shape layer depends on the input tensor dimension.
 
-The variable encoding a `Brick` is called `HpVar`.
+The variable encoding a `Brick` is called `HpVar`. 
+It takes as input a `Constant` or a `CatVar` containing a single `Brick` or several `Bricks` representing the candidate operations, as well as a dictionary of hyperparameters..
+If a `CatVar` is given as input operation, all the `Bricks` contained in the `CatVar` features should share the same hyperparameters.
+
++--------------------------------------------------------------------+-----------------------------------------------------------------------+
+|.. code-block::                                                     |.. code-block::                                                        |
+|                                                                    |                                                                       |
+|  from dragon.search_space.bricks import MLP                        |  from dragon.search_space.bricks import LayerNorm1d, BatchNorm1d      |
+|  from dragon.search_space.zellij_variables import Constant, IntVar |  from dragon.search_space.zellij_variables import CatVar              |
+|  from dragon.search_space.dragon_variables import HpVar            |  from dragon.search_space.dragon_variables import HpVar               |
+|                                                                    |                                                                       |
+|  mlp = Constant("MLP operation", MLP)                              |  norm = CatVar("1d norm layers", features=[LayerNorm1d, BatchNorm1d]) |
+|  hp = {"out_channels": IntVar("out_channels", 1, 10)}              |  norm_var = HpVar("Norm var", norm, hyperparameters={})               |
+|  mlp_var = HpVar("MLP var", mlp, hyperparameters=hp)               |  norm_var.random()                                                    |
+|  mlp_var.random()                                                  |  [<class 'dragon.search_space.bricks.normalization.BatchNorm1d'>, {}] |
+|  [<class 'dragon.search_space.bricks.basics.MLP'>,                 |                                                                       |
+|     {'out_channels': 9}]                                           |                                                                       |
++--------------------------------------------------------------------+-----------------------------------------------------------------------+
+
+These two examples show how to use `HpVar` with a `Constant` and a `CatVar` operation respectively.
+The `CatVar` is made of two versions of normalization layers which share the same hyperparameters (none here).
+To facilitate the use of **DRAGON**, operations as `Brick` and their variable `HpVar` are already implemented in the package and detailed in the `bricks section <bricks.rst>`_.
 
 .. tikz::
 
