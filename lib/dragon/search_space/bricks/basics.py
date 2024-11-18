@@ -23,11 +23,7 @@ class MLP(Brick):
         self.linear = nn.Linear(self.in_channels, out_channels)
 
     def forward(self, X):
-        try:
-            X = self.linear(X)
-        except Exception as e:
-            logger.error(f'linear: {self.linear.weight.get_device()},\nx = {X.get_device()}')
-            raise e
+        X = self.linear(X)
         return X
     
     def modify_operation(self, input_shape, hp=None):

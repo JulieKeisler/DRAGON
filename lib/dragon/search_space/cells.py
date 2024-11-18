@@ -85,7 +85,6 @@ class Node(nn.Module):
         self.activation = activation
         self.input_comp = input_comp
     
-
     def copy(self):
         """copy()
         Creates an new `Node` variable which is a copy of this one.
@@ -324,7 +323,6 @@ class Node(nn.Module):
         # We compute the new output shape.
         self.output_shape = self.compute_output_shape()
 
-
     def modify_operation(self, input_shape):
         """modify_operation(input_shape)
 
@@ -353,8 +351,6 @@ class Node(nn.Module):
             self.modification(input_shapes=input_shapes) # We only update the input shape
         else:
             self.set_operation(input_shapes=input_shapes)# We set the layer with the input shape
-
-
 
     def forward(self, X, h=None):
         """forward(X, h=None)
