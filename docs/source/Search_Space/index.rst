@@ -35,3 +35,12 @@ Composed variables
 The base variables can be composed to create more complex objects such as arrays of variables.
 
 These fundamental elements have been leveraged within the **DRAGON** package to generate new tools for optimizing both the architecture and the hyperparameters of deep neural networks. These tools are very generic and allow the user to use any `nn.Module` object within the optimized architectures. Some basic operations are already implemented and ready to use to facilitate the use of the package.
+
+DAG Encoding
+------------
+
+.. tikz::
+
+   \draw[thick,->] (0,0) -- (2,0) node[anchor=north] {x};
+   \draw[thick,->] (0,0) -- (0,2) node[anchor=east] {y};
+   \draw[red,thick] (0,0) -- (1,1) node[anchor=south] {z};
