@@ -22,11 +22,34 @@ For example, an integer object will be associated with the *variable* `IntVar`, 
 
    v = IntVar("An integer variable", 0, 5)
    v.random()
-::
+   
    3
 
 In this example, the variable `v` defines an integer which can take values from 0 to 5. When calling `v.random()`, the script returns an integer from this interval, here `3`.
-All the base variables available within **DRAGON** are detailed in the `Base Variables <_base_variables>`_ section.
+The Base variables available within **DRAGON** are listed below.
+
+.. list-table:: Base variables
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - Type
+     - Variable Name
+     - Main parameters
+   * - Integer
+     - `IntVar`
+     - lower / upper bound
+   * - Float
+     - `FloatVar`
+     - lower / upper bound
+   * - Categorical (string, etc)
+     - `CatVar`
+     - features: list of possible choices
+   * - Constant (any object)
+     - `Constant`
+     - Value: constant value
+
+Note that the features from a `CatVar` variable might include `Variables` and non-variables values. 
+The implementation of the base variables is detailed in the `Base Variables <base_variables.rst>`_ section.
 
 
 Composed variables
@@ -34,10 +57,91 @@ Composed variables
 
 The base variables can be composed to create more complex objects such as arrays of variables.
 
-These fundamental elements have been leveraged within the **DRAGON** package to generate new tools for optimizing both the architecture and the hyperparameters of deep neural networks. These tools are very generic and allow the user to use any `nn.Module` object within the optimized architectures. Some basic operations are already implemented and ready to use to facilitate the use of the package.
+.. code-block:: python
 
-DAG Encoding
+   from dragon.search_space.zellij_variables import ArrayVar, IntVar, FloatVar, CatVar
+
+   a = ArrayVar(IntVar("int_1", 0,8),
+    ...              IntVar("int_2", 4,45),
+    ...              FloatVar("float_1", 2,12),
+    ...              CatVar("cat_1", ["Hello", 87, 2.56]))
+   print(a)
+   ArrayVar(, [IntVar(int_1, [0;8]),
+                IntVar(int_2, [4;45]),
+                FloatVar(float_1, [2;12]),
+                CatVar(cat_1, ['Hello', 87, 2.56])])
+
+   a.random()
+   [5, 15, 8.483221226216427, 'Hello']
+
+Here we created an array made of four distinct elements: two integers respectively between 0 and 8 and 4 and 45, a float between 2 and 12 and a categorical variable which can take values within ["Hello", 87, 2.56].
+In opposition to the `CatVar` features attribute which might mix variables and non-variables elements, the attribute from the composed variables have to be variables. It means we cannot create an array with a simple 5. To inclue a constant integer, we have to pass through the `Constant` variable.
+
+.. list-table:: Composed variables
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - Definition
+     - Variable Name
+     - Main parameters
+   * - Array of Variables
+     - `ArrayVar`
+     - List of `Variables`
+   * - Fix number of repeats
+     - `Block`
+     - `Variable` that will be repeated and the number of repetitions.
+   * - Random number of repeats
+     - `DynamicBlock`
+     - `Variable` that will be repeated and the maximum number of repetitions.
+
+The implementation of the composed variables is detailed in the `Composed Variables <composed_variables.rst>`_ section.
+
+DAGs Encoding
 ------------
+
+Both the base and composed variables have been used to encode Deep Neural Networks architecture and hyper-parameters.
+
+Operations and hyperparameters encoding
+~~~~~~~~~~~~~~~~~~~~~~
+
+The Deep Neural Networks are made of layers. In **DRAGON**'s case, those layers are *nn.Module* from *PyTorch*.
+The user can use any base or custom *nn.Module*, but as to wrap it into a *Brick* object. 
+A brick takes as input an input shape and some hyper-parameters and initialize a given *nn.Module* with these hyperparameters so it can pocess a tensor of the given input shape.
+The forward pass of a *Brick* can just apply the layer to an input tensor, or be more complex to transform the input data before the operation.
+Finally, the abstract class *Brick* also implements a *modify_operation* method. 
+It takes as input an `input_shape` tuple and modifies the operation weights shape, so that the operation may take as input a vector of shape `input_shape`.
+This method is applied when the Deep Neural Network is created or modified.
+The applications case will be detailled below.
+
++---------------------------------------------------+-----------------------------------------------------------------------------------------+
+|                                                   |                                                                                         |
+|.. code-block::                                    |.. code-block::                                                                          |
+|                                                   |                                                                                         |
+|  import torch.nn as nn                            | from dragon.search_space.cells import Brick                                             |
+|  from dragon.search_space.cells import Brick      | import torch.nn as nn                                                                   |
+|                                                   |                                                                                         |
+|  class Dropout(Brick):                            | class MLP(Brick):                                                                       |
+|     def __init__(self, input_shape, rate):        |    def __init__(self, input_shape, out_channels):                                       |
+|        super(Dropout, self).__init__(input_shape) |       super(MLP, self).__init__(input_shape)                                            |
+|        self.dropout = nn.Dropout(p=rate)          |       self.in_channels = input_shape[-1]                                                |
+|     def forward(self, X):                         |       self.linear = nn.Linear(self.in_channels, out_channels)                           |
+|        X = self.dropout(X)                        |    def forward(self, X):                                                                |
+|        return X                                   |       X = self.linear(X)                                                                |
+|     def modify_operation(self, input_shape):      |       return X                                                                          |
+|        pass                                       |    def modify_operation(self, input_shape):                                             |
+|                                                   |       d_in = input_shape[-1]                                                            |
+|                                                   |       diff = d_in - self.in_channels                                                    |
+|                                                   |       sign = diff / np.abs(diff) if diff !=0 else 1                                     |
+|                                                   |       pad = (int(sign * np.ceil(np.abs(diff)/2)), int(sign * np.floor(np.abs(diff))/2)) |
+|                                                   |       self.in_channels = d_in                                                           |
+|                                                   |       self.linear.weight.data = nn.functional.pad(self.linear.weight, pad)              |
++---------------------------------------------------+-----------------------------------------------------------------------------------------+
+
+The codes just above show respectively the implementation of a `Dropout` and an `MLP` layer. 
+While the wrapping of the `Dropout` layer into a `Brick` object requires minimal modifications, the `MLP` wrapping necessitates some effort to implement the `modify_operation` layer.
+Indeed, the weights of an `nn.Linear` shape layer depends on the input tensor dimension.
+
+The variable encoding a `Brick` is called `HpVar`.
 
 .. tikz::
 
@@ -93,9 +197,9 @@ DAG Encoding
 
    \end{minipage}};
    % Text Node
-   \draw (229,282) node [anchor=north west][inner sep=0.75pt]   [align=left] {\textcolor[rgb]{0.29,0.56,0.89}{Brick} or list of \textcolor[rgb]{0.29,0.56,0.89}{Bricks }(\textit{PyTorch} operation)\textcolor[rgb]{0.29,0.56,0.89}{ }= \textcolor[rgb]{0.56,0.07,1}{Constant}\textcolor[rgb]{0.29,0.56,0.89}{ }or\textcolor[rgb]{0.29,0.56,0.89}{ }\textcolor[rgb]{0.56,0.07,1}{CatVar}};
+   \draw (229,282) node [anchor=north west][inner sep=0.75pt]   [align=left] {\textcolor[rgb]{0.29,0.56,0.89}{Brick} or list of \textcolor[rgb]{0.29,0.56,0.89}{Bricks }(\textit{PyTorch} operation) = \textcolor[rgb]{0.56,0.07,1}{Constant} or \textcolor[rgb]{0.56,0.07,1}{CatVar}};
    % Text Node
-   \draw (229,324) node [anchor=north west][inner sep=0.75pt]   [align=left] {Hyperparameters = dictionnary of base variables \\(e.g \textcolor[rgb]{0.56,0.07,1}{FloatVar}, \textcolor[rgb]{0.56,0.07,1}{CatVar})};
+   \draw (229,324) node [anchor=north west][inner sep=0.75pt]   [align=left] {Hyperparameters = dictionnary of base variables \\(e.g: \textcolor[rgb]{0.56,0.07,1}{FloatVar}, \textcolor[rgb]{0.56,0.07,1}{CatVar})};
    % Connection
    \draw    (134.75,62.55) -- (225.8,46.35) ;
    \draw [shift={(227.77,46)}, rotate = 169.91] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
