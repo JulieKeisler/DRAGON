@@ -15,7 +15,13 @@ They can be seen as a neighborhood or a mutation operator.
 They 
 These attributes are added using `addons`. An addon, is an object that is linked to another one. 
 It allows to extend some functionnalities of the target without modifying its implementation. 
-The `addons` implementations are described in detail `here <addons.rst>`_.
+The `addons` implementations are described in detail here:
+
+.. toctree::
+   :maxdepth: 1
+
+   addons
+
 
 **DRAGON** provides an implementation of one typical neighborhood by variable, but the user may implement its own one.
 A neighborhood is a class inheriting from the abstract class `VarNeighborhood`, which is an `Addon`.
@@ -42,7 +48,8 @@ It should have the following structure:
       @VarNeighborhood.neighborhood.setter
       def neighborhood(self, neighborhood):
          """
-         Set the neighborhood parameter (it might be for example the probability to mutate each ArrayVar values).
+         Set the neighborhood parameter 
+         (it might be for example the probability to mutate each ArrayVar values).
          """
          self._neighborhood = neighborhood
 
@@ -63,13 +70,13 @@ It is parameterized by an argument specifying the interval size.
 
       class IntInterval(VarNeighborhood): 
       def __call__(self, value, size=1):
-         # Get the upper bound for the interval:
-         # the minum value between [current value + the neighborhood] and 
-         # [the maximum value the variable can take]
+         """Get the upper bound for the interval:
+         the minum value between [current value + the neighborhood] and 
+         [the maximum value the variable can take]"""
          upper = np.min([value + self.neighborhood + 1, self.target.up_bound])
-         # Get the lower bound for the interval: 
-         # the maximum value between [current value - the neighborhood] and 
-         # [the minimum value the variable can take]
+         """Get the lower bound for the interval: 
+         the maximum value between [current value - the neighborhood] and 
+         [the minimum value the variable can take]"""
          lower = np.max([value - self.neighborhood, self.target.low_bound])
 
          res = []
@@ -161,7 +168,7 @@ For example with a `Block`:
 In this example, the `Block` content: the `FloatVar` variable is given a `neighbor` addon.
 The addon `BlockInterval` make use of the `FloatInterval` to create the new value.
 
-The detailed implementation can be found `here <search_operators.rst>`_.
+The detailed implementation can be found here:
 
 .. toctree::
    :maxdepth: 1
@@ -171,10 +178,25 @@ The detailed implementation can be found `here <search_operators.rst>`_.
 DAG encoding neighborhoods
 ------------
 
-Besides the base and composed variables, the ones used for DAG encoding, namely `HpVar`, `NodeVariable` and `EvoDagVariable` have also already implemented neighborhoods.
+Besides the base and composed variables, the ones used for DAG encoding, namely `HpVar`, `NodeVariable` and `EvoDagVariable` also have implemented neighborhoods.
 
 Operation neighborhood
 ~~~~~~~~~~~~~~~~~~~~
+
+The `HpVar` neighborhood is called `HpInterval`.
+It takes as input an operation and a set of hyperparameters.
+It selects among the operation and the various hyperparameters the ones that will be mutated.
+The mutation operation does not have more chance to be changed than the hyperparameters.
+It is applied only if the operation is not a `Constant`.
+The chosen hyperparameters are mutated according to their `neighbor` addon.
+The `HpInterval` object returns the new operation and hyperparameters.
+
+Another neighborhood called `CatHpInterval` 
+
+Node neighborhood
+~~~~~~~~~~~~~~~~~~~~
+
+
 
 .. toctree::
    :maxdepth: 1

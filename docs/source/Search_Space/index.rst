@@ -9,6 +9,7 @@ A variable should implements a *random* method detailing how to create a random 
 The structure of a variable definition is the following:
 
 .. code-block:: python
+
    from dragon.search_space.zellij_variables import Variable
 
    class CustomVar(Variable):
@@ -236,22 +237,40 @@ Node encoding
 ~~~~~~~~~~~~~~~~~~~~~~
 
 **DRAGON** implements Deep Neural Networks as computational graphs, where the nodes are a succession of a combiner, an operation and an activation function.
-The operation is implemented as a `Brick`, as mentionned above.
+The operation is implemented as a `Brick`, as mentionned above. 
 The combiner is used to unify the (possible) multiple inputs that the node might have into one unique tensor.
 The combiners available in **DRAGON** are *add*, *mul* and *concat* and are encoded as a string.
 The activation function can be any `PyTorch` implemented or custom activation function.
 An `nn.Module` object called `Node` takes as input these three elements to create a node.
 A `Node` implements a lot of methods. The main ones are:
-- `set_operation`: takes as input a variable `input_shapes` containing the input shapes of the incoming tensors. The method use the combiner to compute the operation input shape and initialize the operation weights with the right shape. The initialized operation is then used to compute the node output shape.  This value will be used by the `set_operations` methods from the child nodes of the current one.
-- `modification`: modify the node combiner, operation, hyperparameters or output shape. The modification may happened after a mutation or because the tensor input shape has changed. If the operation is not modified, the method `modify_operation` from the `Brick` operation is called to only change the weights. 
-- `set`: automatically choose between the `set_operation` and `modification` methods.
-- `forward`: compute the node forward pass from the combiner to the activation function.
+* `set_operation`: takes as input a variable `input_shapes` containing the input shapes of the incoming tensors. The method use the combiner to compute the operation input shape and initialize the operation weights with the right shape. The initialized operation is then used to compute the node output shape.  This value will be used by the `set_operations` methods from the child nodes of the current one.
+* `modification`: modify the node combiner, operation, hyperparameters or output shape. The modification may happened after a mutation or because the tensor input shape has changed. If the operation is not modified, the method `modify_operation` from the `Brick` operation is called to only change the weights. 
+* `set`: automatically choose between the `set_operation` and `modification` methods.
+* `forward`: compute the node forward pass from the combiner to the activation function.
 
 The variable corresponding to a `Node` is called `NodeVariable.` 
 It takes as input a `Variables` for the combiner and the activation functions which may be `Constant` or `CatVar`.
-The operation is implemented an `HpVar` as mentioned above. 
-In some cases, the node might take several candidate operations. Therefore, the operation is encoded as a `CatVar` of `HpVar`, containing the various candidates. 
-The `random` method from the `NodeVariable` randomly select a combiner and an activation function. Then it randomly selects the operation (in case of a `CatVar` operation) and drawn random hyperparameters.
+The operation is implemented an `HpVar` as mentioned above.
+However, as a node can have multiple candidate operations, all of them implemented as different `HpVar` objects.
+In this case, instead of direclty being given as an `HpVar`, they are contained within a `CatVar`.
+The `CatVar` features will contain the different `HpVar`.
+An example is given below.
+
+.. code-block:: python
+
+   from dragon.search_space.zellij_variables import CatVar
+   from dragon.search_space.bricks_variables import activation_var
+   operation=CatVar("Candidates", [mlp_var, norm_var])
+   candidates = NodeVariable(label = "Candidates", 
+               combiner=CatVar("Combiner", features=['add', 'concat']),
+               operation=CatVar("Candidates", [mlp, pooling]),
+               activation_function=activation_var("Activation"))
+
+The activation functions are encoded as a `CatVar`. 
+A default `CatVar` called `activation_var` containing the implemented activation function from `PyTorch` is available.
+
+The `random` method from the `NodeVariable` randomly select a combiner and an activation function.
+Then it randomly selects the operation (in case of a `CatVar` operation) and drawn random hyperparameters.
 
 DAG encoding
 ~~~~~~~~~~~~~~~~~~~~~~
