@@ -1,8 +1,5 @@
-.. _other_operators:
-
-============
-Other Search Operators
-============
+Other operators implementation
+++++++++++++++++++++
 
 .. automodule:: dragon.search_algorithm.operators
    :members: DAGTwoPoint, adj_matrix_crossover
