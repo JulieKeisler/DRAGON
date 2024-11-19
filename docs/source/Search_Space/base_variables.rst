@@ -1,3 +1,6 @@
+Base Variables implementation
+------------
+
 .. automodule:: dragon.search_space.zellij_variables
    :members: Variable
    :undoc-members:

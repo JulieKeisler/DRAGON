@@ -1,5 +1,8 @@
 .. _composed_var:
 
+Composed variables implementation
+------------
+
 Composed `Variables` are `Variables` made of other `Variables`.
 
 .. automodule:: dragon.search_space.zellij_variables

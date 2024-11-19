@@ -25,7 +25,7 @@
   :maxdepth: 2
   :hidden:
 
-  ../Search_Algorithm/index
+  ../Search_Operators/index
 
 ..
 

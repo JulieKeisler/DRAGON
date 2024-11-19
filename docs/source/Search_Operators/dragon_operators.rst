@@ -1,8 +1,7 @@
 .. _dragon_neigh:
 
-============
-DRAGON Neighborhoods
-============
+DAG encoding neighborhoods
+++++++++++++++++++++++++
 
 .. automodule:: dragon.search_algorithm.neighborhoods
    :members: HpInterval, CatHpInterval, NodeInterval, EvoDagInterval
