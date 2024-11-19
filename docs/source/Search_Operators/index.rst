@@ -191,12 +191,23 @@ It is applied only if the operation is not a `Constant`.
 The chosen hyperparameters are mutated according to their `neighbor` addon.
 The `HpInterval` object returns the new operation and hyperparameters.
 
-Another neighborhood called `CatHpInterval` 
-
 Node neighborhood
 ~~~~~~~~~~~~~~~~~~~~
 
+The `NodeVariable` might take the operation as a `HpVar` or a `CatVar` of `HpVar` when dealing with candidate operations implemented in various `HpVar`.
+In this case, the neighborhood for the `CatVar` of `HpVar` is called `CatHpInterval`.
+This neighborhood chooses between modifying the current operation or draw a completely new one.
+It takes as parameter the probability of only modifying the current operation (be default equals to 0.9).
+With a probability p, the function will look for the `HpVar` corresponding to the current value and call the `HpInterval` of this variable.
+The matching is done by looking at the `features` attibute if the `HpVar` operation is a `CatVar` or the `value` attribute if the operation is a `Constant`.
+With a probability 1-p, a new layer is drawn (with a new operation a new hyperparameters), by calling the `random` function of the `CatVar`.
 
+The neighborhood class associated to a `NodeVariable` is called `NodeInterval`.
+It selects among the combiner, the operation and the activation function what will be modified.
+For the selected elements, their `neighbor` attributes are called.
+
+AdjMatrix neighborhood
+~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
    :maxdepth: 1
