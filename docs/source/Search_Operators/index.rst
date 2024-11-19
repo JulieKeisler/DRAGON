@@ -206,8 +206,27 @@ The neighborhood class associated to a `NodeVariable` is called `NodeInterval`.
 It selects among the combiner, the operation and the activation function what will be modified.
 For the selected elements, their `neighbor` attributes are called.
 
-AdjMatrix neighborhood
+DAG neighborhood
 ~~~~~~~~~~~~~~~~~~~~
+
+The `EvoDagVariable` neighborhood class is called `EvoDagInterval`.
+This neighborhood may do five types of mutations:
+* Adding a node
+* Deleting a node
+* Modifying a node
+* Modifying the input connections of a node
+* Modifying the output connections of a node
+It first randomly choose the nodes that will be modified.
+A parameter `nb_mutations` can be set to constrain the number of modified nodes.
+For each node selected, the mutations that can be applied may vary.
+For example, if the last node has been selected, its outgoing connections cannot be changed.
+If the maximum number of node has been reached, the `add` mutation cannot be used.
+A possible mutation is then associated to each selected node and performed.
+After the mutation on a node has been performed, some tests are ran to insure that the matrix structure is correct.
+It prevents nodes from having no incoming or outgoing connections.
+The nodes operations are also modified by calling their `modification` function in case some input shapes have been modified.
+
+The detailed implementation of `HpInterval`, `CatHpInterval`, `NodeInterval` and `EvoDagInterval` can be found here:
 
 .. toctree::
    :maxdepth: 1
