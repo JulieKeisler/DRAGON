@@ -1,7 +1,7 @@
 .. _search_space:
 
 =============================
-Presentation
+Search space presentation
 =============================
 
 The search space design is based on an abstract class called *Variable*, originally proposed within a hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
@@ -30,34 +30,36 @@ The structure of a variable definition is the following:
         Specify is a variable is a constant or not. 
         This function might depends on the variable attributes.
         """
+
 All the variables ihnerit from the abstract class `Variable`.
 It gives the global structure of a variable and allow to add `Addons`.
 
 An example of the implementation of a variable for an integer can be found below:
 
 .. code-block:: python
+
    class IntVar(Variable):
-    """
-   `IntVar` defines a variable discribing Integer variables. 
-    The user must specify a lower and an upper bounds.
-    """
-    def __init__(
-        self, label, lower, upper, **kwargs):
-        super(IntVar, self).__init__(label, **kwargs)
-        self.low_bound = lower
-        self.up_bound = upper + 1
+      """
+      `IntVar` defines a variable discribing Integer variables. 
+      The user must specify a lower and an upper bounds.
+      """
+      def __init__(
+         self, label, lower, upper, **kwargs):
+         super(IntVar, self).__init__(label, **kwargs)
+         self.low_bound = lower
+         self.up_bound = upper + 1
 
-    def random(self, size=None):
-        """
-        `size` integers are randomly drawn form the interval `[low_bound, up_bound]`.
-        """
-        return np.random.randint(self.low_bound, self.up_bound, size, dtype=int)
+      def random(self, size=None):
+         """
+         `size` integers are randomly drawn form the interval `[low_bound, up_bound]`.
+         """
+         return np.random.randint(self.low_bound, self.up_bound, size, dtype=int)
 
-    def isconstant(self):
-        """
-        An IntVar is a constant if the upper and the lower bounds are equals.
-        """
-        return self.up_bound == self.low_bound
+      def isconstant(self):
+         """
+         An IntVar is a constant if the upper and the lower bounds are equals.
+         """
+         return self.up_bound == self.low_bound
 
 This class can be used to create integers:
 
@@ -172,7 +174,7 @@ The applications case will be detailled below.
 
 +--------------------------------------------------+--------------------------------------------------------------+
 |                                                  |                                                              |
-|.. code-block::                                   |.. code-block::                                               |
+|.. code-block:: python                            |.. code-block:: python                                        |
 |                                                  |                                                              |
 |  import torch.nn as nn                           | from dragon.search_space.cells import Brick                  |
 |  from dragon.search_space.cells import Brick     | import torch.nn as nn                                        |
@@ -205,7 +207,7 @@ It takes as input a `Constant` or a `CatVar` containing a single `Brick` or seve
 If a `CatVar` is given as input operation, all the `Bricks` contained in the `CatVar` features should share the same hyperparameters.
 
 +--------------------------------------------------------------------+-----------------------------------------------------------------------+
-|.. code-block::                                                     |.. code-block::                                                        |
+|.. code-block:: python                                              |.. code-block:: python                                                 |
 |                                                                    |                                                                       |
 |  from dragon.search_space.bricks import MLP                        |  from dragon.search_space.bricks import LayerNorm1d, BatchNorm1d      |
 |  from dragon.search_space.zellij_variables import Constant, IntVar |  from dragon.search_space.zellij_variables import CatVar              |
@@ -268,12 +270,15 @@ Usually this `NodeVariable` will have its operation encoded as a `CatVar` to hav
 A random `AdjMatrix` is created by first randomly drawing the number of nodes from the graph. Then, a random value of the `NodeVariable` is drawn for each node.
 Finally, an adjacency matrix of the right dimension is created.
 
+Implementation
+~~~~~~~~~~~~~~~~~~~~~~
+
 The implementation of the objects and variables use to encode the Deep Neural Networks (e.g `Brick`, `Node`, `EvoDagsVariable`) is detailed in `This section <dag_encoding.rst>`_.
 
 .. toctree::
    :maxdepth: 1
 
-   dag_encoding
+   dag_en
 
 The Figure below illustrates how the elements are linked together.
 

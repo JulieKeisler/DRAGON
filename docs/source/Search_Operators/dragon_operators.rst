@@ -1,6 +1,6 @@
 .. _dragon_neigh:
 
-DAG encoding neighborhoods
+DAG neighborhoods implementation
 ++++++++++++++++++++++++
 
 .. automodule:: dragon.search_algorithm.neighborhoods

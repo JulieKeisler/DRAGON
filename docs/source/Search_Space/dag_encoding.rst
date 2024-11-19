@@ -1,5 +1,3 @@
-.. _nas_classes:
-
 DAG implementation
 ------------
 
@@ -7,11 +5,11 @@ DAG implementation
 DAG encoding
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. tomodule:: dragon.search_space.cells
+.. automodule:: dragon.search_space.cells
    :members: Brick, Node, EvoDagVariable, fill_adj_matrix
    :undoc-members:
    :show-inheritance:
-   :noindex:au
+   :noindex:
 
 
 DAG variables

@@ -1,7 +1,7 @@
 .. _search_operators:
 
 =============================
-Presentation
+Search operators presentation
 =============================
 
 
@@ -22,73 +22,75 @@ A neighborhood is a class inheriting from the abstract class `VarNeighborhood`, 
 It should have the following structure:
 
 .. code-block:: python
+
    class CustomInterval(VarNeighborhood):
-    """CustomInterval
-    Addon used to determine the neighbor function of a Variable.
+      """CustomInterval
+      Addon used to determine the neighbor function of a Variable.
 
-    Parameters
-    ----------
-    variable : Variable, default=None
-        Targeted Variable.
-    neighborhood, default=None
-        Parameter of the neighborhood
-    """
-    def __call__(self, value, size=1): 
-         """
-         Function defining how to choose `size` neighbors surrounding the variable `value`
-         """
+      Parameters
+      ----------
+      variable : Variable, default=None
+         Targeted Variable.
+      neighborhood, default=None
+         Parameter of the neighborhood
+      """
+      def __call__(self, value, size=1): 
+            """
+            Function defining how to choose `size` neighbors surrounding the variable `value`
+            """
 
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood):
-        """
-        Set the neighborhood parameter (it might be for example the probability to mutate each ArrayVar values).
-        """
-        self._neighborhood = neighborhood
+      @VarNeighborhood.neighborhood.setter
+      def neighborhood(self, neighborhood):
+         """
+         Set the neighborhood parameter (it might be for example the probability to mutate each ArrayVar values).
+         """
+         self._neighborhood = neighborhood
 
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-         """
-         Give to the CustomInterval object the information of the related `Variable`.
-         """
-        self._target = variable
+      @VarNeighborhood.target.setter
+      def target(self, variable):
+            """
+            Give to the CustomInterval object the information of the related `Variable`.
+            """
+         self._target = variable
 
 Here is the example of a neighborhood defined for the `IntVar` variable. 
 The neighborhood picks the new values within an interval surrounding the current one.
 It is parameterized by an argument specifying the interval size.
 
 .. code-block:: python
+
    from dragon.search_space.addons import VarNeighborhood
 
-   class IntInterval(VarNeighborhood): 
-   def __call__(self, value, size=1):
-      # Get the upper bound for the interval:
-      # the minum value between [current value + the neighborhood] and 
-      # [the maximum value the variable can take]
-      upper = np.min([value + self.neighborhood + 1, self.target.up_bound])
-      # Get the lower bound for the interval: 
-      # the maximum value between [current value - the neighborhood] and 
-      # [the minimum value the variable can take]
-      lower = np.max([value - self.neighborhood, self.target.low_bound])
+      class IntInterval(VarNeighborhood): 
+      def __call__(self, value, size=1):
+         # Get the upper bound for the interval:
+         # the minum value between [current value + the neighborhood] and 
+         # [the maximum value the variable can take]
+         upper = np.min([value + self.neighborhood + 1, self.target.up_bound])
+         # Get the lower bound for the interval: 
+         # the maximum value between [current value - the neighborhood] and 
+         # [the minimum value the variable can take]
+         lower = np.max([value - self.neighborhood, self.target.low_bound])
 
-      res = []
-      for _ in range(size):
-            v = np.random.randint(lower, upper)
-            while v == value:
+         res = []
+         for _ in range(size):
                v = np.random.randint(lower, upper)
-            res.append(int(v))
-      return res
-      if size == 1:
-         return v[0]
-      else
-         return v
+               while v == value:
+                  v = np.random.randint(lower, upper)
+               res.append(int(v))
+         return res
+         if size == 1:
+            return v[0]
+         else
+            return v
 
-    @VarNeighborhood.neighborhood.setter
-    def neighborhood(self, neighborhood):
-      self._neighborhood = neighborhood
+      @VarNeighborhood.neighborhood.setter
+      def neighborhood(self, neighborhood):
+         self._neighborhood = neighborhood
 
-    @VarNeighborhood.target.setter
-    def target(self, variable):
-      self._target = variable
+      @VarNeighborhood.target.setter
+      def target(self, variable):
+         self._target = variable
 
 
 This `IntInterval` is given to the `Variable` during its definition:
@@ -109,7 +111,7 @@ Base and composed variables
 The neighborhoods operators available for base and composed variables within **DRAGON** are listed below.
 
 .. list-table:: Base and composed neighborhoods
-   :widths: 20 20 20 40
+   :widths: 25 20 25 30
    :header-rows: 1
 
    * - Type
@@ -127,19 +129,19 @@ The neighborhoods operators available for base and composed variables within **D
    * - Categorical (string, etc)
      - `CatVar`
      - `CatInterval`
-     - -
+     - 
    * - Constant (any object)
      - `Constant`
      - `ConstantInterval`
-     - -
+     - 
    * - Array of Variables   
      - `ArrayVar`
      - `ArrayInterval`
-     - -
+     - 
    * - Fix number of repeats
      - `Block`
      - `BlockInterval`
-     - `Variable` that will be repeated and the number of repetitions.
+     - 
    * - Random number of repeats
      - `DynamicBlock`
      - `DynamicBlockInterval`
@@ -160,6 +162,7 @@ In this example, the `Block` content: the `FloatVar` variable is given a `neighb
 The addon `BlockInterval` make use of the `FloatInterval` to create the new value.
 
 The detailed implementation can be found `here <search_operators.rst>`_.
+
 .. toctree::
    :maxdepth: 1
 
@@ -168,15 +171,16 @@ The detailed implementation can be found `here <search_operators.rst>`_.
 DAG encoding neighborhoods
 ------------
 
-Similarly 
+Besides the base and composed variables, the ones used for DAG encoding, namely `HpVar`, `NodeVariable` and `EvoDagVariable` have also already implemented neighborhoods.
+
+Operation neighborhood
+~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
    :maxdepth: 1
 
    dragon_operators
 
-
-   dragon_operators
 
 Besides the mutation operators, other search operators have been implemented to use **DRAGON** with an evolutionary algorithm.
 

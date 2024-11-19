@@ -1,7 +1,7 @@
-Implementation
+Neighborhoods implementation
 ++++++++++++++++++++
 
-Here are presented example of neighborhoods that can be used for the basic :code:`zellij_var`.
+Here are presented implementations of neighborhoods that can be used for the base and composed variables.
 
 .. _intervals:
 

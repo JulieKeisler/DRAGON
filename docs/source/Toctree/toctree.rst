@@ -13,10 +13,6 @@
   :hidden:
 
   ../Search_Space/index
-  ../Search_Space/base_variables
-  ../Search_Space/composed_variables
-  ../Search_Space/dag_encoding
-  ../Search_Space/bricks
   
 ..
 
