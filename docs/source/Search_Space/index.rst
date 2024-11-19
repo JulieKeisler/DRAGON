@@ -4,28 +4,79 @@
 Presentation
 =============================
 
-The search space design is based on an abstract class called *Variable*, originally proposed within an hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
+The search space design is based on an abstract class called *Variable*, originally proposed within a hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
 A variable should implements a *random* method detailing how to create a random value and an *isconstant* method specifying if the variable is a constant or not.
-A variable can take *Addons* to implement additional features such as the `Search Operators <../Search_Operators/index.rst>`_.
-The search space is made of base and composed variables to create more or less complex search spaces.
+The structure of a variable definition is the following:
+
+.. code-block:: python
+   from dragon.search_space.zellij_variables import Variable
+
+   class CustomVar(Variable):
+
+      def __init__(self, label, **kwargs):
+         super(CustomVar, self).__init__(label, **kwargs)
+         """
+         The label is the unique idenfier of a variable within the search space.
+         Initialize the variable attribute.
+         """
+
+    def random(self, size=None):
+        """
+        Create `size` random values of the variables
+        """
+
+    def isconstant(self):
+        """
+        Specify is a variable is a constant or not. 
+        This function might depends on the variable attributes.
+        """
+All the variables ihnerit from the abstract class `Variable`.
+It gives the global structure of a variable and allow to add `Addons`.
+
+An example of the implementation of a variable for an integer can be found below:
+
+.. code-block:: python
+   class IntVar(Variable):
+    """
+   `IntVar` defines a variable discribing Integer variables. 
+    The user must specify a lower and an upper bounds.
+    """
+    def __init__(
+        self, label, lower, upper, **kwargs):
+        super(IntVar, self).__init__(label, **kwargs)
+        self.low_bound = lower
+        self.up_bound = upper + 1
+
+    def random(self, size=None):
+        """
+        `size` integers are randomly drawn form the interval `[low_bound, up_bound]`.
+        """
+        return np.random.randint(self.low_bound, self.up_bound, size, dtype=int)
+
+    def isconstant(self):
+        """
+        An IntVar is a constant if the upper and the lower bounds are equals.
+        """
+        return self.up_bound == self.low_bound
+
+This class can be used to create integers:
+
+.. code-block:: python
+
+   v = IntVar("An integer variable", 0, 5)
+   v.random()
+   3
+
+In this example, the variable `v` defines an integer which can take values from 0 to 5.
+When calling `v.random()`, the script returns an integer from this interval, here `3`.
+
+**DRAGON** offers the implementage of base and composed variables to create more or less complex search spaces.
 Among the composed variables, some have been created specifically for the DAG-encodings.
 
 Base variables
 ------------
 
-The base variables implements basic objects such as integers, floats or categorical variables. Each of this object is associated with a *Variable*, which defines what values an object can take.
-For example, an integer object will be associated with the *variable* `IntVar`, that will take as arguments the lower and upper bounds, defining where the integer is defined.
-
-.. code-block:: python
-
-   from dragon.search_space.zellij_variables import IntVar
-
-   v = IntVar("An integer variable", 0, 5)
-   v.random()
-   
-   3
-
-In this example, the variable `v` defines an integer which can take values from 0 to 5. When calling `v.random()`, the script returns an integer from this interval, here `3`.
+The base variables implements basic objects such as integers, floats or categorical variables. 
 The Base variables available within **DRAGON** are listed below.
 
 .. list-table:: Base variables
@@ -51,6 +102,10 @@ The Base variables available within **DRAGON** are listed below.
 Note that the features from a `CatVar` variable might include `Variables` and non-variables values. 
 The implementation of the base variables is detailed in the `Base Variables <base_variables.rst>`_ section.
 
+.. toctree::
+   :maxdepth: 1
+
+   base_variables
 
 Composed variables
 ------------
@@ -92,6 +147,11 @@ To inclue a constant integer, we have to use the `Constant` variable.
      - `Variable` that will be repeated and the maximum number of repetitions.
 
 The implementation of the composed variables is detailed in the `Composed Variables <composed_variables.rst>`_ section.
+
+.. toctree::
+   :maxdepth: 1
+
+   composed_variables
 
 Deep Neural Networks Encoding
 ------------
@@ -165,6 +225,11 @@ The only hyperparameter that can be optimized for the `MLP` layer is the size of
 It is here an integer between 1 and 10.
 To facilitate the use of **DRAGON**, operations as `Brick` and their variable `HpVar` are already implemented in the package and detailed in the `bricks section <bricks.rst>`_.
 
+.. toctree::
+   :maxdepth: 1
+
+   bricks
+
 Node encoding
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -204,6 +269,12 @@ A random `AdjMatrix` is created by first randomly drawing the number of nodes fr
 Finally, an adjacency matrix of the right dimension is created.
 
 The implementation of the objects and variables use to encode the Deep Neural Networks (e.g `Brick`, `Node`, `EvoDagsVariable`) is detailed in `This section <dag_encoding.rst>`_.
+
+.. toctree::
+   :maxdepth: 1
+
+   dag_encoding
+
 The Figure below illustrates how the elements are linked together.
 
 .. tikz::
