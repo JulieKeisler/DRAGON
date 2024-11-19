@@ -32,7 +32,6 @@ class Addon(ABC):
     def target(self, object):
         self._target = object
 
-
 class VarAddon(Addon):
     """VarAddon
 
@@ -67,6 +66,36 @@ class VarAddon(Addon):
             )
 
         self._target = variable
+
+class VarNeighborhood(VarAddon):
+    """VarNeighborhood
+
+    :ref:`addons` where the target must be of type :ref:`var`.
+    Describes what a neighborhood is for a :ref:`var`.
+
+    Parameters
+    ----------
+    target : :ref:`var`, default=None
+        Object targeted by the addons
+
+    Attributes
+    ----------
+    target : :ref:`var`, default=None
+        Object targeted by the addons
+
+    """
+
+    def __init__(self, neighborhood, variable=None):
+        super(VarAddon, self).__init__(variable)
+        self.neighborhood = neighborhood
+
+    @property
+    def neighborhood(self):
+        return self._neighborhood
+
+    @abstractmethod
+    def __call__(self, point, size=1):
+        pass
 
 class SearchspaceAddon(Addon):
     """SearchspaceAddon
@@ -126,37 +155,6 @@ class Neighborhood(SearchspaceAddon):
     def __call__(self, point, size=1):
         pass
 
-
-class VarNeighborhood(VarAddon):
-    """VarNeighborhood
-
-    :ref:`addons` where the target must be of type :ref:`var`.
-    Describes what a neighborhood is for a :ref:`var`.
-
-    Parameters
-    ----------
-    target : :ref:`var`, default=None
-        Object targeted by the addons
-
-    Attributes
-    ----------
-    target : :ref:`var`, default=None
-        Object targeted by the addons
-
-    """
-
-    def __init__(self, neighborhood, variable=None):
-        super(VarAddon, self).__init__(variable)
-        self.neighborhood = neighborhood
-
-    @property
-    def neighborhood(self):
-        return self._neighborhood
-
-    @abstractmethod
-    def __call__(self, point, size=1):
-        pass
-
 class Mutator(SearchspaceAddon):
     """Mutator
 
@@ -177,7 +175,6 @@ class Mutator(SearchspaceAddon):
 
     def __init__(self, search_space=None):
         super(Mutator, self).__init__(search_space)
-
 
 class Crossover(SearchspaceAddon):
     """Crossover
