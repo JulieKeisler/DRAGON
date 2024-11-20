@@ -1,397 +1,85 @@
 from copy import deepcopy
 import os
 import pickle
-import shutil
+from dragon.search_algorithm.search_algorithm import SearchAlgorithm
 import numpy as np
 import pandas as pd
-import torch
-import signal
 from dragon.utils.tools import logger
 
-def save_best_model(storage, min_loss, save_dir, idx):
-    model = storage[idx]
-    loss = model['Loss']
-    if loss < min_loss:
-        logger.info(f'Best found! {loss} < {min_loss}')
-        min_loss = loss
-        x_path = model["Individual"]
-        if not isinstance(x_path, str):
-            x = x_path
-            x_path = os.path.join(save_dir, f"{idx}")
-            with open(x_path + "/x.pkl", 'wb') as f:
-                    pickle.dump(x, f)
-        try:
-            if len(os.listdir(x_path))>1:
-                try:
-                    shutil.copytree(x_path, save_dir+"/best_model/")
-                except FileExistsError:
-                    shutil.rmtree(save_dir+"/best_model/")
-                    shutil.copytree(x_path, save_dir+"/best_model/")
-        except torch.cuda.OutOfMemoryError:
-            logger.error(f'Failed to load x, idx= {idx}.')
-    return min_loss
-
-class Mutant_UCB:
-    def __init__(self, search_space, save_dir, T, N, K, E, evaluation, init_args=None, **args):
-        self.T = T
-        self.N = N
-        self.K = K
-        self.E = E
-        self.search_space = search_space
-        try:
-            from mpi4py import MPI
-            self.comm = MPI.COMM_WORLD
-            self.status = MPI.Status()
-            self.p_name = MPI.Get_processor_name()
-            self.rank = self.comm.Get_rank()
-            self.p = self.comm.Get_size()
-            self.run = self.run_mpi
-        except Exception as e:
-            logger.warning('Install mpi4py if you want to use the distributed version.')
-            self.run = self.run_no_mpi
-        self.evaluation = evaluation
-        self.save_dir = save_dir
-        self.init_args=init_args
-
-    def run_no_mpi(self):
-        min_loss = np.inf
-        population = self.search_space.random(self.K)
-        # First round
-        storage = {}
-        for i, x in enumerate(population):
-            x_path = os.path.join(self.save_dir, f"{i}")
-            os.makedirs(x_path, exist_ok=True)
-            loss = self.evaluation(x, idx=i)
-            if not isinstance(loss, float):
-                if len(loss) ==2:
-                    loss, model = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                elif len(loss) == 3:
-                    loss, model, x = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                with open(x_path + "/x.pkl", 'wb') as f:
-                    pickle.dump(x, f)
-                x = x_path
-            storage[i] = {"Individual": x, "N": 1, "N_bar":1, "Loss": loss, "UCBLoss": loss}
-            min_loss = save_best_model(storage, min_loss, self.save_dir, i)
-        t = self.K
-        sent = {}
-        while t < self.T:
-            storage, sent, idx = self.ucb_iteration(storage, sent)
-            x = sent[idx]['Individual']
-            if isinstance(x, str):
-                x_path = x
-                with open(x_path+"/x.pkl", 'rb') as f:
-                    x = pickle.load(f)
-                os.remove(x_path+"/x.pkl")
-            else:
-                x_path = os.path.join(self.save_dir, f"{idx}")
-            os.makedirs(x_path, exist_ok=True)
-            loss = self.evaluation(x, idx=idx)
-            if not isinstance(loss, float):
-                if len(loss) ==2:
-                    loss, model = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                elif len(loss) == 3:
-                    loss, model, x = loss
-                    if hasattr(model, "save"):
-                        model.save(x_path)
-                with open(x_path + "/x.pkl", 'wb') as f:
-                    pickle.dump(x, f)
-                x = x_path
-            sent[idx]['Individual'] = x
-            sent[idx]['Loss'] = loss
-            sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
-            sent[idx]['N'] +=1
-            sent[idx]['N_bar'] +=1
-            storage[idx] = sent.pop(idx)
-            min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
-            t+=1
-        logger.info(f"Mutant-UCB is done. Min loss = {min_loss}")
-        return min_loss
-
-    def run_initialization(self):
-        from mpi4py import MPI
-        rank = self.comm.Get_rank()  
-        min_loss = np.inf
+class Mutant_UCB(SearchAlgorithm):
+    def __init__(self, search_space, save_dir, T, N, K, E, evaluation, models=None, pop_path=None, verbose=False, **args):
+        super(Mutant_UCB, self).__init__(search_space=search_space, 
+                                            n_iterations=T, 
+                                            init_population_size=K, 
+                                            evaluation=evaluation, 
+                                            save_dir=save_dir, 
+                                            models=models, pop_path=pop_path, 
+                                            verbose=verbose)
         
-        storage = {}
-        if self.init_args is not None:
-            population = self.init_args
-        else:
-            population = []
-        population+=self.search_space.random(self.K-len(population))
-        logger.info(f'The whole population has been created (size = {len(population)})')
-        nb_send = 0
-        t = 0
-        # Dynamically send and evaluate the first population
-        while (nb_send< len(population)) and (nb_send < self.p-1):
-            if len(population) == 0:
-                x = self.search_space.random()
-            else:
-                x = population.pop()
-            logger.info(f'Master sends individual {nb_send} to processus {nb_send+1} < {self.p}')
-            self.comm.send(dest=nb_send+1, tag=0, obj=(x, nb_send))
-            nb_send +=1
-        nb_receive = 0
-        while nb_send < self.K:
-            loss, x_path, idx = self.comm.recv(
-                source=MPI.ANY_SOURCE, tag=0, status=self.status
-            )
-            source = self.status.Get_source()
-            if np.isinf(loss):
-                logger.info(f'Idx = {idx} has an infinite loss, deleting it and setting K = {self.K+1} and T = {self.T+1}')
-                if os.path.exists(x_path) and os.path.isdir(x_path):
-                    shutil.rmtree(x_path)
+    
+        self.N = N
+        self.E = E
+        self.sent = {}
 
-                self.K+=1
-                self.T+=1
-            else:
-                storage[idx] = {"Individual": x_path, "N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
-                min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
-            if len(population) == 0:
-                x = self.search_space.random()
-            else:
-                x = population.pop()
-            logger.info(f'Master sends individual {nb_send} to processus {source}')
-            self.comm.send(dest=source, tag=0, obj=(x, nb_send))
-            nb_send+=1
-            nb_receive +=1
-            torch.cuda.empty_cache()
 
-        while nb_receive < self.K:
-            loss, x_path, idx = self.comm.recv(
-                source=MPI.ANY_SOURCE, tag=0, status=self.status
-            )
-            source = self.status.Get_source()
-            if np.isinf(loss):
-                logger.info(f'Idx = {idx} has an infinite loss, deleting it.')
-                if os.path.exists(x_path) and os.path.isdir(x_path):
-                    shutil.rmtree(x_path)
-            else:
-                storage[idx] = {"Individual": x_path, "N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
-                min_loss = save_best_model(storage, min_loss, self.save_dir, idx)   
-            nb_receive+=1
-            torch.cuda.empty_cache()
-        logger.info(f"Initialization is done: all models have been at least evaluated once.")
-        return storage, min_loss
-
-    def run_mpi(self, rs_pop=None):
-        from mpi4py import MPI
-        rank = self.comm.Get_rank()  
-        if rank ==0:
-            os.makedirs(self.save_dir, exist_ok=True)
-            logger.info(f"Master here ! start UCB algorithm.")
-            if rs_pop is None:
-                storage, min_loss = self.run_initialization()
-            else:
-                storage, min_loss = generate_rs_pop(rs_pop)
-            t = len(storage)
-            logger.info(f"After initialization, it remains {self.T-t} iterations.")
-            nb_send = 0
-            # dynamically receive and send evaluations
-            sent = {}
-            while nb_send < self.p-1:
-                sent_bool = False
-                while not sent_bool:
-                    # perform ucb
-                    storage, sent, idx = self.ucb_iteration(storage, sent)
-                    logger.info(f'Master sends individual {idx} to processus {nb_send+1}')
-                    try:
-                        self.comm.send(dest=nb_send+1, tag=0, obj=(sent[idx]['Individual'], idx))
-                        sent_bool = True
-                    except OverflowError:
-                        logger.error(f"Master {rank}, failed to sent {idx} to {nb_send}. Removing {idx} from pool.")
-                        sent.pop(idx)                    
-                nb_send +=1
-                t+=1
-                torch.cuda.empty_cache()
-            while t < self.T - self.N + 1:
-                loss, x_path, idx = self.comm.recv(
-                    source=MPI.ANY_SOURCE, tag=0, status=self.status
-                )
-                source = self.status.Get_source()
-                if np.isinf(loss):
-                    logger.info(f'Idx = {idx} has an infinite loss, deleting it and setting T = {self.T+1}')
-                    self.T+=1
-                    if os.path.exists(x_path) and os.path.isdir(x_path):
-                        shutil.rmtree(x_path)
-                else:
-                    sent[idx]["Individual"] =  x_path
-                    sent[idx]['Loss'] = loss
-                    sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
-                    sent[idx]['N'] +=1
-                    sent[idx]['N_bar'] +=1
-                    storage[idx] = sent.pop(idx)
-                    min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
-
-                sent_bool = False
-                while not sent_bool:
-                    if len(storage) == 0:
-                        idx = K
-                        self.K+=1
-                        logger.info(f'Storage is empty. Creating idx {idx}, K = {self.K}')
-                        x = self.search_space.random()
-                        x_path = os.path.join(self.save_dir, f"{idx}")
-                        os.makedirs(x_path, exist_ok=True)
-                        with open(x_path + "/x.pkl", 'wb') as f:
-                            pickle.dump(x, f)
-                        del x
-                        sent[idx] = {"Individual": x_path, "N": 0, "N_bar": 0, "UCBLoss": 0}
-                    else:
-                        storage, sent, idx = self.ucb_iteration(storage, sent)
-                    logger.info(f'Master sends individual {idx} to processus {source}')
-                    try:
-                        self.comm.send(dest=source, tag=0, obj=(sent[idx]['Individual'], idx))
-                        sent_bool = True
-                    except OverflowError:
-                        logger.error(f"Failed to sent {idx} to {source}. Removing {idx} from pool.")
-                        sent.pop(idx) 
-                nb_send +=1
-                t+=1
-                torch.cuda.empty_cache()
-            
-            nb_receive = 0
-            # Receive last evaluation
-            while nb_receive < self.p-1:
-                loss, x_path, idx = self.comm.recv(
-                    source=MPI.ANY_SOURCE, tag=0, status=self.status
-                )
-                source = self.status.Get_source()
-                logger.info(f"Last round for processus number {source}")
-                if np.isinf(loss):
-                    logger.info(f'Idx = {idx} has an infinite loss, deleting it.')
-                    if os.path.exists(x_path) and os.path.isdir(x_path):
-                        shutil.rmtree(x_path)
-                else:
-                    sent[idx]["Individual"] =  x_path
-                    sent[idx]['Loss'] = loss
-                    sent[idx]['UCBLoss'] = (loss + sent[idx]['N_bar']*sent[idx]['UCBLoss'])/(sent[idx]['N_bar']+1)
-                    sent[idx]['N'] +=1
-                    sent[idx]['N_bar'] +=1
-                    storage[idx] = sent.pop(idx)
-                    min_loss = save_best_model(storage, min_loss, self.save_dir, idx)
-                nb_receive+=1   
-                torch.cuda.empty_cache()         
-            
-            logger.info(f"Mutant-UCB is done. Min loss = {min_loss}")
-            for i in range(1, self.p):
-                self.comm.send(dest=i, tag=0, obj=(None,None))
-            return min_loss
-        else:
-            logger.info(f"Worker {rank} here.")
-            stop = True
-            while stop:
-                x, idx = self.comm.recv(source=0, tag=0, status=self.status)
-                if idx != None:
-                    try:
-                        x_path = os.path.join(self.save_dir, f"{idx}")
-                        if isinstance(x, str):
-                            with open(x+"/x.pkl", 'rb') as f:
-                                x = pickle.load(f)
-                                os.remove(x_path+"/x.pkl")
-                        loss = timed_evaluation(x, idx, 10*60, self.evaluation)
-                        os.makedirs(x_path, exist_ok=True)
-                        if not isinstance(loss, float):
-                            if len(loss) ==2:
-                                loss, model = loss
-                                if hasattr(model, "save"):
-                                    model.save(x_path)
-                            elif len(loss) == 3:
-                                loss, model, x = loss
-                                if hasattr(model, "save"):
-                                    model.save(x_path)
-
-                        with open(x_path + "/x.pkl", 'wb') as f:
-                            pickle.dump(x, f)
-                    except Exception as e:
-                        logger.error(f'Worker {rank} with individual {idx} failed with {e}, set loss to inf')
-                        loss = np.inf
-                    self.comm.send(dest=0, tag=0, obj=[loss, x_path, idx])
-                    torch.cuda.empty_cache()
-                else:
-                    logger.info(f'Worker {rank} has been stopped')
-                    stop = False
-
-    def ucb_iteration(self, storage, sent):
+    def select_next_configurations(self):
         # Compute ucb loss
         iterated = False
         while not iterated:
             tries = 0
-            ucb_losses = [storage[i]['UCBLoss'] - np.sqrt(self.E/storage[i]['N']) for i in storage.keys()]
-            idx = list(storage.keys())[np.argmin(ucb_losses)]
+            ucb_losses = [self.storage[i]['UCBLoss'] - np.sqrt(self.E/self.storage[i]['N']) for i in self.storage.keys()]
+            idx = list(self.storage.keys())[np.argmin(ucb_losses)]
             try:
                 # Mutation probability
-                mutation_p = storage[idx]['N_bar'] / self.N
+                mutation_p = self.storage[idx]['N_bar'] / self.N
                 # Random variable
                 r = np.random.binomial(1, mutation_p, 1)[0]
                 if r == 0:
                     # Keep Training, remove the model from the storage
-                    logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, training {idx} instead')
-                    sent[idx] = storage.pop(idx) 
+                    logger.info(f'With p = {mutation_p} = {self.storage[idx]["N_bar"]} / {self.N}, training {idx} instead')
+                    self.sent[idx] = self.storage.pop(idx) 
                 else:
                     # Mutate the model
-                    logger.info(f'With p = {mutation_p} = {storage[idx]["N_bar"]} / {self.N}, mutating {idx} to {self.K}')
-                    storage[idx]['N'] +=1
+                    logger.info(f'With p = {mutation_p} = {self.storage[idx]["N_bar"]} / {self.N}, mutating {idx} to {self.K}')
+                    self.storage[idx]['N'] +=1
                     # Load model
-                    if isinstance(storage[idx]['Individual'], str):
-                        with open(storage[idx]['Individual']+"/x.pkl", 'rb') as f:
-                            old_x = pickle.load(f)
-                    else:
-                        old_x = storage[idx]['Individual']
+                    with open(f"{self.save_dir}/x_{idx}.pkl", 'rb') as f:
+                        old_x = pickle.load(f)
                     # mutate the model
                     x = self.search_space.neighbor(deepcopy(old_x))
                     idx = self.K
-                    x_path = os.path.join(self.save_dir, f"{idx}")
-                    os.makedirs(x_path, exist_ok=True)
-                    with open(x_path + "/x.pkl", 'wb') as f:
+                    self.K+=1
+                    with open(f"{self.save_dir}/x_{idx}.pkl", 'wb') as f:
                         pickle.dump(x, f)
                     del x
-                    self.K += 1
-                    sent[idx] = {"Individual": x_path, "N": 0, "N_bar": 0, "UCBLoss": 0}
+                    self.sent[idx] = {"N": 0, "N_bar": 0, "UCBLoss": 0}
                 iterated = True
             except Exception as e:
                 tries +=1
                 if tries < 5:
                     logger.error(f"While ucb iration, an exception was raised: {e}, attempt {tries}/5.")
                 else:
-                    ind = storage.pop(idx)
-                    if isinstance(ind['Individual'], str):
-                        shutil.rmtree(ind['Individual'])
-                    logger.error(f"While ucb iration, an exception was raised: {e}, removing {idx} from population. Size storage: {len(storage)}.")
-        return storage, sent, idx
+                    self.storage.pop(idx)
+                    if os.path.exists(f"{self.save_dir}/x_{idx}.pkl"):
+                        os.remove(f"{self.save_dir}/x_{idx}.pkl")
+                    logger.error(f"While ucb iration, an exception was raised: {e}, removing {idx} from population. Size storage: {len(self.storage)}.")
+        return [idx]
+    
+    def process_evaluated_row(self, row):
+        loss = row['UCBLoss']
+        self.storage[row['Idx']] = {"Loss": row['Loss'], "N": row['N'], "N_bar": row['N_bar'], "UCBLoss": loss}
+        if self.min_loss > loss:
+            logger.info(f'Best found! {loss} < {self.min_loss}')
+            self.min_loss = loss
 
-def generate_rs_pop(rs_pop):
-        logger.info(f"Generating population from {rs_pop}\n{os.listdir(rs_pop)}")
-        storage = {}
-        min_loss = np.inf
-        for dir_name in os.listdir(rs_pop):
-            try:
-                idx = int(dir_name)
-                loss = float(pd.read_csv(rs_pop + "/" + dir_name + "/" + "best_model_archi.csv", sep=";").iloc[-1,1])
-                storage[idx] = {"Individual": rs_pop + "/" + dir_name, "N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
-                logger.info(f"Adding {idx} to storage with loss = {loss}")
-                if loss < min_loss:
-                    min_loss = loss
-            except Exception as e:
-                logger.error(f"Error when recovering rs pop: {e}", exc_info=True)
-        return storage, min_loss
+    def process_evaluated_configuration(self, idx, loss):
+        if idx in self.sent.keys():
+            self.sent[idx]['Loss'] = loss
+            self.sent[idx]['UCBLoss'] = (loss + self.sent[idx]['N_bar']*self.sent[idx]['UCBLoss'])/(self.sent[idx]['N_bar']+1)
+            self.sent[idx]['N'] +=1
+            self.sent[idx]['N_bar'] +=1
+            self.storage[idx] = self.sent.pop(idx)
+        else:
+            self.storage[idx] = {"N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
+        return False, pd.DataFrame({k: [v] for k, v in self.storage[idx].items()}), loss
 
-def timed_evaluation(x, idx, max_duration, evaluation):
-    def handler(signum, frame):
-        print(f'Evaluation of model {idx} took more than {max_duration} seconds. Stopping evaluation.')
-        raise TimeoutError()
-
-    signal.signal(signal.SIGALRM, handler)
-
-    try:
-        signal.alarm(max_duration)
-        result = evaluation(x, idx)
-    except TimeoutError:
-        result = np.inf, None 
-    finally:
-        signal.alarm(0)
-    return result

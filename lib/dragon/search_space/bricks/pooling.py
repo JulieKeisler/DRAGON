@@ -1,6 +1,6 @@
 import numpy as np
 import torch.nn as nn
-from dragon.search_space.cells import Brick
+from dragon.search_space.dag_encoding import Brick
 
 class AVGPooling2D(Brick):
     def __init__(self, input_shape, pool,  stride=None):

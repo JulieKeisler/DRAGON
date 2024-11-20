@@ -8,7 +8,7 @@ Here are presented implementations of neighborhoods that can be used for the bas
 Base variables
 ^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: dragon.search_algorithm.zellij_neighborhoods
+.. automodule:: dragon.search_operators.base_neighborhoods
    :members: IntInterval, FloatInterval, CatInterval, ConstantInterval
    :undoc-members:
    :show-inheritance:
@@ -18,7 +18,7 @@ Base variables
 Composed variables
 ^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: dragon.search_algorithm.zellij_neighborhoods
+.. automodule:: dragon.search_operators.base_neighborhoods
    :members: ArrayInterval, BlockInterval, DynamicBlockInterval
    :undoc-members:
    :show-inheritance:

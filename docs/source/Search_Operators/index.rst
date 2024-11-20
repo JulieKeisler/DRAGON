@@ -233,8 +233,27 @@ The detailed implementation of `HpInterval`, `CatHpInterval`, `NodeInterval` and
 
    dragon_operators
 
+Crossover
+~~~~~~~~~~~~~~~~~~~~
 
-Besides the mutation operators, other search operators have been implemented to use **DRAGON** with an evolutionary algorithm.
+Besides the neighborhood operators, a crossover has been implemented to use **DRAGON** with an evolutionary algorithm.
+The crossover is not an `addon`, it is a simple class implementing a two-point crossover.
+The crossover `__call__` method takes as input two individual `ind1` and `ind2` which should be array-like variables.
+Two index points from the smallest array are picked randomly.
+The segment between those two index points are swapped between the parents.
+For each element of this segement, if one of them is an `AdjMatrix` variable, then the DAG-based crossover is used.
+
+The DAG-based crossover:
+* Takes as input two `AdjMatrix` elements.
+* Selects the indexes of the operations that would be exchange in each graphs.
+* Removes the corresponding lines and columns from both adjacency matrices.
+* Computes for each exchanging node, the index in the other graph where it will be inserted
+* Inserts the new rows and columns within both adjacency matrices.
+* Asserts no nodes without incoming or outgoing connections are remaining within the matrices.
+* Asserts the new matrices are upper-triangular.
+* Creates new `AdjMatrix` variables with the new nodes and matrices.
+
+For a detailed implementation, see:
 
 .. toctree::
    :maxdepth: 1

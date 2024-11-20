@@ -1,4 +1,4 @@
-from dragon.search_space.addons import VarAddon
+from dragon.search_operators.addons import VarAddon
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import math

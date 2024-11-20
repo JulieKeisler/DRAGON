@@ -1,1 +1,1 @@
-from .cells import AdjMatrix, Node, Brick, fill_adj_matrix
+from .dag_encoding import AdjMatrix, Node, Brick, fill_adj_matrix

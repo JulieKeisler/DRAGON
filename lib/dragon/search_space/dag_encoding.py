@@ -72,7 +72,7 @@ class Node(nn.Module):
 
     >>> import torch.nn as nn
     >>> from dragon.search_space.bricks import MLP
-    >>> from dragon.search_space.dragon_variables import Node
+    >>> from dragon.search_space.dag_variables import Node
     >>> print(Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU()))
     (combiner) add -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 10} -- (activation) ReLU() -- 
     """
@@ -427,10 +427,10 @@ class AdjMatrix(nn.Module):
     Examples
     --------
     >>> import numpy as np
-    >>> from dragon.search_space.dragon_variables import AdjMatrix
+    >>> from dragon.search_space.dag_variables import AdjMatrix
     >>> import torch.nn as nn
     >>> from dragon.search_space.bricks import MLP, Identity
-    >>> from dragon.search_space.dragon_variables import Node
+    >>> from dragon.search_space.dag_variables import Node
     >>> node_1 = Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU())
     >>> node_2 = Node(combiner="add", operation=MLP, hp={"out_channels": 5}, activation=nn.ReLU())
     >>> node_3 = Node(combiner="concat", operation=Identity, hp={}, activation=nn.Softmax())

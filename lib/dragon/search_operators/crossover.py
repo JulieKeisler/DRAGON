@@ -1,11 +1,10 @@
 import random
 import numpy as np
 
-from dragon.search_space.addons import Mutator, Crossover
-from dragon.search_space.cells import AdjMatrix, fill_adj_matrix
+from dragon.search_space.dag_encoding import AdjMatrix, fill_adj_matrix
 
 
-class DAGTwoPoint(Crossover):
+class DAGTwoPoint:
     """DAGTwoPoint
 
     Implementation of a two-point crossover on an array.
@@ -13,13 +12,13 @@ class DAGTwoPoint(Crossover):
 
     Parameters
     ----------
-    search_space: Variable, array-type
-        Variable containing the search space considered.
+    size: int, default=10
+        Maximum size a DAG may have.
     
     Examples
     ----------
-    >>> from dragon.search_algorithm.operators import DAGTwoPoint
-    >>> from dragon.search_space.zellij_variables import Constant, FloatVar, IntVar, CatVar,  ArrayVar
+    >>> from dragon.search_operators.crossover import DAGTwoPoint
+    >>> from dragon.search_space.base_variables import Constant, FloatVar, IntVar, CatVar,  ArrayVar
     >>> arr = ArrayVar(IntVar("Number of features", 1, 10), CatVar("Optimizer", features=['Adam', 'SGD', 'AdamMax']), FloatVar('learning rate', 0.001, 0.5), Constant('Seed', value=0))
     >>> parent_1 = arr.random()
     >>> parent_2 = arr.random()
@@ -31,9 +30,9 @@ class DAGTwoPoint(Crossover):
     >>> print(crossover(parent_1, parent_2))
     ([5, 'AdamMax', 0.28364322926906005, 0], [9, 'SGD', 0.16718361674068502, 0])
 
-    >>> from dragon.search_space.dragon_variables import HpVar, NodeVariable, EvoDagVariable
+    >>> from dragon.search_space.dag_variables import HpVar, NodeVariable, EvoDagVariable
     >>> from dragon.search_space.bricks import MLP, MaxPooling1D, AVGPooling1D
-    >>> from dragon.search_space.zellij_variables import DynamicBlock
+    >>> from dragon.search_space.base_variables import DynamicBlock
     >>> from dragon.search_space.bricks_variables import activation_var
     >>> mlp = HpVar("Operation", Constant("MLP operation", MLP), hyperparameters={"out_channels": IntVar("out_channels", 1, 10)})
     >>> pooling = HpVar("Operation", CatVar("Pooling operation", [MaxPooling1D, AVGPooling1D]), hyperparameters={"pool_size": IntVar("pool_size", 1, 5)})
@@ -73,9 +72,8 @@ class DAGTwoPoint(Crossover):
     (combiner) concat -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 9} -- (activation) ELU(alpha=1.0) -- ] | MATRIX:[[0, 1], [0, 0]], 0])
     """
 
-    def __init__(self, search_space=None, size=10):
+    def __init__(self, size=10):
         self.size = size
-        super(DAGTwoPoint, self).__init__(search_space)
 
     def __call__(self, ind1, ind2):
         """
@@ -99,10 +97,6 @@ class DAGTwoPoint(Crossover):
                 ind1[i], ind2[i] = adj_matrix_crossover(ind1[i], ind2[i], self.size)
 
         return ind1, ind2
-
-    @Mutator.target.setter
-    def target(self, search_space):
-        self._target = search_space
 
 def adj_matrix_crossover(p1, p2, size=10):
         """
@@ -136,10 +130,10 @@ def adj_matrix_crossover(p1, p2, size=10):
         Examples
         ----------
         >>> import numpy as np
-        >>> from dragon.search_space.dragon_variables import AdjMatrix
+        >>> from dragon.search_space.dag_variables import AdjMatrix
         >>> import torch.nn as nn
         >>> from dragon.search_space.bricks import MLP, Identity
-        >>> from dragon.search_space.dragon_variables import Node
+        >>> from dragon.search_space.dag_variables import Node
         >>> node_1 = Node(combiner="add", operation=MLP, hp={"out_channels": 10}, activation=nn.ReLU())
         >>> node_2 = Node(combiner="add", operation=MLP, hp={"out_channels": 5}, activation=nn.ReLU())
         >>> node_3 = Node(combiner="concat", operation=Identity, hp={}, activation=nn.Softmax())

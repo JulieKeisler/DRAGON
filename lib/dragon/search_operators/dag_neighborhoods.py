@@ -2,17 +2,17 @@ import random
 import numpy as np
 
 import warnings
-from dragon.search_space.addons import VarNeighborhood
-from dragon.search_space.zellij_variables import CatVar, Constant
-from dragon.search_space.cells import Node
+from dragon.search_operators.addons import VarNeighborhood
+from dragon.search_space.base_variables import CatVar, Constant
+from dragon.search_space.dag_encoding import Node
 from dragon.utils.tools import logger
 
-from dragon.search_space.dragon_variables import EvoDagVariable, HpVar, NodeVariable
+from dragon.search_space.dag_variables import EvoDagVariable, HpVar, NodeVariable
 
 warnings.filterwarnings("ignore")
 
 def int_neighborhood(b_min, b_max, scale=4):
-    return np.ceil(max(int((b_max - b_min) / scale), 2))
+    return int(np.ceil(max(int((b_max - b_min) / scale), 2)))
 
 class HpInterval(VarNeighborhood):
     """HpInterval
@@ -28,10 +28,10 @@ class HpInterval(VarNeighborhood):
     Examples
     --------
     >>> from dragon.search_space.bricks import MLP
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar
-    >>> from dragon.search_space.dragon_variables import HpVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval, IntInterval
-    >>> from dragon.search_algorithm.neighborhoods import HpInterval
+    >>> from dragon.search_space.base_variables import Constant, IntVar
+    >>> from dragon.search_space.dag_variables import HpVar
+    >>> from dragon.search_operators.base_neighborhoods import ConstantInterval, IntInterval
+    >>> from dragon.search_algorithmdag_neighborhoods import HpInterval
     >>> mlp = Constant("MLP operation", MLP, neighbor=ConstantInterval())
     >>> hp = {"out_channels": IntVar("out_channels", 1, 10, neighbor=IntInterval(2))}
     >>> mlp_var = HpVar("MLP var", mlp, hyperparameters=hp, neighbor=HpInterval())
@@ -104,10 +104,10 @@ class CatHpInterval(VarNeighborhood):
     Examples
     --------
     >>> from dragon.search_space.bricks import MLP, LayerNorm1d, BatchNorm1d
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar
-    >>> from dragon.search_space.dragon_variables import HpVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval, IntInterval, CatInterval
-    >>> from dragon.search_algorithm.neighborhoods import HpInterval, CatHpInterval
+    >>> from dragon.search_space.base_variables import Constant, IntVar, CatVar
+    >>> from dragon.search_space.dag_variables import HpVar
+    >>> from dragon.search_operators.base_neighborhoods import ConstantInterval, IntInterval, CatInterval
+    >>> from dragon.search_algorithmdag_neighborhoods import HpInterval, CatHpInterval
     >>> mlp = Constant("MLP operation", MLP, neighbor=ConstantInterval())
     >>> hp = {"out_channels": IntVar("out_channels", 1, 10, neighbor=IntInterval(2))}
     >>> mlp_var = HpVar("MLP var", mlp, hyperparameters=hp, neighbor=HpInterval())
@@ -199,12 +199,12 @@ class NodeInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.dragon_variables import NodeVariable, HpVar
+    >>> from dragon.search_space.dag_variables import NodeVariable, HpVar
     >>> from dragon.search_space.bricks import MLP
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar
+    >>> from dragon.search_space.base_variables import Constant, IntVar, CatVar
     >>> from dragon.search_space.bricks_variables import activation_var
-    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval, IntInterval, CatInterval
-    >>> from dragon.search_algorithm.neighborhoods import NodeInterval, HpInterval
+    >>> from dragon.search_operators.base_neighborhoods import ConstantInterval, IntInterval, CatInterval
+    >>> from dragon.search_algorithmdag_neighborhoods import NodeInterval, HpInterval
     >>> combiner = CatVar("Combiner", features = ['add', 'mul'], neighbor=CatInterval())
     >>> operation = HpVar("Operation", Constant("MLP operation", MLP, neighbor=ConstantInterval()), 
     ...                   hyperparameters={"out_channels": IntVar("out_channels", 1, 10, neighbor=IntInterval(1))}, neighbor=HpInterval())
@@ -306,12 +306,12 @@ class EvoDagInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.dragon_variables import HpVar, NodeVariable, EvoDagVariable
+    >>> from dragon.search_space.dag_variables import HpVar, NodeVariable, EvoDagVariable
     >>> from dragon.search_space.bricks import MLP, MaxPooling1D, AVGPooling1D
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar, DynamicBlock
+    >>> from dragon.search_space.base_variables import Constant, IntVar, CatVar, DynamicBlock
     >>> from dragon.search_space.bricks_variables import activation_var
-    >>> from dragon.search_algorithm.neighborhoods import CatHpInterval, EvoDagInterval, NodeInterval, HpInterval
-    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval, IntInterval, CatInterval, DynamicBlockInterval
+    >>> from dragon.search_algorithmdag_neighborhoods import CatHpInterval, EvoDagInterval, NodeInterval, HpInterval
+    >>> from dragon.search_operators.base_neighborhoods import ConstantInterval, IntInterval, CatInterval, DynamicBlockInterval
     >>> mlp = HpVar("Operation", Constant("MLP operation", MLP, neighbor=ConstantInterval()), hyperparameters={"out_channels": IntVar("out_channels", 1, 10, neighbor=IntInterval(5))}, neighbor=HpInterval())
     >>> pooling = HpVar("Operation", CatVar("Pooling operation", [MaxPooling1D, AVGPooling1D], neighbor=CatInterval()), hyperparameters={"pool_size": IntVar("pool_size", 1, 5, neighbor=IntInterval(2))}, neighbor=HpInterval())
     >>> candidates = NodeVariable(label = "Candidates", 

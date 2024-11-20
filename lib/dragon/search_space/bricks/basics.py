@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from dragon.search_space.cells import Brick
+from dragon.search_space.dag_encoding import Brick
 from dragon.utils.tools import logger
 
 

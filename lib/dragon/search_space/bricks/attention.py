@@ -250,7 +250,7 @@ class TemporalAttention(Brick):
 import torch
 import torch.nn as nn
 
-from dragon.search_space.cells import Brick
+from dragon.search_space.dag_encoding import Brick
 
 class Attention1D(Brick):
     def __init__(self, input_shape, Nh, d_out=None, gaussian_init_delta_std=2.0, alpha=46,
