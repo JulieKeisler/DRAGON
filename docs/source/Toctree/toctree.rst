@@ -39,5 +39,4 @@
   :maxdepth: 2
   :hidden:
 
-  ../Applications/image
-  ../Applications/load_forecasting
+  ../Applications/index

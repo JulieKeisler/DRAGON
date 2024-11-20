@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn as nn
-from dragon.search_algorithm.neighborhoods import CatHpInterval, EvoDagInterval, HpInterval, NodeInterval, int_neighborhood
-from dragon.search_algorithm.zellij_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval
+from dragon.search_operators.dag_neighborhoods import CatHpInterval, EvoDagInterval, HpInterval, NodeInterval, int_neighborhood
+from dragon.search_operators.base_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval
 from dragon.search_space.bricks.attention import Attention1D, SpatialAttention, TemporalAttention
 from dragon.search_space.bricks.basics import MLP, Identity
 from dragon.search_space.bricks.convolutions import Conv1d, Conv2d
@@ -9,8 +9,8 @@ from dragon.search_space.bricks.dropout import Dropout
 from dragon.search_space.bricks.normalization import BatchNorm1d, BatchNorm2d, LayerNorm1d, LayerNorm2d
 from dragon.search_space.bricks.pooling import AVGPooling1D, AVGPooling2D, MaxPooling1D, MaxPooling2D
 from dragon.search_space.bricks.recurrences import Simple_1DGRU, Simple_1DLSTM, Simple_1DRNN, Simple_2DGRU, Simple_2DLSTM
-from dragon.search_space.dragon_variables import EvoDagVariable, HpVar, NodeVariable
-from dragon.search_space.zellij_variables import DynamicBlock, FloatVar, IntVar, CatVar, Constant
+from dragon.search_space.dag_variables import EvoDagVariable, HpVar, NodeVariable
+from dragon.search_space.base_variables import DynamicBlock, FloatVar, IntVar, CatVar, Constant
 
 def dag_var(label, operations, complexity=None):
     """dag_var(label, operations, complexity=None)

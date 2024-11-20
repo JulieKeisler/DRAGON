@@ -1,6 +1,6 @@
 import numpy as np
-from dragon.search_space.zellij_variables import Variable, DynamicBlock
-from dragon.search_space.cells import AdjMatrix, Node, fill_adj_matrix
+from dragon.search_space.base_variables import Variable, DynamicBlock
+from dragon.search_space.dag_encoding import AdjMatrix, Node, fill_adj_matrix
     
 class HpVar(Variable):
     """HpVar(Variable)
@@ -22,8 +22,8 @@ class HpVar(Variable):
     ----------
 
     >>> from dragon.search_space.bricks import MLP
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar
-    >>> from dragon.search_space.dragon_variables import HpVar
+    >>> from dragon.search_space.base_variables import Constant, IntVar
+    >>> from dragon.search_space.dag_variables import HpVar
     >>> mlp = Constant("Mlp operation", MLP)
     >>> hp = {"out_channels": IntVar("out_channels", 1, 10)}
     >>> mlp_var = HpVar("MLP var", mlp, hyperparameters=hp)
@@ -31,7 +31,7 @@ class HpVar(Variable):
     [<class 'dragon.search_space.bricks.basics.MLP'>, {'out_channels': 9}]
 
     >>> from dragon.search_space.bricks import LayerNorm1d, BatchNorm1d
-    >>> from dragon.search_space.zellij_variables import CatVar
+    >>> from dragon.search_space.base_variables import CatVar
     >>> norm = CatVar("1d norm layers", features=[LayerNorm1d, BatchNorm1d])
     >>> norm_var = HpVar("Norm var", norm, hyperparameters={})
     >>> norm_var.random()
@@ -112,9 +112,9 @@ class NodeVariable(Variable):
     
     Examples
     ----------
-    >>> from dragon.search_space.dragon_variables import NodeVariable, HpVar
+    >>> from dragon.search_space.dag_variables import NodeVariable, HpVar
     >>> from dragon.search_space.bricks import MLP
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar
+    >>> from dragon.search_space.base_variables import Constant, IntVar, CatVar
     >>> from dragon.search_space.bricks_variables import activation_var
     >>> combiner = CatVar("Combiner", features = ['add', 'mul'])
     >>> operation = HpVar("Operation", Constant("Mlp operation", MLP), hyperparameters={"out_channels": IntVar("out_channels", 1, 10)})
@@ -196,9 +196,9 @@ class EvoDagVariable(Variable):
     
     Examples
     ----------
-    >>> from dragon.search_space.dragon_variables import HpVar, NodeVariable, EvoDagVariable
+    >>> from dragon.search_space.dag_variables import HpVar, NodeVariable, EvoDagVariable
     >>> from dragon.search_space.bricks import MLP, MaxPooling1D, AVGPooling1D
-    >>> from dragon.search_space.zellij_variables import Constant, IntVar, CatVar, DynamicBlock
+    >>> from dragon.search_space.base_variables import Constant, IntVar, CatVar, DynamicBlock
     >>> from dragon.search_space.bricks_variables import activation_var
     >>> mlp = HpVar("Operation", Constant("MLP operation", MLP), hyperparameters={"out_channels": IntVar("out_channels", 1, 10)})
     >>> pooling = HpVar("Operation", CatVar("Pooling operation", [MaxPooling1D, AVGPooling1D]), hyperparameters={"pool_size": IntVar("pool_size", 1, 5)})

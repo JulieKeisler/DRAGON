@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from dragon.search_space.cells import Brick
+from dragon.search_space.dag_encoding import Brick
 from dragon.utils.tools import logger
 from dragon.utils.exceptions import InvalidArgumentError
 

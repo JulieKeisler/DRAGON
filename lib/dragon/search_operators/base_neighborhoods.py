@@ -1,5 +1,5 @@
-from dragon.search_space.addons import VarNeighborhood
-from dragon.search_space.zellij_variables import (
+from dragon.search_operators.addons import VarNeighborhood
+from dragon.search_space.base_variables import (
     FloatVar,
     IntVar,
     CatVar,
@@ -26,8 +26,8 @@ class IntInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.zellij_variables import IntVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import IntInterval
+    >>> from dragon.search_space.base_variables import IntVar
+    >>> from dragon.search_operators.base_neighborhoods import IntInterval
     >>> a = IntVar("test", 0, 5, neighbor=IntInterval(neighborhood=1))
     >>> print(a)
     IntVar(test, [0;6])
@@ -93,8 +93,8 @@ class FloatInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.zellij_variables import FloatVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import FloatInterval
+    >>> from dragon.search_space.base_variables import FloatVar
+    >>> from dragon.search_operators.base_neighborhoods import FloatInterval
     >>> a = FloatVar("test", 0, 5, neighbor=FloatInterval(neighborhood=1))
     >>> print(a)
     FloatVar(test, [0;5])
@@ -159,8 +159,8 @@ class CatInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.zellij_variables import CatVar, IntVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import CatInterval, IntInterval
+    >>> from dragon.search_space.base_variables import CatVar, IntVar
+    >>> from dragon.search_operators.base_neighborhoods import CatInterval, IntInterval
     >>> a = CatVar("test", ['a', 1, 2.56, IntVar("int", 100 , 200, neighbor=IntInterval(10))], neighbor=CatInterval())
     >>> print(a)
     CatVar(test, ['a', 1, 2.56, IntVar(int, [100;201])])
@@ -219,8 +219,8 @@ class ConstantInterval(VarNeighborhood):
 
     Examples
     --------
-    >>> from dragon.search_space.zellij_variables import Constant
-    >>> from dragon.search_algorithm.zellij_neighborhoods import ConstantInterval
+    >>> from dragon.search_space.base_variables import Constant
+    >>> from dragon.search_operators.base_neighborhoods import ConstantInterval
     >>> a = Constant("test", 5, neighbor=ConstantInterval())
     >>> print(a)
     Constant(test, 5)
@@ -274,8 +274,8 @@ class ArrayInterval(VarNeighborhood):
 
     Examples
     ----------
-    >>> from dragon.search_space.zellij_variables import ArrayVar, IntVar, FloatVar, CatVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import IntInterval, FloatInterval, CatInterval, ArrayInterval
+    >>> from dragon.search_space.base_variables import ArrayVar, IntVar, FloatVar, CatVar
+    >>> from dragon.search_operators.base_neighborhoods import IntInterval, FloatInterval, CatInterval, ArrayInterval
     >>> a = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)), 
     ...              FloatVar("float_1", 2,12, neighbor=FloatInterval(0.5)), CatVar("cat_1", ["Hello", 87, 2.56], neighbor=CatInterval()), neighbor=ArrayInterval())
     >>> print(a)
@@ -353,8 +353,8 @@ class BlockInterval(VarNeighborhood):
 
     Examples
     ----------
-    >>> from dragon.search_space.zellij_variables import Block, ArrayVar, FloatVar, IntVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import BlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> from dragon.search_space.base_variables import Block, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_operators.base_neighborhoods import BlockInterval, ArrayInterval, FloatInterval, IntInterval
     >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
     >>> a = Block("max size 10 Block", content, 3, neighbor=BlockInterval())
     >>> print(a)
@@ -420,8 +420,8 @@ class DynamicBlockInterval(VarNeighborhood):
     Example
     ----------
     
-    >>> from dragon.search_space.zellij_variables import DynamicBlock, ArrayVar, FloatVar, IntVar
-    >>> from dragon.search_algorithm.zellij_neighborhoods import DynamicBlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> from dragon.search_space.base_variables import DynamicBlock, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_operators.base_neighborhoods import DynamicBlockInterval, ArrayInterval, FloatInterval, IntInterval
     >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
     >>> a = DynamicBlock("max size 10 Block", content, 5, neighbor=DynamicBlockInterval(1))
     >>> print(a)

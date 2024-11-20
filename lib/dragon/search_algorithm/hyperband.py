@@ -5,7 +5,7 @@ import shutil
 import numpy as np
 import torch
 
-from dragon_old.utils.tools import logger
+from dragon.utils.tools import logger
 
 
 class HyperBand:
