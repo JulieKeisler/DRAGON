@@ -112,40 +112,40 @@ An illustration of the implementation can be found below.
 
 .. tikz::
 
-\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+   \tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
 
-\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
-%uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
+   \begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+   %uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
 
 
-% Text Node
-\draw (21,76.5) node [anchor=north west][inner sep=0.75pt]   [align=left] {\textbf{Master}\\→ Randomly draws configurations\\→ Selects the next configuration to evaluate\\	(may perform mutations, crossover...)\\→ Process the evaluated configuration\\→ Identify the best model};
-% Text Node
-\draw (406.96,3.08) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-359.96] [align=left] {\textbf{Worker 1 }\\→ Associated with GPU 1\\→ Evaluate the configuration sent \\by the master\\→ Store the configuration};
-% Text Node
-\draw (407,171) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,opacity=1 ] [align=left] {\textbf{Worker \textit{n }}\\→ Associated with GPU \textit{n}\\→ Evaluate the configuration sent \\by the master\\→ Store the configuration};
-% Text Node
-\draw (295.04,55.69) node [anchor=north west][inner sep=0.75pt]  [rotate=-0.26] [align=left] {{\small Configuration}};
-% Text Node
-\draw (364.04,101.69) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-0.26] [align=left] {{\small Loss}};
-% Text Node
-\draw (332.04,199.69) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-0.26] [align=left] {{\small \textcolor[rgb]{0.25,0.46,0.02}{Loss}}};
-% Text Node
-\draw (336.04,149.69) node [anchor=north west][inner sep=0.75pt]  [rotate=-0.26] [align=left] {{\small Configuration}};
-% Connection
-\draw    (320,96.48) -- (402.02,76.99) ;
-\draw [shift={(403.96,76.53)}, rotate = 166.63] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-% Connection
-\draw [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,draw opacity=1 ] [dash pattern={on 0.84pt off 2.51pt}]  (403.96,86.81) -- (321.95,106.3) ;
-\draw [shift={(320,106.76)}, rotate = 346.63] [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,draw opacity=1 ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-% Connection
-\draw    (320,168.24) -- (402.05,187.74) ;
-\draw [shift={(404,188.2)}, rotate = 193.37] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-% Connection
-\draw [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,draw opacity=1 ] [dash pattern={on 0.84pt off 2.51pt}]  (404,198.48) -- (321.95,178.98) ;
-\draw [shift={(320,178.52)}, rotate = 13.37] [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,draw opacity=1 ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+   % Text Node
+   \draw (21,76.5) node [anchor=north west][inner sep=0.75pt]   [align=left] {\textbf{Master}\\→ Randomly draws configurations\\→ Selects the next configuration to evaluate\\	(may perform mutations, crossover...)\\→ Process the evaluated configuration\\→ Identify the best model};
+   % Text Node
+   \draw (406.96,3.08) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-359.96] [align=left] {\textbf{Worker 1 }\\→ Associated with GPU 1\\→ Evaluate the configuration sent \\by the master\\→ Store the configuration};
+   % Text Node
+   \draw (407,171) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,opacity=1 ] [align=left] {\textbf{Worker \textit{n }}\\→ Associated with GPU \textit{n}\\→ Evaluate the configuration sent \\by the master\\→ Store the configuration};
+   % Text Node
+   \draw (295.04,55.69) node [anchor=north west][inner sep=0.75pt]  [rotate=-0.26] [align=left] {{\small Configuration}};
+   % Text Node
+   \draw (364.04,101.69) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-0.26] [align=left] {{\small Loss}};
+   % Text Node
+   \draw (332.04,199.69) node [anchor=north west][inner sep=0.75pt]  [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,opacity=1 ,rotate=-0.26] [align=left] {{\small \textcolor[rgb]{0.25,0.46,0.02}{Loss}}};
+   % Text Node
+   \draw (336.04,149.69) node [anchor=north west][inner sep=0.75pt]  [rotate=-0.26] [align=left] {{\small Configuration}};
+   % Connection
+   \draw    (320,96.48) -- (402.02,76.99) ;
+   \draw [shift={(403.96,76.53)}, rotate = 166.63] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+   % Connection
+   \draw [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,draw opacity=1 ] [dash pattern={on 0.84pt off 2.51pt}]  (403.96,86.81) -- (321.95,106.3) ;
+   \draw [shift={(320,106.76)}, rotate = 346.63] [color={rgb, 255:red, 144; green, 19; blue, 254 }  ,draw opacity=1 ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+   % Connection
+   \draw    (320,168.24) -- (402.05,187.74) ;
+   \draw [shift={(404,188.2)}, rotate = 193.37] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
+   % Connection
+   \draw [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,draw opacity=1 ] [dash pattern={on 0.84pt off 2.51pt}]  (404,198.48) -- (321.95,178.98) ;
+   \draw [shift={(320,178.52)}, rotate = 13.37] [color={rgb, 255:red, 65; green, 117; blue, 5 }  ,draw opacity=1 ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
 
-\end{tikzpicture}
+   \end{tikzpicture}
 
 As the training and the evaluation of a neural network is the most time-consuming part of the search algorithm, this makes **DRAGON** easily scalable on HPC infrastructures. 
 The `SearchAlgorithm` class activates by itself the `MPI` version by looking if the package `mpi4py` is available.

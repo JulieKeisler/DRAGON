@@ -1,4 +1,3 @@
-import numpy as np
 import torch.nn as nn
 from dragon.search_operators.dag_neighborhoods import CatHpInterval, EvoDagInterval, HpInterval, NodeInterval, int_neighborhood
 from dragon.search_operators.base_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval

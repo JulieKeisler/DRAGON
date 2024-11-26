@@ -1,7 +1,7 @@
 .. _applications:
 
 =============================
-Applications
+Performance evaluation
 =============================
 
 **DRAGON** can be used for a wide range of applications. 
@@ -121,6 +121,7 @@ The `search_space` object can be passed as the `search_space` argument.
 For more detailed examples of various applications, see:
 
 .. toctree::
+   :maxdepth: 1
 
    image
    load_forecasting
