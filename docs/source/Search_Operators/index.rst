@@ -1,20 +1,23 @@
 .. _search_operators:
 
 =============================
-Search operators presentation
+Presentation
 =============================
 
 
-Once the search space is defined, it is possible to use a simple Random Search to look for good configurations.
-However, training a deep neural network is a long and resource-consuming process. 
-Therefore, it is important that the search algorithm requires as little neural network training as possible. 
-To do this, it is essential to use information from previous training and evaluations. 
-By identifying good solutions, they can be modified to optimize their performance. 
-To make these modifications, a `neighbor` attribute can be associated with each of the variables defined in `Search Space <../Search_Space/index.rst>`_. 
-They can be seen as a neighborhood or a mutation operator. 
-They 
-These attributes are added using `addons`. An addon, is an object that is linked to another one. 
-It allows to extend some functionnalities of the target without modifying its implementation. 
+Once the search space is defined, a simple random search can be used to find good configurations.
+However, training a deep neural network is a long and resource-intensive process.
+Therefore, the search algorithm must train neural networks as little as possible.
+It is therefore essential to use information from previous training and evaluation.
+By identifying good solutions, they can be modified to optimize their performance.
+To make these modifications, a `neighbor` attribute can be associated with each of the variables defined in the `Search Space section <../Search_Space/index.rst>`_.
+They can be thought of as neighborhood or mutation operators.
+These attributes are added using `Addons`. A `Addon` is an object that is linked to another.
+It allows extending functionalities of the other object (in this case a `Variable`) without modifying its implementation.
+
+DRAGON provides an implementation of one neighborhood per variable, but users can implement their own.  
+A neighborhood is a class inheriting from the abstract class `VarNeighborhood`, which is an `Addon`.  
+It should have the following structure:
 The `addons` implementations are described in detail here:
 
 .. toctree::
@@ -23,8 +26,8 @@ The `addons` implementations are described in detail here:
    addons
 
 
-**DRAGON** provides an implementation of one typical neighborhood by variable, but the user may implement its own one.
-A neighborhood is a class inheriting from the abstract class `VarNeighborhood`, which is an `Addon`.
+**DRAGON** provides an implementation of one neighborhood per variable, but users can implement their own.  
+A neighborhood is a class inheriting from the abstract class `VarNeighborhood`, which is an `Addon`.  
 It should have the following structure:
 
 .. code-block:: python
@@ -60,9 +63,8 @@ It should have the following structure:
             """
          self._target = variable
 
-Here is the example of a neighborhood defined for the `IntVar` variable. 
-The neighborhood picks the new values within an interval surrounding the current one.
-It is parameterized by an argument specifying the interval size.
+Here is an example of a neighborhood defined for the `IntVar` variable.  
+The neighborhood selects new values within an interval surrounding the current one, parameterized by an interval size:
 
 .. code-block:: python
 
@@ -100,14 +102,14 @@ It is parameterized by an argument specifying the interval size.
          self._target = variable
 
 
-This `IntInterval` is given to the `Variable` during its definition:
+This `IntInterval` is assigned to the `Variable` while we define it:
 
 .. code-block:: python
 
    from dragon.search_space.zellij_variables import IntVar
 
    v = IntVar("An integer variable", 0, 5, neighbor=IntInterval(neighborhood=1))
-   v.neighbor(4)
+   v.neighbor(4) # Example usage
    3
 
 **DRAGON** provides implementation of neighborhoods operators for each variable from `Search Space <../Search_Space/index.rst>`_.
@@ -165,8 +167,8 @@ For example with a `Block`:
    a.neighbor([2, 1, 6])
    [2, 1.3432682541165653, 7.886611679292923]
 
-In this example, the `Block` content: the `FloatVar` variable is given a `neighbor` addon.
-The addon `BlockInterval` make use of the `FloatInterval` to create the new value.
+In this example, the `Block`'s value is a `FloatVar` variable. `Neighbor` addons are given to both `Variables`.
+The addon `BlockInterval` makes use of the `FloatInterval` to create the new value.
 
 The detailed implementation can be found here:
 
@@ -178,53 +180,56 @@ The detailed implementation can be found here:
 DAG encoding neighborhoods
 ------------
 
+
 Besides the base and composed variables, the ones used for DAG encoding, namely `HpVar`, `NodeVariable` and `EvoDagVariable` also have implemented neighborhoods.
 
 Operation neighborhood
 ~~~~~~~~~~~~~~~~~~~~
 
 The `HpVar` neighborhood is called `HpInterval`.
-It takes as input an operation and a set of hyperparameters.
+Its arguments are an operation and a set of hyperparameters.
 It selects among the operation and the various hyperparameters the ones that will be mutated.
-The mutation operation does not have more chance to be changed than the hyperparameters.
-It is applied only if the operation is not a `Constant`.
+The mutation applied to the operation is not more likely to be called than the hyperparameters one.
+It does not have any effect if the operation is a `Constant`.
 The chosen hyperparameters are mutated according to their `neighbor` addon.
 The `HpInterval` object returns the new operation and hyperparameters.
+It is possible to modify this operator to increase the probability of modifying the operation or to prevent hyperparameter mutations before a certain iteration of the search algorithm.
 
 Node neighborhood
 ~~~~~~~~~~~~~~~~~~~~
 
-The `NodeVariable` might take the operation as a `HpVar` or a `CatVar` of `HpVar` when dealing with candidate operations implemented in various `HpVar`.
-In this case, the neighborhood for the `CatVar` of `HpVar` is called `CatHpInterval`.
-This neighborhood chooses between modifying the current operation or draw a completely new one.
-It takes as parameter the probability of only modifying the current operation (be default equals to 0.9).
-With a probability p, the function will look for the `HpVar` corresponding to the current value and call the `HpInterval` of this variable.
-The matching is done by looking at the `features` attibute if the `HpVar` operation is a `CatVar` or the `value` attribute if the operation is a `Constant`.
-With a probability 1-p, a new layer is drawn (with a new operation a new hyperparameters), by calling the `random` function of the `CatVar`.
+If the operation within a `NodeVariable` is encoded as a `HpVar`, then its neighborhood will be the `HpInterval`. 
+But, in the case of `CatVar` of `HpVar`, when dealing with candidate operations implemented in various `HpVar`, the neighborhood for the operation is called `CatHpInterval`.
+This neighborhood chooses between modifying the current operation or drawing a completely new one.
+It takes as argument a probability $p \in [0,1]$ of only modifying the current operation (by default equal to $0.9$).
+With a probability $p$, the function will look for the `HpVar` corresponding to the current value and call the `HpInterval` of this variable.
+The matching is done by looking at the `features` attribute if the `HpVar` operation is a `CatVar` or the `value` attribute if the operation is a `Constant`.
+With a probability $1-p$, a new layer is drawn (with a new operation and new hyperparameters), by calling the `random` function of the `CatVar`.
 
-The neighborhood class associated to a `NodeVariable` is called `NodeInterval`.
-It selects among the combiner, the operation and the activation function what will be modified.
-For the selected elements, their `neighbor` attributes are called.
+The neighborhood class associated with a `NodeVariable` is called `NodeInterval`.
+It selects among the combiner, the operation and the activation function what is to be modified.
+For the selected elements, their `neighbor` attributes are invoked. In the current implementation, the chances for modifying any of these three elements are the same, which may be changed.
 
 DAG neighborhood
 ~~~~~~~~~~~~~~~~~~~~
 
 The `EvoDagVariable` neighborhood class is called `EvoDagInterval`.
-This neighborhood may do five types of mutations:
+This neighborhood may perform five types of mutations:
 * Adding a node
 * Deleting a node
 * Modifying a node
 * Modifying the input connections of a node
 * Modifying the output connections of a node
-It first randomly choose the nodes that will be modified.
-A parameter `nb_mutations` can be set to constrain the number of modified nodes.
-For each node selected, the mutations that can be applied may vary.
-For example, if the last node has been selected, its outgoing connections cannot be changed.
-If the maximum number of node has been reached, the `add` mutation cannot be used.
-A possible mutation is then associated to each selected node and performed.
-After the mutation on a node has been performed, some tests are ran to insure that the matrix structure is correct.
-It prevents nodes from having no incoming or outgoing connections.
-The nodes operations are also modified by calling their `modification` function in case some input shapes have been modified.
+First, it randomly selects the nodes to be modified.
+A parameter `nb\_mutations` can be set to limit the number of nodes modified.
+For each selected node, the allowed mutations can be different.
+For example, if the selected node is the last one, its outgoing connections cannot be changed.
+If the maximum number of nodes is reached, the `add` mutation cannot be used.
+For each node, once the set of allowed mutations has been defined, one value from that set is drawn and performed.
+After a mutation, some tests are performed to ensure a correct adjacency matrix structure and to adjust connections if necessary.
+This prevents nodes from having no incoming or outgoing connections.
+By modifying the nodes and edges, the input tensors of each node may have changed shape. 
+In this case, the node's operation is modified by calling its `modification` to adjust the weights.
 
 The detailed implementation of `HpInterval`, `CatHpInterval`, `NodeInterval` and `EvoDagInterval` can be found here:
 
@@ -236,16 +241,15 @@ The detailed implementation of `HpInterval`, `CatHpInterval`, `NodeInterval` and
 Crossover
 ~~~~~~~~~~~~~~~~~~~~
 
-Besides the neighborhood operators, a crossover has been implemented to use **DRAGON** with an evolutionary algorithm.
-The crossover is not an `addon`, it is a simple class implementing a two-point crossover.
-The crossover `__call__` method takes as input two individual `ind1` and `ind2` which should be array-like variables.
-Two index points from the smallest array are picked randomly.
-The segment between those two index points are swapped between the parents.
-For each element of this segement, if one of them is an `AdjMatrix` variable, then the DAG-based crossover is used.
+Besides the neighborhood operators, a crossover has been implemented to use DRAGON with an evolutionary algorithm.
+The crossover is not an `Addon`, it is a simple class implementing a two-point crossover.
+The crossover `\_\_call\_\_` method takes as input two individuals `ind1` and `ind2` which should be array-like variables, with the same types of `Variables` at each position.
+Two index points from arrays are picked randomly.
+The segment between those two index points is swapped between the parents.
+For each element of this segment, if one of them is an `AdjMatrix` variable, then the DAG-based crossover is used.
 
-The DAG-based crossover:
-* Takes as input two `AdjMatrix` elements.
-* Selects the indexes of the operations that would be exchange in each graphs.
+The DAG-based crossover takes as input two `AdjMatrix` elements and perform the following operations:
+* Selects the indexes of the operations that would be exchanged in each graph.
 * Removes the corresponding lines and columns from both adjacency matrices.
 * Computes for each exchanging node, the index in the other graph where it will be inserted
 * Inserts the new rows and columns within both adjacency matrices.
