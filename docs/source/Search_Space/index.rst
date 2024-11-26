@@ -4,8 +4,13 @@
 Search space presentation
 =============================
 
-The search space design is based on an abstract class called *Variable*, originally proposed within a hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_.
-A variable should implements a *random* method detailing how to create a random value and an *isconstant* method specifying if the variable is a constant or not.
+The search space design is based on an abstract class called `Variable`, originally proposed within a hyperparameters optimization package called `zellij <https://zellij.readthedocs.io/en/latest/>`_. 
+This class can represent various objects from float to tree-based or array-like structures.
+Each child class should implement a `random`` method, which represents the rules defining the variable and how to generate random values. 
+The other method to implement is called `isconstant`` and specifies whether the variable is a constant or not.
+Variables can be composed to represent more or less complex objects.
+Among the composed variables, some have been created specifically for the DAG encodings.
+A variable can be extended by `Addons` to implement additional features such as the search operators detailed `here <../Search_Operators/index.rst>`.
 The structure of a variable definition is the following:
 
 .. code-block:: python
@@ -33,8 +38,6 @@ The structure of a variable definition is the following:
         """
 
 All the variables ihnerit from the abstract class `Variable`.
-It gives the global structure of a variable and allow to add `Addons`.
-
 An example of the implementation of a variable for an integer can be found below:
 
 .. code-block:: python
@@ -70,8 +73,8 @@ This class can be used to create integers:
    v.random()
    3
 
-In this example, the variable `v` defines an integer which can take values from 0 to 5.
-When calling `v.random()`, the script returns an integer from this interval, here `3`.
+In this example, the variable `v`` defines an integer taking values from 0 to 5. 
+When calling `v.random()`, the script returns an integer from this range, here 3.
 
 **DRAGON** offers the implementage of base and composed variables to create more or less complex search spaces.
 Among the composed variables, some have been created specifically for the DAG-encodings.
@@ -79,8 +82,10 @@ Among the composed variables, some have been created specifically for the DAG-en
 Base variables
 ------------
 
-The base variables implements basic objects such as integers, floats or categorical variables. 
-The Base variables available within **DRAGON** are listed below.
+The base variables implement basic objects such as integers, floats or categorical variables. 
+Each of them is associated with a `Variable`, defining what values an object can take.
+For example, an integer object is implemented by a variable called `IntVar`. 
+It takes as arguments the lower and upper bounds defining the range of values the integer might take.
 
 .. list-table:: Base variables
    :widths: 25 25 50
@@ -91,13 +96,13 @@ The Base variables available within **DRAGON** are listed below.
      - Main parameters
    * - Integer
      - `IntVar`
-     - lower / upper bound
+     - Lower / upper bound
    * - Float
      - `FloatVar`
-     - lower / upper bound
+     - Lower / upper bound
    * - Categorical (string, etc)
      - `CatVar`
-     - features: list of possible choices
+     - Features: list of possible choices
    * - Constant (any object)
      - `Constant`
      - Value: constant value

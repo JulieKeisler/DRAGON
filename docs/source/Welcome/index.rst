@@ -1,8 +1,14 @@
-Introduction
+DRAGON
 ====================
 
-**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture* [1]_.
-**DRAGON** is not a *no code* package. It can be considered as a toolbox for the creation of Automated Deep Learning frameworks for various applications.
+**DRAGON**, for **DiRected Acyclic Graphs OptimizatioN**, is an open source Python package for the optimization of *Deep Neural Networks Hyperparameters and Architecture*.
+It implements the algorithmic framework proposed in [1]_. 
+In this framework, Deep Neural Networks are encoded as Directed Acyclic Graphs (DAGs), where the nodes can be any `Pytorch`` operations parameterized by some optimizable hyperparameters and the edges are the connections between them.
+Unlike most AutoDL or AutoML packages, DRAGON is not a *no-code package*. 
+It is not enough to write `.fit` and then `.predict`` to get results with DRAGON. 
+To use the package, the user must define a suitable search space, a meta-architecture, and procedures for training and validation. 
+Although this implementation requires more initial effort, it allows for a wide range of tools tailored to different problems. 
+The search space consists of objects that fall into three main categories: search space variables, search operators, and search algorithms.
 
 You can get familiar with it quickly thanks to the `Quickstart <../Quickstart/quickstart.ipynb>`_ tutorial. 
 
@@ -25,7 +31,7 @@ Structure
 - `Performance evaluation <../Applications/index.rst>`_.
      - Evaluating a configuration from a search space built with **DRAGON** is done by building the model (i.e. the neural networks) with the configuration elements. Then the model should be trained, evaluated and return a loss (the search algorithms minimise losses).
      - The process of building - training - evaluating a model based on a configuration depends on the applications and has to be implemented by the user.
-     - Examples are given for `image classification <../Applications/image.ipynb>`_ with the package *skorch* and `electricity consumption forecasting <../Applications/load_forecasting.ipynb>`_ [2]_.
+     - Examples are given for `image classification <../Applications/image.ipynb>`_ with the package *skorch* and `load forecasting <../Applications/load_forecasting.ipynb>`_ [2]_.
 
 
 Installation
