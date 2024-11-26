@@ -14,7 +14,7 @@ This function should take as input a configuration (and the index of that config
 The `loss` and the way it is calculated depends on the task at hand. 
 In general, it is necessary to build a neural network from the configuration, train it and validate it on data sets.
 Let's take the example of a problem classifying a vector :math:`X \in \mathbb{R}^n`, with :math:`n \in \mathbb{N}^\star` into 10 different classes.
- We want to find the best performing model among any type of architecture that takes an input of size `n` to an output of size 10. 
+We want to find the best performing model among any type of architecture that takes an input of size `n` to an output of size 10. 
 This type of architecture can be represented by a DAG.
 However, in order to constrain the output to be of dimension 10, it is necessary to add a final layer that allows the output of any size from the DAG to be converted to a vector of size 10.
 The DAG and the output layer are associated together within a `nn.Module` called `MetaArchi`.
@@ -39,12 +39,12 @@ The DAG and the output layer are associated together within a `nn.Module` called
         out = self.dag(X)
         return self.output(out)
 
-The class `MetaArchi` takes as arguments `args` containing the configuration and `input_shape` indicating the shape of the tensors that will be processed.
-The functions `set` were explained in `Search Space <../Search_Space/index.rst>`_. 
-They adjust the `nn.Module` weights to make sure they can handle tensors with the shape `input_shape`.
-
+The class `MetaArchi` takes as arguments the variable `args` which contain the configuration indicating how to build the model and `input\_shape` indicating the shape of the tensors that will be processed.
+The argument `self.dag` is an `AdjMatrix` and `self.output` is a `Node`.
+Their methods `set` were explained in the `Search Space section <../Search_Space/index.rst>`_.
+They adjust the `nn.Module` weights to ensure they can handle tensors with the right input shape.
 The search space used to create the variable `args` is specified by the user.
-In the following example we create a search space made of a DAG with only MLP and Indentity operations and the output layer.
+In the following example, we create a search space made of a DAG only having `MLP` and `Identity` layers as candidate operations.
 
 .. code-block:: python
 
@@ -61,7 +61,7 @@ In the following example we create a search space made of a DAG with only MLP an
    search_space = ArrayVar(dag, out, label="Search Space", neighbor=ArrayInterval())
 
 Finally, the last step is to implement a training and a validation strategy to assess the performance of a configuration from the search space.
-This can be done by splitting the dataset in two, to train and validate the model.
+This can be done by splitting the available dataset into a train and validation set.
 
 .. code-block:: python
 
