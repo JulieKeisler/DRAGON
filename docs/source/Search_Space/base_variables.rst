@@ -1,8 +1,6 @@
-.. _base_variables:
-
 
 Base Variables implementation
-------------------
+-----------------------------
 
 .. automodule:: dragon.search_space.base_variables
    :members: Variable

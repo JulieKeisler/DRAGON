@@ -1,5 +1,5 @@
 Crossover implementation
-++++++++++++++++++++
++++++++++++++++++++++++++
 
 .. automodule:: dragon.search_operators.crossover
    :members: DAGTwoPoint, adj_matrix_crossover

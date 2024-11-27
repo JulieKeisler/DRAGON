@@ -72,7 +72,7 @@ When implementing a new search algorithm using the `SearchAlgorithm` structure, 
 
 
 Storage management for Deep Neural Networks
-------------
+--------------------------------------------
 
 The objects encoding DAG such as the `Bricks`, `Nodes`, and `AdjMatrix` are all `nn.Module` that contain trained weights.
 Therefore, they can take up a lot of memory.
@@ -154,7 +154,7 @@ As training a neural network is the most time-consuming part of the search algor
 The `SearchAlgorithm` class activates by itself the MPI version by looking if the package mpi4py is available.
 
 Implemented Algorithms
-------------
+-----------------------
 
 It is possible to implement new search algorithms that extend or not the `SearchAlgorithm` class. 
 However, some are already available within the package and ready to be used.

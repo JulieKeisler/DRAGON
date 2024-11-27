@@ -1,4 +1,3 @@
-.. _search_operators:
 
 =============================
 Presentation
@@ -115,7 +114,7 @@ This `IntInterval` is assigned to the `Variable` while we define it:
 **DRAGON** provides implementation of neighborhoods operators for each variable from `Search Space <../Search_Space/index.rst>`_.
 
 Base and composed variables
-------------
+----------------------------
 
 The neighborhoods operators available for base and composed variables within **DRAGON** are listed below.
 
@@ -178,13 +177,13 @@ The detailed implementation can be found here:
    search_operators
 
 DAG encoding neighborhoods
-------------
+---------------------------
 
 
 Besides the base and composed variables, the ones used for DAG encoding, namely `HpVar`, `NodeVariable` and `EvoDagVariable` also have implemented neighborhoods.
 
 Operation neighborhood
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 The `HpVar` neighborhood is called `HpInterval`.
 Its arguments are an operation and a set of hyperparameters.
@@ -196,7 +195,7 @@ The `HpInterval` object returns the new operation and hyperparameters.
 It is possible to modify this operator to increase the probability of modifying the operation or to prevent hyperparameter mutations before a certain iteration of the search algorithm.
 
 Node neighborhood
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 If the operation within a `NodeVariable` is encoded as a `HpVar`, then its neighborhood will be the `HpInterval`. 
 But, in the case of `CatVar` of `HpVar`, when dealing with candidate operations implemented in various `HpVar`, the neighborhood for the operation is called `CatHpInterval`.
@@ -211,7 +210,7 @@ It selects among the combiner, the operation and the activation function what is
 For the selected elements, their `neighbor` attributes are invoked. In the current implementation, the chances for modifying any of these three elements are the same, which may be changed.
 
 DAG neighborhood
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 The `EvoDagVariable` neighborhood class is called `EvoDagInterval`.
 This neighborhood may perform five types of mutations:
@@ -239,7 +238,7 @@ The detailed implementation of `HpInterval`, `CatHpInterval`, `NodeInterval` and
    dragon_operators
 
 Crossover
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
 
 Besides the neighborhood operators, a crossover has been implemented to use DRAGON with an evolutionary algorithm.
 The crossover is not an `Addon`, it is a simple class implementing a two-point crossover.
