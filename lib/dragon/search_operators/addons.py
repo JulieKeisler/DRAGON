@@ -5,9 +5,8 @@ class Addon(ABC):
     """Addon
 
     Abstract class describing what an addon is.
-    An :code:`Addon` is an additionnal feature that can be added to a
-    :code:`target` object. See :ref:`varadd` for addon targeting :ref:`var` or
-    :ref:`spadd` targeting :ref:`sp`.
+    An `Addon` is an additionnal feature that can be added to a
+    :code:`target` object.
 
     Parameters
     ----------
@@ -35,16 +34,16 @@ class Addon(ABC):
 class VarAddon(Addon):
     """VarAddon
 
-    :ref:`addons` where the target must be of type :ref:`var`.
+    `Addons` where the target must be of type `Variable`.
 
     Parameters
     ----------
-    target : :ref:`var`, default=None
+    target : `Variable`, default=None
         Object targeted by the addons
 
     Attributes
     ----------
-    target : :ref:`var`, default=None
+    target : `Variable`, default=None
         Object targeted by the addons
 
     """
@@ -70,17 +69,17 @@ class VarAddon(Addon):
 class VarNeighborhood(VarAddon):
     """VarNeighborhood
 
-    :ref:`addons` where the target must be of type :ref:`var`.
-    Describes what a neighborhood is for a :ref:`var`.
+    `Addon` where the target must be of type `Variable`.
+    Describes what a neighborhood is for a `Variable.
 
     Parameters
     ----------
-    target : :ref:`var`, default=None
+    target : `Variable`, default=None
         Object targeted by the addons
 
     Attributes
     ----------
-    target : :ref:`var`, default=None
+    target : `Variable`, default=None
         Object targeted by the addons
 
     """

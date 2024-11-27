@@ -5,7 +5,7 @@ from dragon.search_space.dag_encoding import AdjMatrix, Node, fill_adj_matrix
 class HpVar(Variable):
     """HpVar(Variable)
 
-    The class `HpVar` defines :ref:`var` which represent a node operation. 
+    The class `HpVar` defines `Variables` which represent a node operation. 
     The operation can be a `Constant` or a `CatVar`, where the values inherit from the `Brick` class. 
     If the operation is represented by a `Constant`, the multiple operations should share the same hyperparameters.
 
@@ -99,7 +99,7 @@ class HpVar(Variable):
 class NodeVariable(Variable):
     """NodeVariable(Variable)
 
-    The class `NodeVariable` defines :ref:`var` which represent DAGs nodes by creating objects from the `Node` class.
+    The class `NodeVariable` defines `Variable` which represent DAGs nodes by creating objects from the `Node` class.
     
     Parameters
     ----------
@@ -182,7 +182,7 @@ class NodeVariable(Variable):
 class EvoDagVariable(Variable):
     """EvoDagVariable(Variable)
 
-    The class `EvoDagVariable` defines :ref:`var` which represent Directed Acyclic Graph by creating objects from the `AdjMatrix` class.
+    The class `EvoDagVariable` defines `Variables` which represent Directed Acyclic Graph by creating objects from the `AdjMatrix` class.
     The candidate operations should be gathered within a `DynamicBlock`. The maximum size of this `DynamicBlock` will set the graph maximum number of nodes.
 
     Parameters
@@ -190,7 +190,7 @@ class EvoDagVariable(Variable):
     label : str
         Name of the variable.
     operations : `DynamicBlock`
-        `DynamicBlock` containing :ref:`var` corresponding to the candidate operations.
+        `DynamicBlock` containing `Variables` corresponding to the candidate operations.
     init_complexity : int
         Maximum number of nodes that the randomly created DAGs should have.
     
