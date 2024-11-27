@@ -17,13 +17,13 @@ def int_neighborhood(b_min, b_max, scale=4):
 class HpInterval(VarNeighborhood):
     """HpInterval
 
-    :ref:`varneigh`, used to determine the neighbor of an HpVar.
+    `Addon`, used to determine the neighbor of an HpVar.
     Mutate the operation if it is not a constant and the hyperparameters.
 
     Parameters
     ----------
     variable : HpVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`
 
     Examples
     --------
@@ -91,13 +91,13 @@ class HpInterval(VarNeighborhood):
 class CatHpInterval(VarNeighborhood):
     """CatHpInterval
 
-    :ref:`varneigh`, used to determine the neighbor of a CatVar of candidates operations.
+    `Addon`, used to determine the neighbor of a CatVar of candidates operations.
     Given a probability `neighborhood`, draw a neighbor of the current operation, or draw a complete new operation
 
     Parameters
     ----------
     variable : CatVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`
     neighborhood: float < 1, default=0.9
         Probability of drawing a neighbor instead of changing the whole operation.
 
@@ -189,13 +189,13 @@ class CatHpInterval(VarNeighborhood):
 class NodeInterval(VarNeighborhood):
     """NodeInterval
 
-    :ref:`varneigh`, used to determine the neighbor of a Node.
+    `Addon`, used to determine the neighbor of a Node.
     Change the combiner and/or the operation and/or the hyperparameters and/or the activation function.
 
     Parameters
     ----------
     variable : CatVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`
 
     Examples
     --------
@@ -296,13 +296,13 @@ class NodeInterval(VarNeighborhood):
 class EvoDagInterval(VarNeighborhood):
     """NodeInterval
 
-    :ref:`varneigh`, used to determine the neighbor of an EvoDagVariable.
+    `Addon`, used to determine the neighbor of an EvoDagVariable.
     May perform several modifications such as adding / deleting nodes, changing the nodes content, adding/removing connections.
 
     Parameters
     ----------
     variable : EvoDagVariable, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
 
     Examples
     --------

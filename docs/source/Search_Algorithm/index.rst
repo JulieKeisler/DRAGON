@@ -119,8 +119,7 @@ An illustration of the implementation can be found below.
         every node/.style={align=left, font=\small},
         box/.style={draw, rounded corners, text width=5cm, minimum height=1.2cm, inner sep=5pt},
         dashed-arrow/.style={->, dashed, thick},
-        arrow/.style={->, thick}
-    ]
+        arrow/.style={->, thick}]
 
     % Nodes
     \node[box] (master) {\textbf{Master}\\

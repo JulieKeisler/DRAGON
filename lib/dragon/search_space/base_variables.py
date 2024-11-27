@@ -562,7 +562,7 @@ class ArrayVar(Variable):
     def append(self, v):
         """append(v)
 
-        Append a :ref:`Variables` to the :code:`ArrayVar`.
+        Append a :code:`Variable` to the :code:`ArrayVar`.
 
         Parameters
         ----------

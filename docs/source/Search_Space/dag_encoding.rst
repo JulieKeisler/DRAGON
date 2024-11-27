@@ -6,7 +6,7 @@ DAG encoding
 ~~~~~~~~~~~~~
 
 .. automodule:: dragon.search_space.dag_encoding
-   :members: Brick, Node, EvoDagVariable, fill_adj_matrix
+   :members: Brick, Node, AdjMatrix, fill_adj_matrix
    :undoc-members:
    :show-inheritance:
    :noindex:

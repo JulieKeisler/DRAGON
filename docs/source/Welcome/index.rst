@@ -24,7 +24,7 @@ Structure
      - A crossover operator is also implemented, allowing both arrays and graph-like variables to be mixed.
 
 - `Search Algorithms <../Search_Algorithm/index.rst>`_.
-     - **DRAGON** provides the implementation of several search algorithms: the `Random Search <../Search_Algorithm/random_search.ipynb>`_, the `Evolutionary Algorithm <. ./Search_Algorithm/ssea.ipynb>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [5]_ and `Hyperband <../Search_Algorithm/hyperband.ipynb>`_ [6]_.
+     - **DRAGON** provides the implementation of several search algorithms: the `Random Search <../Search_Algorithm/random_search.ipynb>`_, the `Evolutionary Algorithm <. ./Search_Algorithm/ssea.ipynb>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [3]_ and `Hyperband <../Search_Algorithm/hyperband.ipynb>`_ [4]_.
      - Mutant-UCB and the Evolutionary Algorithm use the *neighbor* attributes to modify the configurations. Other search algorithms such as local search or simulated annealing could be implemented in a similar way.
      - Each search algorithm comes with a storage system to keep RAM memory small and an optional distributed version on multiple processors. The distributed version requires an MPI library such as `MPICH <https://www.mpich.org/>`_ or `Open MPI <https://www.open-mpi.org/>`_ and is based on the `mpi4py package <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`_.
 
@@ -47,7 +47,7 @@ After cloning the git repository, install **DRAGON**, using:
      pip install dragon-autodl==1.0
 
 Distributed version
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 If you plan on using the distributed version, you have to install the mpi4py package:
 
@@ -59,7 +59,7 @@ Dependencies
 ------------
 
 * **Python** >=3.9
-* `numpy <https://numpy.org/>`__<2.0.0
+* `numpy <https://numpy.org/>`__ <2.0.0
 * `torch <https://pytorch.org/>`__
 * `graphviz <https://graphviz.org/>`__
 * `pandas <https://pandas.pydata.org/>`__
@@ -74,11 +74,10 @@ Dependencies
 Contributors
 ------------
 * Julie Keisler: julie.keisler.rfo@gmail.com
+
 References
 ----------
 .. [1] Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2024). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. *Journal of Machine Learning Research*, 25(201), 1-33.
 .. [2] Keisler, J., Claudel, S., Cabriel, G., & Brégère, M. (2024). Automated Deep Learning for Load Forecasting. *International Conference on Automated Machine Learning*.
-.. [3] Keisler, J., & Naour, E. L. (2024). WindDragon: Enhancing wind power forecasting with Automated Deep Learning. Workshop paper at *Tackling Climate Change with Machine Learning*, *International Conference on Learning Representations*.
-.. [4] Elsken, T., Metzen, J. H., & Hutter, F. (2019). Neural architecture search: A survey. *Journal of Machine Learning Research*, 20(55), 1-21.
-.. [5] Brégère, M., & Keisler, J. (2024). A Bandit Approach with Evolutionary Operators for Model Selection.
-.. [6] Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., & Talwalkar, A. (2018). Hyperband: A novel bandit-based approach to hyperparameter optimization. *Journal of Machine Learning Research*, 18(185), 1-52.
+.. [3] Brégère, M., & Keisler, J. (2024). A Bandit Approach with Evolutionary Operators for Model Selection.
+.. [4] Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., & Talwalkar, A. (2018). Hyperband: A novel bandit-based approach to hyperparameter optimization. *Journal of Machine Learning Research*, 18(185), 1-52.

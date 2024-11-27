@@ -80,7 +80,7 @@ When calling `v.random()`, the script returns an integer from this range, here 3
 Among the composed variables, some have been created specifically for the DAG-encodings.
 
 Base variables
-------------
+---------------
 
 Deep Neural Networks are made of layers. 
 In **DRAGON**’s case, those layers are `nn.Module` from *PyTorch*.
@@ -121,7 +121,7 @@ The implementation of the base variables is detailed in the `Base Variables <bas
    base_variables
 
 Composed variables
-------------
+-------------------
 
 The base variables can be composed to create more complex objects such as arrays of variables.
 
@@ -167,12 +167,12 @@ The implementation of the composed variables is detailed in the `Composed Variab
    composed_variables
 
 Deep Neural Networks Encoding
-------------
+-----------------------------
 
 Both the base and composed variables have been used to encode Deep Neural Networks architecture and hyperparameters.
 
 Operations and hyperparameters encoding
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Deep Neural Networks are made of layers. In **DRAGON**'s case, those layers are *nn.Module* from *PyTorch*.
 The user can use any base or custom *nn.Module*, but as to wrap it into a *Brick* object. 
@@ -312,7 +312,7 @@ The implementation of the objects and variables use to encode the Deep Neural Ne
 .. toctree::
    :maxdepth: 1
 
-   dag_en
+   dag_encoding
 
 The Figure below illustrates how the elements are linked together. 
 The hierarchical composition of the variables creating a DAG allows optimization at various levels, from the graph structure to any operation hyperparameters. 
