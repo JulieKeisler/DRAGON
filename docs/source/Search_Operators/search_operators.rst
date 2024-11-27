@@ -6,7 +6,7 @@ Here are presented implementations of neighborhoods that can be used for the bas
 .. _intervals:
 
 Base variables
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 .. automodule:: dragon.search_operators.base_neighborhoods
    :members: IntInterval, FloatInterval, CatInterval, ConstantInterval
@@ -16,7 +16,7 @@ Base variables
 
 
 Composed variables
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: dragon.search_operators.base_neighborhoods
    :members: ArrayInterval, BlockInterval, DynamicBlockInterval
