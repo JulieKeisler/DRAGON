@@ -1,0 +1,1 @@
+from dragon.search_space.dag_encoding import Brick
