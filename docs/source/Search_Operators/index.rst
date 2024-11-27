@@ -106,7 +106,7 @@ This `IntInterval` is assigned to the `Variable` while we define it:
 
 .. code-block:: python
 
-   from dragon.search_space.zellij_variables import IntVar
+   from dragon.search_space.base_variables import IntVar
 
    v = IntVar("An integer variable", 0, 5, neighbor=IntInterval(neighborhood=1))
    v.neighbor(4) # Example usage
@@ -160,8 +160,8 @@ If a composed variable has a `neighbor` addon, then all the values composing thi
 For example with a `Block`:
 
 .. code-block:: python
-   from dragon.search_space.zellij_variables import Block, FloatVar
-   from dragon.search_algorithm.zellij_neighborhoods import BlockInterval, FloatInterval
+   from dragon.search_space.base_variables import Block, FloatVar
+   from dragon.search_operators.base_neighborhoods import BlockInterval, FloatInterval
    content = FloatVar("Float example", 0, 10, neighbor=FloatInterval(2))
    a = Block("Block example", content, 3, neighbor=BlockInterval())
    a.neighbor([2, 1, 6])

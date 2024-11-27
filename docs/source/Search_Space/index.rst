@@ -15,7 +15,7 @@ The structure of a variable definition is the following:
 
 .. code-block:: python
 
-   from dragon.search_space.zellij_variables import Variable
+   from dragon.search_space.base_variables import Variable
 
    class CustomVar(Variable):
 
@@ -127,7 +127,7 @@ The base variables can be composed to create more complex objects such as arrays
 
 .. code-block:: python
 
-   from dragon.search_space.zellij_variables import ArrayVar, IntVar, FloatVar, CatVar
+   from dragon.search_space.base_variables import ArrayVar, IntVar, FloatVar, CatVar
 
    a = ArrayVar(IntVar("int_1", 0,8),
     ...              IntVar("int_2", 4,45),
@@ -221,7 +221,7 @@ If a `CatVar` is given as input operation, all the `Bricks` contained in the `Ca
 |.. code-block:: python                                              |.. code-block:: python                                                 |
 |                                                                    |                                                                       |
 |  from dragon.search_space.bricks import MLP                        |  from dragon.search_space.bricks import LayerNorm1d, BatchNorm1d      |
-|  from dragon.search_space.zellij_variables import Constant, IntVar |  from dragon.search_space.zellij_variables import CatVar              |
+|  from dragon.search_space.base_variables import Constant, IntVar |  from dragon.search_space.base_variables import CatVar              |
 |  from dragon.search_space.dragon_variables import HpVar            |  from dragon.search_space.dragon_variables import HpVar               |
 |                                                                    |                                                                       |
 |  mlp = Constant("MLP operation", MLP)                              |  norm = CatVar("1d norm layers", features=[LayerNorm1d, BatchNorm1d]) |
@@ -273,7 +273,7 @@ An example is given below.
 
 .. code-block:: python
 
-   from dragon.search_space.zellij_variables import CatVar
+   from dragon.search_space.base_variables import CatVar
    from dragon.search_space.bricks_variables import activation_var
    operation=CatVar("Candidates", [mlp_var, norm_var])
    candidates = NodeVariable(label = "Candidates", 
