@@ -58,8 +58,14 @@ templates_path = ["_templates"]
 latex_elements = {
     'papersize': 'a4paper',
     'pointsize': '10pt',
-    'preamble': '',
+    'preamble': r'''
+            \usepackage{xcolor}
+            \definecolor{ulcolour}{RGB}{31,131,136}
+            \definecolor{input_purple}{HTML}{431cce} 
+            \definecolor{output_red}{HTML}{CE1C4E}
+        ''',
 }
+
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

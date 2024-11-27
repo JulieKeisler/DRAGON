@@ -321,75 +321,35 @@ This way, we can reconstruct more constrained search spaces close to cell-based 
 
 .. tikz::
 
-   \tikzset{every picture/.style={line width=0.75pt` %set default line width to 0.75pt        
+   \begin{tikzpicture}[align=center]
 
-   \begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
-   %uncomment if require: \path (0,375); %set diagram left start at 0, and has height of 375
+        % AdjMatrix
+        \node (adjmatrix) {\textcolor{ulcolour}{AdjMatrix} \\ = \\ \textcolor{input_purple}{EvoDagVariable}};
+        \node (description1) [above right=0.5cm and 2cm of adjmatrix.east, align=left] {Matrix: adjacency matrix representing \\ the edges between nodes};
+        \node (description2) [below=0.5cm of description1.south west, anchor=west] {Operations: list of \textcolor{ulcolour}{Nodes}};
+        \node (equals) [below right = 0.2cm and 0.8cm of description2.west] {=};
+        \node (equals2) [below left = 0.2cm and 0.3cm of description2.east] {=};
+        \node (operations) [below= 0.3cm of equals.north] {\textcolor{input_purple}{DynamicBlock}};
+        \node (operations) [below= 0.3cm of equals2.north] {\textcolor{input_purple}{NodeVariables}};
+        
+        % Node
+        \node (node) [below=1.5cm of adjmatrix] {\textcolor{ulcolour}{Node} \\ = \\ \textcolor{input_purple}{NodeVariable}};
+        \node (combiner) [below=2cm of description2.south west, anchor=west] {Combiner = \textcolor{input_purple}{Constant} or \textcolor{input_purple}{CatVar}};
+        \node (hyperparams) [below=0.5cm of combiner.south west, anchor=west] {Operation(s) and hp = \textcolor{input_purple}{HpVar} or \textcolor{input_purple}{CatVar} of \textcolor{input_purple}{HpVar}};
+        \node (activation) [below=0.5cm of hyperparams.south west, anchor=west] {Activation function = \textcolor{input_purple}{Constant} or \textcolor{input_purple}{CatVar}};
+        
+        % Operations
+        \node (hyperparams1) [below= 1.1cm of node] {Operation and \\ hyperparameters \\ = \textcolor{input_purple}{HpVar}};
+        \node (brick) [below=1.5cm of activation.south west, anchor=west, align= left] {\textcolor{ulcolour}{Brick} or list of \textcolor{ulcolour}{Bricks} (\textit{PyTorch} operation) \\ = \textcolor{input_purple}{Constant} or \textcolor{input_purple}{CatVar}};
+        \node (hyperparams2) [below=1cm of brick.south west, anchor=west, align=left] {Hyperparameters = dictionary of base variables \\ (e.g., \textcolor{input_purple}{FloatVar}, \textcolor{input_purple}{CatVar})};
 
-
-   % Text Node
-   \draw (14.75,44) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{80.81pt}\setlength\topsep{0pt}
-   \begin{center}
-   \textcolor[rgb]{0.29,0.56,0.89}{AdjMatrix}\\=\\\textcolor[rgb]{0.56,0.07,1}{EvoDagsVariable}
-   \end{center}
-
-   \end{minipage`;
-   % Text Node
-   \draw (229,4) node [anchor=north west][inner sep=0.75pt]   [align=left] {Matrix: adjacency matrix representing \\the edges between the node};
-   % Text Node
-   \draw (229,64) node [anchor=north west][inner sep=0.75pt]   [align=left] {Operations: list of \textcolor[rgb]{0.29,0.56,0.89}{Nodes`;
-   % Text Node
-   \draw (222,87.5) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{67.35pt}\setlength\topsep{0pt}
-   \begin{center}
-   =\\\textcolor[rgb]{0.56,0.07,1}{DynamicBlock}
-   \end{center}
-
-   \end{minipage`;
-   % Text Node
-   \draw (329,87.5) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{63.81pt}\setlength\topsep{0pt}
-   \begin{center}
-   =\\\textcolor[rgb]{0.56,0.07,1}{NodeVariable}
-   \end{center}
-
-   \end{minipage`;
-   % Text Node
-   \draw (27.25,163) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{63.81pt}\setlength\topsep{0pt}
-   \begin{center}
-   \textcolor[rgb]{0.29,0.56,0.89}{Node}\\=\\\textcolor[rgb]{0.56,0.07,1}{NodeVariable}
-   \end{center}
-
-   \end{minipage`;
-   % Text Node
-   \draw (229,144) node [anchor=north west][inner sep=0.75pt]   [align=left] {Combiner = \ \textcolor[rgb]{0.56,0.07,1}{Constant} or \textcolor[rgb]{0.56,0.07,1}{CatVar`;
-   % Text Node
-   \draw (229,184.5) node [anchor=north west][inner sep=0.75pt]   [align=left] {Operation and hyperparameters = \ \textcolor[rgb]{0.56,0.07,1}{HpVar`;
-   % Text Node
-   \draw (229,225) node [anchor=north west][inner sep=0.75pt]   [align=left] {Activation function = \textcolor[rgb]{0.56,0.07,1}{Constant} or \textcolor[rgb]{0.56,0.07,1}{CatVar`;
-   % Text Node
-   \draw (14.25,282) node [anchor=north west][inner sep=0.75pt]   [align=left] {\begin{minipage}[lt]{81.6pt}\setlength\topsep{0pt}
-   \begin{center}
-   Operation and hyperparameters\\=\\\textcolor[rgb]{0.56,0.07,1}{HpVar}
-   \end{center}
-
-   \end{minipage`;
-   % Text Node
-   \draw (229,282) node [anchor=north west][inner sep=0.75pt]   [align=left] {\textcolor[rgb]{0.29,0.56,0.89}{Brick} or list of \textcolor[rgb]{0.29,0.56,0.89}{Bricks }(*PyTorch} operation) = \textcolor[rgb]{0.56,0.07,1}{Constant} or \textcolor[rgb]{0.56,0.07,1}{CatVar`;
-   % Text Node
-   \draw (229,324) node [anchor=north west][inner sep=0.75pt]   [align=left] {Hyperparameters = dictionnary of base variables \\(e.g: \textcolor[rgb]{0.56,0.07,1}{FloatVar}, \textcolor[rgb]{0.56,0.07,1}{CatVar})};
-   % Connection
-   \draw    (134.75,62.55) -- (225.8,46.35) ;
-   \draw [shift={(227.77,46)}, rotate = 169.91] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-   % Connection
-   \draw    (134.75,73.24) -- (224,72.87) ;
-   \draw [shift={(226,72.86)}, rotate = 179.76] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-   % Connection
-   \draw    (122.25,192.58) -- (224,192.76) ;
-   \draw [shift={(226,192.76)}, rotate = 180.1] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-   % Connection
-   \draw    (122.25,185.07) -- (252.6,165.3) ;
-   \draw [shift={(254.58,165)}, rotate = 171.38] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-   % Connection
-   \draw    (122.25,199.43) -- (272.68,220.72) ;
-   \draw [shift={(274.66,221)}, rotate = 188.05] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-
-   \end{tikzpicture}
+        % Arrows
+        \draw [->] (adjmatrix) -- (description1.west);
+        \draw [->] (adjmatrix) -- (description2.west);
+        \draw [->] (node) -- (combiner.west);
+        \draw [->] (node) -- (hyperparams.west);
+        \draw [->] (node) -- (activation.west);
+        \draw [->] (hyperparams1) -- (brick.west);
+        \draw [->] (hyperparams1) -- (hyperparams2.west);
+        
+    \end{tikzpicture}
