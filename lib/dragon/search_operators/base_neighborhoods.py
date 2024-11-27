@@ -14,13 +14,13 @@ import copy
 class IntInterval(VarNeighborhood):
     """IntInterval
 
-    :ref:`varadd`, used to determine the neighbor of an IntVar.
+    `Addon`, used to determine the neighbor of an IntVar.
     Draw a random point in :math:`x \pm neighborhood`.
 
     Parameters
     ----------
     variable : IntVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
     neighborhood : int, default=None
         :math:`x \pm neighborhood`
 
@@ -81,13 +81,13 @@ class IntInterval(VarNeighborhood):
 class FloatInterval(VarNeighborhood):
     """FloatInterval
 
-    :ref:`varadd`, used to determine the neighbor of a FloatVar.
+    `Addon`, used to determine the neighbor of a FloatVar.
     Draw a random point in :math:`x \pm neighborhood`.
 
     Parameters
     ----------
     variable : FloatVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
     neighborhood : float, default=None
         :math:`x \pm neighborhood`
 
@@ -147,13 +147,13 @@ class FloatInterval(VarNeighborhood):
 class CatInterval(VarNeighborhood):
     """CatInterval
 
-    :ref:`varadd`, used to determine the neighbor of a CatVar.
+    `Addon`, used to determine the neighbor of a CatVar.
     Draw a random feature in CatVar.
 
     Parameters
     ----------
     variable : CatVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
     neighborhood : int, default=None
         Undefined, for CatVar it draws a random feature.
 
@@ -209,13 +209,13 @@ class CatInterval(VarNeighborhood):
 class ConstantInterval(VarNeighborhood):
     """ConstantInterval
 
-    :ref:`varadd`, used to determine the neighbor of a Constant.
+    `Addon`, used to determine the neighbor of a Constant.
     Do nothing. Return the constant.
 
     Parameters
     ----------
     variable : Constant, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
 
     Examples
     --------
@@ -263,14 +263,14 @@ class ConstantInterval(VarNeighborhood):
 class ArrayInterval(VarNeighborhood):
     """ArrayInterval
 
-    :ref:`spadd`, used to determine the neighbor of an ArrayVar.
-    neighbor kwarg must be implemented for all :ref:`var` of the ArrayVar.
-    One :ref:`var` is modified for each neighbor drawn.
+    `Addon`, used to determine the neighbor of an ArrayVar.
+    neighbor kwarg must be implemented for all `Variable` of the ArrayVar.
+    One `Variable` is modified for each neighbor drawn.
 
     Parameters
     ----------
     variable : ArrayVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
 
     Examples
     ----------
@@ -343,13 +343,13 @@ class ArrayInterval(VarNeighborhood):
 class BlockInterval(VarNeighborhood):
     """BlockInterval
 
-    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
-    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
+    `Addon`, used to determine the neighbor of an BlockInterval.
+    neighbor kwarg must be implemented for all `Variable` of the BlockInterval.
     
     Parameters
     ----------
     variable : Block, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
 
     Examples
     ----------
@@ -407,13 +407,13 @@ class BlockInterval(VarNeighborhood):
 class DynamicBlockInterval(VarNeighborhood):
     """BlockInterval
 
-    :ref:`spadd`, used to determine the neighbor of an BlockInterval.
-    neighbor kwarg must be implemented for all :ref:`var` of the BlockInterval.
+    `Addon`, used to determine the neighbor of an BlockInterval.
+    neighbor kwarg must be implemented for all `Variable` of the BlockInterval.
 
     Parameters
     ----------
     variable : IntVar, default=None
-        Targeted :ref:`var`.
+        Targeted `Variable`.
     neighborhood : int
         Neighborhood of the DynamicBlock size
 

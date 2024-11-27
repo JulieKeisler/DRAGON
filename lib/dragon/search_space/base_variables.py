@@ -18,7 +18,7 @@ class Variable(ABC):
     label : str
         Name of the variable.
     kwargs : dict
-        Kwargs will be the different addons you want to add to a :ref:`var`.
+        Kwargs will be the different addons you want to add to a `Variable`.
         Known addons are:
         * neighbor : VarNeighborhood
 
@@ -73,7 +73,7 @@ class Variable(ABC):
 class IntVar(Variable):
     """IntVar
 
-    `IntVar` defines :ref:`var` discribing Integer variables. The user must specify a :code:`lower` and an :code:`upper` bounds for the Integer variable.
+    `IntVar` defines `Variable` discribing Integer variables. The user must specify a :code:`lower` and an :code:`upper` bounds for the Integer variable.
 
     Parameters
     ----------
@@ -153,7 +153,7 @@ class IntVar(Variable):
         Returns
         -------
         out: boolean
-            Return True, if this :ref:`var` is a constant
+            Return True, if this `Variable` is a constant
             (:code:`lower`==:code:`upper`),\
             False otherwise.
 
@@ -174,7 +174,7 @@ class IntVar(Variable):
 class FloatVar(Variable):
     """FloatVar
 
-    `FloatVar` defines :ref:`var` discribing Float variables.
+    `FloatVar` defines `Variable` discribing Float variables.
 
     Parameters
     ----------
@@ -257,7 +257,7 @@ class FloatVar(Variable):
         Returns
         -------
         out: boolean
-            Return True, if this :ref:`var` is a constant
+            Return True, if this `Variable` is a constant
             (:code:`lower`==:code:`upper`),\
             False otherwise.
 
@@ -278,7 +278,7 @@ class FloatVar(Variable):
 class CatVar(Variable):
     """CatVar(Variable)
 
-    `CatVar` defines :ref:`var` discribing categorical variables.
+    `CatVar` defines `Variable` discribing categorical variables.
 
     Parameters
     ----------
@@ -344,8 +344,8 @@ class CatVar(Variable):
         -------
         out: float or list[float]
             Return a feature if :code:`size`=1, a :code:`list[features]` else.
-            Features can be :ref:`var`. When seleted, it will return
-            a random point from this :ref:`var`.
+            Features can be `Variable`. When seleted, it will return
+            a random point from this `Variable`.
 
         """
 
@@ -368,7 +368,7 @@ class CatVar(Variable):
         Returns
         -------
         out: boolean
-            Return True, if this :ref:`var` is a constant
+            Return True, if this `Variable` is a constant
             (:code:`len(feature)==1`),\
             False otherwise.
 
@@ -386,7 +386,7 @@ class CatVar(Variable):
 class Constant(Variable):
     """Constant
 
-    :code:`Constant` is a :ref:`var` discribing a constant of any type.
+    :code:`Constant` is a `Variable` discribing a constant of any type.
 
     Parameters
     ----------
@@ -458,7 +458,7 @@ class Constant(Variable):
 class ArrayVar(Variable):
     """ArrayVar(Variable)
 
-    :code:`ArrayVar` defines :ref:`var` describing lists of :ref:`var`. This class is
+    :code:`ArrayVar` defines `Variable` describing lists of `Variable`. This class is
     iterable.
 
     Parameters
@@ -466,7 +466,7 @@ class ArrayVar(Variable):
     label : str
         Name of the variable.
     *args : list[Variable]
-        Elements of the :code:`ArrayVar`. All elements must be of type :ref:`var`
+        Elements of the :code:`ArrayVar`. All elements must be of type `Variable`
 
     Examples
     --------
@@ -490,7 +490,7 @@ class ArrayVar(Variable):
             assert all(
                 isinstance(v, Variable) for v in args
             ), f"""
-            All elements must inherit from :ref:`var`,
+            All elements must inherit from `Variable`,
             got {args}
             """
 
@@ -513,7 +513,7 @@ class ArrayVar(Variable):
         Returns
         -------
         out: float or list[float]
-            Return a list composed of the values returned by each :ref:`var` of
+            Return a list composed of the values returned by each `Variable` of
             :code:`ArrayVar`. If :code:`size`>1, return a list of list
 
         """
@@ -535,7 +535,7 @@ class ArrayVar(Variable):
         Returns
         -------
         out: boolean
-            Return True, if this :ref:`var` is a constant (all elements are
+            Return True, if this `Variable` is a constant (all elements are
             constants), False otherwise.
 
         """
@@ -544,7 +544,7 @@ class ArrayVar(Variable):
     def index(self, value):
         """index(value)
 
-        Return the index inside the :code::code:`ArrayVar` of a given :code:`value`.
+        Return the index inside the :code:`ArrayVar` of a given :code:`value`.
 
         Parameters
         ----------
@@ -562,7 +562,7 @@ class ArrayVar(Variable):
     def append(self, v):
         """append(v)
 
-        Append a :ref:`Variables` to the :code::code:`ArrayVar`.
+        Append a :ref:`Variables` to the :code:`ArrayVar`.
 
         Parameters
         ----------
@@ -612,14 +612,14 @@ class ArrayVar(Variable):
 class Block(Variable):
     """Block(Variable)
 
-    `Block` defines :ref:`var` which will repeat multiple times a :ref:`var`.
+    `Block` defines `Variable` which will repeat multiple times a `Variable`.
 
     Parameters
     ----------
     label : str
         Name of the variable.
     value : Variable
-        :ref:`var` that will be repeated
+        `Variable` that will be repeated
     repeat : int
         Number of repeats.
 
@@ -655,7 +655,7 @@ class Block(Variable):
         assert isinstance(
             value, Variable
         ), f"""
-        Value must inherit from :ref:`var`, got {value}
+        Value must inherit from `Variable`, got {value}
         """
         assert (
             isinstance(repeat, int) and repeat > 0
@@ -676,7 +676,7 @@ class Block(Variable):
         Returns
         -------
         out: float or list[float]
-            Return a list composed of the results from the :ref:`var` `random()`
+            Return a list composed of the results from the `Variable` `random()`
             method, repeated `repeat` times. If size > 1, return a list of list.
 
         """
@@ -707,8 +707,8 @@ class Block(Variable):
         Returns
         -------
         out: boolean
-            Return True, if this :ref:`var` is a constant (the repeated
-            :ref:`var` is constant), False otherwise.
+            Return True, if this `Variable` is a constant (the repeated
+            `Variable` is constant), False otherwise.
 
         """
 
@@ -736,7 +736,7 @@ class DynamicBlock(Block):
     label : str
         Name of the variable.
     value : Variable
-        :ref:`var` that will be repeated
+        `Variable` that will be repeated
     repeat : int
         Maximum number of repeats.
     
@@ -777,7 +777,7 @@ class DynamicBlock(Block):
         Returns
         -------
         out: float or list[float]
-            Return a list composed of the results from the :ref:`var` `random()`
+            Return a list composed of the results from the `Variable` `random()`
             method, repeated `repeat` times. If size > 1, return a list of list.
 
         """
