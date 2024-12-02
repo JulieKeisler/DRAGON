@@ -44,7 +44,7 @@ After cloning the git repository, install **DRAGON**, using:
 
 .. code-block:: bash
 
-     pip install dragon-autodl==1.0
+     pip install dragon-autodl==1.1
 
 Distributed version
 ^^^^^^^^^^^^^^^^^^^
