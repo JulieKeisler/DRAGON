@@ -70,12 +70,12 @@ class Mutant_UCB(SearchAlgorithm):
 
     Example
     --------
-    from dragon.search_space.base_variables import ArrayVar
-    from dragon.search_operators.base_neighborhoods import ArrayInterval
-    from dragon.search_algorithm.mutant_ucb import Mutant_UCB
-    search_space = ArrayVar(dag, label="Search Space", neighbor=ArrayInterval())
-    search_algorithm = Mutant_UCB(search_space, save_dir="save/test_mutant", T=20, N=5, K=5, E=0.01, evaluation=loss_function)
-    search_algorithm.run()
+    >>> from dragon.search_space.base_variables import ArrayVar
+    >>> from dragon.search_operators.base_neighborhoods import ArrayInterval
+    >>> from dragon.search_algorithm.mutant_ucb import Mutant_UCB
+    >>> search_space = ArrayVar(dag, label="Search Space", neighbor=ArrayInterval())
+    >>> search_algorithm = Mutant_UCB(search_space, save_dir="save/test_mutant", T=20, N=5, K=5, E=0.01, evaluation=loss_function)
+    >>> search_algorithm.run()
     """
     def __init__(self, search_space, T, K, N, E, evaluation, save_dir, models=None, pop_path=None, verbose=False, **args):
         super(Mutant_UCB, self).__init__(search_space=search_space, 

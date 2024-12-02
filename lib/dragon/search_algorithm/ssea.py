@@ -73,12 +73,12 @@ class SteadyStateEA(SearchAlgorithm):
 
     Example
     --------
-    from dragon.search_space.base_variables import ArrayVar
-    from dragon.search_operators.base_neighborhoods import ArrayInterval
-    from dragon.search_algorithm.ssea import SteadyStateEA
-    search_space = ArrayVar(dag, label="Search Space", neighbor=ArrayInterval())
-    search_algorithm = SteadyStateEA(search_space, save_dir="save/test_ssea", n_iterations=20, population_size=5, selection_size=3, evaluation=loss_function)
-    search_algorithm.run()
+    >>> from dragon.search_space.base_variables import ArrayVar
+    >>> from dragon.search_operators.base_neighborhoods import ArrayInterval
+    >>> from dragon.search_algorithm.ssea import SteadyStateEA
+    >>> search_space = ArrayVar(dag, label="Search Space", neighbor=ArrayInterval())
+    >>> search_algorithm = SteadyStateEA(search_space, save_dir="save/test_ssea", n_iterations=20, population_size=5, selection_size=3, evaluation=loss_function)
+    >>> search_algorithm.run()
     """
     def __init__(self, search_space, n_iterations: int, population_size: int, selection_size: int, evaluation, save_dir, models = None, pop_path=None, crossover=DAGTwoPoint(), verbose=False, **args):
         super(SteadyStateEA, self).__init__(search_space=search_space, 
