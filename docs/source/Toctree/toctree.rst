@@ -42,10 +42,3 @@
   ../Applications/index
 
 ..
-
-.. toctree::
-  :caption: API
-  :maxdepth: 2
-  :hidden:
-
-  ../api.rst

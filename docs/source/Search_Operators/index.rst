@@ -159,6 +159,7 @@ If a composed variable has a `neighbor` addon, then all the values composing thi
 For example with a `Block`:
 
 .. code-block:: python
+   
    from dragon.search_space.base_variables import Block, FloatVar
    from dragon.search_operators.base_neighborhoods import BlockInterval, FloatInterval
    content = FloatVar("Float example", 0, 10, neighbor=FloatInterval(2))

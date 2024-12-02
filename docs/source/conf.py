@@ -60,6 +60,7 @@ latex_elements = {
     'pointsize': '10pt',
     'preamble': r'''
             \usepackage{xcolor}
+            \usetikzlibrary{positioning, arrows}
             \definecolor{ulcolour}{RGB}{31,131,136}
             \definecolor{input_purple}{HTML}{431cce} 
             \definecolor{output_red}{HTML}{CE1C4E}

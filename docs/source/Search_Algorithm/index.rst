@@ -123,20 +123,20 @@ An illustration of the implementation can be found below.
 
     % Nodes
     \node[box] (master) {\textbf{Master}\\
-        → Randomly draws configurations\\
-        → Selects the next configuration to evaluate (may perform mutations, crossover...)\\
-        → Processes the evaluated configuration\\
-        → Identifies the best model};
+        - Randomly draws configurations\\
+        - Selects the next configuration to evaluate (may perform mutations, crossover...)\\
+        - Processes the evaluated configuration\\
+        - Identifies the best model};
 
     \node[box, above right=1cm and 2cm of master.east, text=output_red] (worker1) {\textbf{Worker 1}\\
-        → Associated with GPU 1\\
-        → Evaluates the configuration sent by the master\\
-        → Stores the configuration};
+        - Associated with GPU 1\\
+        - Evaluates the configuration sent by the master\\
+        - Stores the configuration};
 
     \node[box, below right=1cm and 2cm of master.east, text=ulcolour] (workern) {\textbf{Worker \textit{n}}\\
-        → Associated with GPU \textit{n}\\
-        → Evaluates the configuration sent by the master\\
-        → Stores the configuration};
+        - Associated with GPU \textit{n}\\
+        - Evaluates the configuration sent by the master\\
+        - Stores the configuration};
 
     % Arrows
     \draw[->, thick, bend left=15] (master.east) to node[above, yshift=9mm] {Configuration} (worker1.west);
@@ -159,6 +159,7 @@ A Random Search, HyperBand, an Evolutionary Algorithm, and, Mutant-UCB are imple
 For a given application they require the implementation of a search space, a performance evaluation function and the setting of some required parameters such as the path to save the configurations, or the number of iterations.
 
 .. code-block:: python
+   
    from dragon.search_algorithm.mutant_ucb import Mutant_UCB
 
    search_algorithm = Mutant_UCB(search_space, save_dir="save/test_mutant", T=20, N=5, K=5, E=0.01, evaluation=loss_function)
