@@ -1,5 +1,5 @@
 Neighborhoods implementation
-++++++++++++++++++++
++++++++++++++++++++++++++++++
 
 Here are presented implementations of neighborhoods that can be used for the base and composed variables.
 

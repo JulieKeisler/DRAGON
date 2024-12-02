@@ -221,15 +221,15 @@ If a `CatVar` is given as input operation, all the `Bricks` contained in the `Ca
 |.. code-block:: python                                              |.. code-block:: python                                                 |
 |                                                                    |                                                                       |
 |  from dragon.search_space.bricks import MLP                        |  from dragon.search_space.bricks import LayerNorm1d, BatchNorm1d      |
-|  from dragon.search_space.base_variables import Constant, IntVar |  from dragon.search_space.base_variables import CatVar              |
+|  from dragon.search_space.base_variables import Constant, IntVar   |  from dragon.search_space.base_variables import CatVar                |
 |  from dragon.search_space.dragon_variables import HpVar            |  from dragon.search_space.dragon_variables import HpVar               |
 |                                                                    |                                                                       |
 |  mlp = Constant("MLP operation", MLP)                              |  norm = CatVar("1d norm layers", features=[LayerNorm1d, BatchNorm1d]) |
 |  hp = {"out_channels": IntVar("out_channels", 1, 10)}              |  norm_var = HpVar("Norm var", norm, hyperparameters={})               |
 |  mlp_var = HpVar("MLP var", mlp, hyperparameters=hp)               |  norm_var.random()                                                    |
-|  mlp_var.random()                                                  |  [<class 'dragon.search_space.bricks.normalization.BatchNorm1d'>, {}] |
-|  [<class 'dragon.search_space.bricks.basics.MLP'>,                 |                                                                       |
-|     {'out_channels': 9}]                                           |                                                                       |
+|  mlp_var.random()                                                  |  [<class dragon.search_space.bricks.normalization.BatchNorm1d>, {}]   |
+|  [<class dragon.search_space.bricks.basics.MLP>,                   |                                                                       |
+|     {out_channels: 9}]                                             |                                                                       |
 +--------------------------------------------------------------------+-----------------------------------------------------------------------+
 
 TThese two examples show how to use `HpVar` with a `Constant` and a `CatVar` operation respectively.
