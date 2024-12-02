@@ -40,7 +40,7 @@ Install DRAGON
 
 After cloning the git repository, install **DRAGON**, using:
 
-     pip install dragon-autodl==1.0
+     pip install dragon-autodl==1.1
 
 **Distributed version**
 
