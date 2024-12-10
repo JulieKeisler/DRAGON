@@ -4,7 +4,11 @@ from dragon.search_space.base_variables import (
     IntVar,
     CatVar,
     Constant,
-    ArrayVar, DynamicBlock, Block
+    ArrayVar, 
+    DynamicBlock, 
+    Block,
+    ExclusiveBlock,
+    DynamicExclusiveBlock
 )
 import random
 import numpy as np
@@ -378,7 +382,7 @@ class BlockInterval(VarNeighborhood):
                 res[i] = self.target.value.neighbor(value[i])
         else:
             res = []
-            for _ in size:
+            for _ in range(size):
                 inter = copy.deepcopy(value)
                 variables_idx = list(set(np.random.choice(range(self.target.repeat), size=self.target.repeat)))
                 for i in variables_idx:
@@ -407,7 +411,7 @@ class BlockInterval(VarNeighborhood):
 class DynamicBlockInterval(VarNeighborhood):
     """BlockInterval
 
-    `Addon`, used to determine the neighbor of an BlockInterval.
+    `Addon`, used to determine the neighbor of a DynamicBlock.
     neighbor kwarg must be implemented for all `Variable` of the BlockInterval.
 
     Parameters
@@ -477,3 +481,163 @@ class DynamicBlockInterval(VarNeighborhood):
                 f"To use `DynamicBlock`, value for `DynamicBlock` must have a `neighbor` method. Use `neighbor` kwarg "
                 f"when defining a variable "
             )
+
+class ExclusiveBlockInterval(VarNeighborhood):
+    """ExclusiveBlockInterval
+
+    `Addon`, used to determine the neighbor of an ExclusiveBlock.
+    neighbor kwarg must be implemented for all `Variable` of the ExclusiveBlockInterval.
+
+    Parameters
+    ----------
+    variable : IntVar, default=None
+        Targeted `Variable`.
+
+    Example
+    ----------
+    >>> from dragon.search_space.base_variables import ExclusiveBlock, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_operators.base_neighborhoods import ExclusiveBlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
+    >>> a = ExclusiveBlock("max size 10 Block", content, 5, neighbor=ExclusiveBlockInterval())
+    >>> print(a)
+    ExclusiveBlock(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> test_a = a.random()
+    >>> print(test_a)
+    [[2, 25, 3.407434018008985], [8, 34, 11.720825933953947], [4, 7, 5.294945631972848], [3, 17, 11.621101715902546], [5, 24, 3.194865279405992]]
+    >>> a.neighbor(test_a)
+    [[2, 25, 3.407434018008985], [8, 34, 11.720825933953947], [5, 7, 5.294945631972848], [5, 17, 11.621101715902546], [5, 22, 3.194865279405992]]
+    """
+    def __init__(self, neighborhood=None, variable=None):
+        self.neighborhood = neighborhood
+        super(ExclusiveBlockInterval, self).__init__(variable)
+
+    def __call__(self, value, size=1):
+        res = []
+        for _ in range(size):
+            inter = copy.deepcopy(value)
+            variables_idx = sorted(list(set(np.random.choice(range(self.target.repeat), size=self.target.repeat))))
+            for i in variables_idx:
+                inter[i] = self.target.value.neighbor(value[i])
+                
+                #Verification of the unicity of each value
+                while (inter[i] in inter[:i]):
+                    inter[i] = self.target.value.neighbor(inter[i])
+
+                res.append(inter)
+
+        if (size == 1):
+            return res[0]
+        else:
+            return res
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+            self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+        assert(
+            isinstance(variable, ExclusiveBlock) or variable is None
+        ), f"""Target object must be a `Block` for {self.__class__.__name__},\
+        got {variable}."""
+        
+        self._target = variable
+
+        if variable is not None:
+            assert(
+                hasattr(self._target.value, "neighbor")
+            ),  f"""To use `ExclusiveBlock`, value for `ExclusiveBlock` must have a `neighbor` method. Use `neighbor` kwarg when defining a variable."""
+
+
+class DynamicExclusiveBlockInterval(VarNeighborhood):
+    """DynamicExclusiveBlockInterval
+
+    `Addon`, used to determine the neighbor of an ExclusiveDynamicBlock.
+    neighbor kwarg must be implemented for all `Variable` of the ExclusiveDynamicBlockInterval.
+
+    Parameters
+    ----------
+    variable : IntVar, default=None
+        Targeted `Variable`.
+    neighborhood : int
+        Neighborhood of the ExclusiveDynamicBlock size
+
+    Example
+    ----------
+    >>> from dragon.search_space.base_variables import DynamicExclusiveBlock, ArrayVar, FloatVar, IntVar
+    >>> from dragon.search_operators.base_neighborhoods import DynamicExclusiveBlockInterval, ArrayInterval, FloatInterval, IntInterval
+    >>> content = ArrayVar(IntVar("int_1", 0,8, neighbor=IntInterval(2)), IntVar("int_2", 4,45, neighbor=IntInterval(10)),  FloatVar("float_1", 2,12, neighbor=FloatInterval(10)), neighbor=ArrayInterval())
+    >>> a = DynamicExclusiveBlock("max size 10 Block", content, 5, neighbor=DynamicExclusiveBlockInterval(1))
+    >>> print(a)
+    DynamicExclusiveBlock(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> test_a = a.random()
+    >>> print(test_a)
+    [[4, 42, 10.450686412997023], [1, 37, 7.027430133368101]]
+    >>> a.neighbor(test_a)
+    [[4, 42, 10.450686412997023], [1, 29, 7.027430133368101], [5, 5, 8.421363070710674]]
+    """
+    def __call__(self, value, size=1, new_repeat=None):
+        res = []
+        for _ in range(size):
+            inter = copy.deepcopy(value)
+
+            if new_repeat is None:
+                #If a new length for value has not explicitly been given,
+                #we choose a new one as a function of the given neighborhood
+                #while remaining in the given length limits
+                new_repeat = np.random.randint(max(len(inter) - self._neighborhood, self.target.min_repeat),
+                                                min(len(inter) + self._neighborhood, self.target.repeat) + 1)
+
+            #Adding new unique coefficients if the new length is greater
+            if new_repeat > len(inter):
+                diff = new_repeat - len(inter)
+                for _ in range(diff):
+                    add_coef = self.target.value.random()
+                    while add_coef in inter:
+                        add_coef = self.target.value.random()
+                    inter.append(add_coef)
+
+            #Removing values at random if the new length is smaller
+            if new_repeat < len(inter):
+                deleted_idx = np.random.choice(range(len(inter)), size = len(inter)-new_repeat, replace=False)
+                for index in sorted(deleted_idx, reverse=True):
+                    del inter[index]
+
+            #The following line chooses value indices to be mutated
+            variables_idx = sorted(list(set(np.random.choice(range(new_repeat), size=new_repeat))))
+
+            for i in variables_idx:
+                inter[i] = self.target.value.neighbor(inter[i])
+
+                #Verification of the unicity of each value
+                while (inter[i] in inter[:i]):
+                    inter[i] = self.target.value.neighbor(inter[i])
+
+            res.append(inter)
+
+        if size == 1:
+            return res[0]
+        else:
+            return res
+
+    @VarNeighborhood.neighborhood.setter
+    def neighborhood(self, neighborhood=None):
+        if isinstance(neighborhood, list):
+            self._neighborhood = neighborhood[0]
+            self.target.value.neighborhood = neighborhood[1]
+        else:
+            self._neighborhood = neighborhood
+
+    @VarNeighborhood.target.setter
+    def target(self, variable):
+        assert(
+            isinstance(variable, DynamicExclusiveBlock) or variable is None
+        ), f"""Target object must be a `DynamicExclusiveBlock` for {self.__class__.__name__}, got {variable}."""
+
+        self._target = variable
+
+        if variable is not None:
+            assert(
+                hasattr(self._target.value, "neighbor")
+            ), f"""To use `DynamicExclusiveBlock`, value for `DynamicExclusiveBlock` must have a `neighbor` method. Use `neighbor` kwarg when defining a variable."""
+

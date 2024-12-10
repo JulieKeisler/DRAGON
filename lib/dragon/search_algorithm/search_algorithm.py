@@ -392,7 +392,6 @@ class SearchAlgorithm(ABC):
                 idx = to_evaluate.pop()
                 logger.info(f'Master, sending individual to processus {idx}')
                 self.mpi_dict['comm'].send(dest=nb_send+1, tag=0, obj=(idx))
-                del to_evaluate[idx]
                 nb_send+=1
             
             # dynamically receive and send evaluations
