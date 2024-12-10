@@ -314,9 +314,9 @@ class CatVar(Variable):
         """
 
         assert (
-            len(features) > 1
+            len(features) > 0
         ), f"""
-        Features must be a list with a length > 1,
+        Features must be a list with a length > 0,
         got length= {len(features)}
         """
 
@@ -539,7 +539,7 @@ class ArrayVar(Variable):
             constants), False otherwise.
 
         """
-        return all(v.isconstant for v in self.values)
+        return all(v.isconstant() for v in self.values)
 
     def index(self, value):
         """index(value)
@@ -812,6 +812,199 @@ class DynamicBlock(Block):
         -------
         out: False
             Return False, a dynamic block cannot be constant. (It is a binary)
+
+        """
+        return False
+    
+
+class ExclusiveBlock(Variable):
+    """ExclusiveBlock(Variable)
+
+    `ExclusiveBlock` defines `var` which will repeat multiple times a `var` while making sure each occurrence is unique.
+
+    Parameters
+    ----------
+    label : str
+        Name of the variable.
+    value : Variable
+        :ref:`var` that will be repeated
+    repeat : int
+        Number of repeats.
+
+    Examples
+    --------
+    >>> from dragon.search_space.base_variables import ExclusiveBlock, ArrayVar, FloatVar, IntVar
+    >>> content = ArrayVar(IntVar("int_1", 0,8),
+    ...                    IntVar("int_2", 4,45),
+    ...                    FloatVar("float_1", 2,12))
+    >>> a = ExclusiveBlock("max size 10 Block", content, 3)
+    >>> print(a)
+    ExclusiveBlock(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> a.random()
+    [[6, 35, 2.244727432809687], [3, 27, 4.234792201007698], [4, 9, 2.037610675173604]]
+    """
+    def __init__(self, label, value, repeat, **kwargs):
+        self.value = value
+        super(ExclusiveBlock, self).__init__(label, **kwargs)
+
+        assert isinstance(
+            value, Variable
+        ), f"""
+        Value must inherit from :ref:`var`, got {value}
+        """
+        assert (
+            isinstance(repeat, int) and repeat > 0
+        ), f"""
+        `repeat` must be a strictly positive int, got {repeat}.
+        """
+
+        if (repeat > 1):
+            assert (
+                not value.isconstant()
+            ), f"""
+            Cannot repeat a constant 'value' more than one time while ensuring unicity of the 'value', got {value}.
+            """
+
+        if isinstance(value, CatVar):
+            assert(
+                len(value.features) >= repeat
+            )  , f"""
+            There are not enough distinct values for the 'value' CatVar so as to create 'repeat' unique occurrences.
+            """
+
+        self.repeat = repeat
+    
+    def random(self, size=1):
+        res = []
+
+        for _ in range(size):
+            block = []
+            for _ in range(self.repeat):
+                if isinstance(self.value, list) and (len(self.value) > 0):
+                    valueInstance = []
+                    for i in range(len(self.value)):
+                        temp = self.value[i].random()
+                        while temp in block[:][i]:
+                            temp = self.value[i].random()
+                        valueInstance.append(temp)
+                    block.append(valueInstance)
+                else:
+                    temp = self.value.random()
+                    while temp in block:
+                        temp = self.value.random()
+                    block.append(temp)
+            res.append(block)
+
+        if (size == 1):
+            return res[0]
+        else:
+            return res
+    
+    def isconstant(self):
+        return self.value.isconstant()
+
+    def __repr__(self):
+            values_reprs = ""
+            if isinstance(self.value, Iterable) and (len(self.value) > 0):
+                for v in self.value:
+                    values_reprs += v.__repr__() + ","
+
+                return super(ExclusiveBlock, self).__repr__() + f"[{values_reprs}])"
+            else:
+                return super(ExclusiveBlock, self).__repr__() + f"{self.value.__repr__()}"
+
+
+class DynamicExclusiveBlock(ExclusiveBlock):
+    """ExclusiveBlock(Variable)
+
+    `ExclusiveBlock` is an `ExclusiveBlock` with a random number of repeats.
+
+    Parameters
+    ----------
+    label : str
+        Name of the variable.
+    value : Variable
+        :ref:`var` that will be repeated
+    max_repeat : int
+        Maximum number of repeats.
+    min_repeat: int, default=1
+        Minimum number of repeats
+
+    Examples
+    --------
+    >>> from dragon.search_space.base_variables import DynamicExclusiveBlock, ArrayVar, FloatVar, IntVar
+    >>> content = ArrayVar(IntVar("int_1", 0,8),
+    ...                    IntVar("int_2", 4,45),
+    ...                    FloatVar("float_1", 2,12))
+    >>> a = DynamicExclusiveBlock("max size 10 Block", content, 3)
+    >>> print(a)
+    DynamicExclusiveBlock(max size 10 Block, [IntVar(int_1, [0;9]),IntVar(int_2, [4;46]),FloatVar(float_1, [2;12]),])
+    >>> a.random()
+    [[7, 18, 6.456294912667794], [2, 8, 3.8191994478714566]]
+    """
+    def __init__(self, label, value, max_repeat, min_repeat=1, **kwargs):
+        self.value = value
+
+        assert (
+            isinstance(max_repeat, int) and max_repeat > 0
+        ), f"""
+        `max_repeat` must be a strictly positive int, got {max_repeat}.
+        """
+
+        assert (
+            isinstance(min_repeat, int) and min_repeat > 0
+        ), f"""
+        `min_repeat` must be a strictly positive int, got {min_repeat}.
+        """
+
+        assert (
+            min_repeat <= max_repeat
+        ), f"""
+        'min_repeat' must be less than or equal to 'max_repeat', got {min_repeat} <= {max_repeat}
+        """
+
+        self.min_repeat = min_repeat        
+        super(DynamicExclusiveBlock, self).__init__(label, value, max_repeat, **kwargs)
+
+
+    def random(self, size=1, n_repeat=None):
+        """random(size=1)
+
+        Parameters
+        ----------
+        size : int, default=None
+            Number of draws.
+        n_repeat : max size of randomly generated block
+
+        Returns
+        -------
+        out: float or list[float]
+            Return a list composed of the results from the `var` `random()`
+            method, repeated `repeat` times with unique occurrences.
+            If size > 1, return a list of list.
+        """
+        
+        res = []
+
+        for _ in range(size):
+            block = []
+            if n_repeat is None:
+                n_repeat = np.random.randint(self.min_repeat, self.repeat)
+            block = ExclusiveBlock("block", self.value, n_repeat).random()
+            res.append(block)
+
+        if (size == 1):
+            return res[0]
+        else:
+            return res
+
+    def isconstant(self):
+        """isconstant()
+
+        Returns
+        -------
+        out: False
+            Return False, an exclusive dynamic block cannot be constant. (It is a binary)
 
         """
         return False
