@@ -412,7 +412,7 @@ class SearchAlgorithm(ABC):
             # Receive last evaluation
             while (nb_receive < self.mpi_dict['p']-1):
                 loss, idx = self.mpi_dict['comm'].recv(source=self.mpi_dict['MPI'].ANY_SOURCE, tag=0, status=self.mpi_dict['status'])
-                nb_receive += int(not np.isinf(loss))
+                nb_receive += 1
                 source = self.mpi_dict['status'].Get_source()
                 self.save_best_model(idx, loss)
                     
