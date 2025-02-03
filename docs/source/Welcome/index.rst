@@ -10,7 +10,7 @@ To use the package, the user must define a suitable search space, a meta-archite
 Although this implementation requires more initial effort, it allows for a wide range of tools tailored to different problems. 
 The search space consists of objects that fall into three main categories: search space variables, search operators, and search algorithms.
 
-You can get familiar with it quickly thanks to the `Quickstart <../Quickstart/quickstart.ipynb>`_ tutorial. 
+You can get familiar with it quickly thanks to the :doc:`Quickstart <../Quickstart/quickstart>` tutorial. 
 
 Structure
 ------------
@@ -24,14 +24,14 @@ Structure
      - A crossover operator is also implemented, allowing both arrays and graph-like variables to be mixed.
 
 - `Search Algorithms <../Search_Algorithm/index.rst>`_.
-     - **DRAGON** provides the implementation of several search algorithms: the `Random Search <../Search_Algorithm/random_search.ipynb>`_, the `Evolutionary Algorithm <. ./Search_Algorithm/ssea.ipynb>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.ipynb>`_ [3]_ and `Hyperband <../Search_Algorithm/hyperband.ipynb>`_ [4]_.
+     - **DRAGON** provides the implementation of several search algorithms: the Random Search, the `Evolutionary Algorithm <. ./Search_Algorithm/ssea.rst>`_ [1]_, `Mutant UCB <../Search_Algorithm/mutant_ucb.rst>`_ [3]_ and Hyperband [4]_.
      - Mutant-UCB and the Evolutionary Algorithm use the *neighbor* attributes to modify the configurations. Other search algorithms such as local search or simulated annealing could be implemented in a similar way.
      - Each search algorithm comes with a storage system to keep RAM memory small and an optional distributed version on multiple processors. The distributed version requires an MPI library such as `MPICH <https://www.mpich.org/>`_ or `Open MPI <https://www.open-mpi.org/>`_ and is based on the `mpi4py package <https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi>`_.
 
 - `Performance evaluation <../Applications/index.rst>`_.
      - Evaluating a configuration from a search space built with **DRAGON** is done by building the model (i.e. the neural networks) with the configuration elements. Then the model should be trained, evaluated and return a loss (the search algorithms minimise losses).
      - The process of building - training - evaluating a model based on a configuration depends on the applications and has to be implemented by the user.
-     - Examples are given for `image classification <../Applications/image.ipynb>`_ with the package *skorch* and `load forecasting <../Applications/load_forecasting.ipynb>`_ [2]_.
+     - Examples are given for :doc:`image classification <../Applications/image>`_ with the package *skorch* and :doc:`load forecasting <../Applications/load_forecasting>`_ [2]_.
 
 
 Installation
