@@ -511,7 +511,7 @@ class AdjMatrix(nn.Module):
         self.layers = nn.ModuleList(self.operations)
         self.output_shape = self.operations[-1].output_shape
 
-    def forward(self, X):
+    def forward(self, X, h_list=None):
         """forward(X)
 
         Forward pass through the DAG. The latent vectors are processed layer by layer, following the :node: operations list order.
@@ -520,27 +520,41 @@ class AdjMatrix(nn.Module):
         ----------
         X : torch.Tensor
             Input tensor.
+        h_list : list
+            List containing the h for each node.
 
         Returns
         -------
         output: `torch.Tensor`
             Network output tensor.
         """
-        device = X.get_device()
         N = len(self.layers)
+        if h_list is None:
+            h_list = [None for _ in range(N)]
+        new_h_list = []
+        device = X.get_device()
         # Store the outputs of each layer.
         outputs = np.empty(N, dtype=object)
         outputs[0] = X
         for j in range(1, N):
             # Get the inputs from the different incoming connections of layer j
             inputs = [outputs[i] for i in range(j) if self.matrix[i, j] == 1]
+            h = h_list[j]
             # Compute the layer output
-            output = self.layers[j](inputs)
+            output = self.layers[j](inputs, h=h)
+            if isinstance(output, tuple):
+                output, h = output
+            else:
+                h = None
+            new_h_list.append(h)
             if device >= 0:
                 # Make sure the output is on the right device
                 output = output.to(device)
             outputs[j] = output
-        return output
+        if all(x is None for x in new_h_list):
+            return output
+        else:
+            return output, new_h_list
 
 
     def __str__(self):
