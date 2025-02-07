@@ -123,3 +123,4 @@ For more detailed examples of various applications, see:
 
    image
    load_forecasting
+   time_series_forecasting
