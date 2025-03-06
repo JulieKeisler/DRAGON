@@ -133,6 +133,7 @@ class SteadyStateEA(SearchAlgorithm):
                 not_muted = False
             except Exception as e:
                 logger.error(f"While mutating, an exception was raised: {e}")
+        not_muted = True
         while not_muted:
             try:
                 offspring_2 = self.search_space.neighbor(deepcopy(offspring_2))
