@@ -37,6 +37,8 @@ class SteadyStateEA(SearchAlgorithm):
         Path towards a directory containing an former evaluation that we aim to continue.
     verbose: bool, default=False
         Verbose boolean.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     Attributes
     ----------
@@ -70,6 +72,8 @@ class SteadyStateEA(SearchAlgorithm):
         Dictionary storing the configurations from the population.
     min_loss: float, default=np.min
         Current minimum loss found.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     Example
     --------
@@ -83,7 +87,13 @@ class SteadyStateEA(SearchAlgorithm):
     def __init__(self, search_space, n_iterations: int, population_size: int, selection_size: int, evaluation, save_dir, models = None, pop_path=None, crossover=DAGTwoPoint(), verbose=False, **args):
         super(SteadyStateEA, self).__init__(search_space=search_space, 
                                             n_iterations=n_iterations, 
-                                            init_population_size=population_size, evaluation=evaluation, save_dir=save_dir, models=models, pop_path=pop_path, verbose=verbose)
+                                            init_population_size=population_size, 
+                                            evaluation=evaluation, 
+                                            save_dir=save_dir, 
+                                            models=models, 
+                                            pop_path=pop_path, 
+                                            verbose=verbose,
+                                            time_max=45)
         self.selection_size = selection_size
         self.crossover = crossover
         
