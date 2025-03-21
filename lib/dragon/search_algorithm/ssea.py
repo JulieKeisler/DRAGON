@@ -111,19 +111,19 @@ class SteadyStateEA(SearchAlgorithm):
                 not_selected=False
             except Exception as e:
                 logger.error(f'Could not load individual {best_1}/{len(list(self.storage.keys()))}, {e}')
-                self.storage[best_1] = parent1
         not_selected = True
         while not_selected:
+            selection = [random.choice(list(self.storage.keys())) for i in range(min(self.selection_size, len(self.storage)))]
             best_2 = selection[np.argmin([self.storage[i]['Loss'] for i in selection])]
             try:
-                parent2 = self.storage[best_2]
-                self.storage[best_2] = parent2
+                parent2 = self.storage.pop(best_2)
                 with open(f"{self.save_dir}/x_{best_2}.pkl", 'rb') as f:
                     x2 = pickle.load(f)
                 not_selected = False
             except Exception as e:
                 logger.error(f'Could not load individual {best_2}/{len(list(self.storage.keys()))}, {e}')
         self.storage[best_1] = parent1
+        self.storage[best_2] = parent2
         offspring_1, offspring_2 = deepcopy(x1), deepcopy(x2)
         self.crossover(offspring_1, offspring_2)
         not_muted = True
