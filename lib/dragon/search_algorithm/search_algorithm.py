@@ -180,6 +180,7 @@ class SearchAlgorithm(ABC):
             for i in list(self.storage.keys()):
                 if not os.path.exists(f"{self.save_dir}/x_{i}.pkl"):
                     self.storage.pop(i)
+            logger.info(f"Recovered population has size of {len(self.storage)}.")
         except FileNotFoundError:
             logger.error(f"{self.pop_path+'/computation_file.csv'} does not exist, starts from fresh population.")
             if os.path.exists(self.save_dir):
@@ -369,7 +370,7 @@ class SearchAlgorithm(ABC):
                     shutil.rmtree(self.save_dir)
                 os.makedirs(self.save_dir+"/best_model/")
 
-            if len(self.storage) < self.population_size:
+            if (self.population_size - len(self.storage)) < self.mpi_dict['p']:
                 ### Create first population
                 self.create_population()
 
