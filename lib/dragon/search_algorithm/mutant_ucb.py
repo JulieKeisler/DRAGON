@@ -34,6 +34,8 @@ class Mutant_UCB(SearchAlgorithm):
         Path towards a directory containing an former evaluation that we aim to continue.
     verbose: bool, default=False
         Verbose boolean.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     Attributes
     ----------
@@ -67,6 +69,8 @@ class Mutant_UCB(SearchAlgorithm):
         Dictionary storing the configurations from the population.
     min_loss: float, default=np.min
         Current minimum loss found.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     Example
     --------
@@ -84,7 +88,8 @@ class Mutant_UCB(SearchAlgorithm):
                                             evaluation=evaluation, 
                                             save_dir=save_dir, 
                                             models=models, pop_path=pop_path, 
-                                            verbose=verbose)
+                                            verbose=verbose,
+                                            time_max=45)
         
     
         self.N = N
