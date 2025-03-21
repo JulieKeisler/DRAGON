@@ -372,7 +372,7 @@ class SearchAlgorithm(ABC):
                     shutil.rmtree(self.save_dir)
                 os.makedirs(self.save_dir+"/best_model/")
 
-            if (self.population_size - len(self.storage)) < self.mpi_dict['p']:
+            if (self.population_size - len(self.storage)) > self.mpi_dict['p']:
                 ### Create first population
                 self.create_population()
 
