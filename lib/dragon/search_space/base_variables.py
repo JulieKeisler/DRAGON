@@ -486,19 +486,16 @@ class ArrayVar(Variable):
 
     def __init__(self, *args, label="", **kwargs):
 
-        if args and len(args) > 1 and args[0]:
-            assert all(
-                isinstance(v, Variable) for v in args
-            ), f"""
-            All elements must inherit from `Variable`,
-            got {args}
-            """
+        assert all(
+            isinstance(v, Variable) for v in args
+        ), f"""
+        All elements must inherit from `Variable`,
+        got {args}
+        """
 
-            self.values = list(args)
-            for idx, v in enumerate(self.values):
-                setattr(v, "_idx", idx)
-        else:
-            self.values = []
+        self.values = list(args)
+        for idx, v in enumerate(self.values):
+            setattr(v, "_idx", idx)
 
         super(ArrayVar, self).__init__(label, **kwargs)
 

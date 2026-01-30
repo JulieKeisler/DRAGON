@@ -3,7 +3,7 @@ from dragon.search_operators.dag_neighborhoods import CatHpInterval, EvoDagInter
 from dragon.search_operators.base_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval
 from dragon.search_space.bricks.attention import Attention1D, SpatialAttention, TemporalAttention
 from dragon.search_space.bricks.basics import MLP, Identity
-from dragon.search_space.bricks.convolutions import Conv1d, Conv2d
+from dragon.search_space.bricks.convolutions import Conv1d, Conv2d, ConvTranspose2d
 from dragon.search_space.bricks.dropout import Dropout
 from dragon.search_space.bricks.normalization import BatchNorm1d, BatchNorm2d, LayerNorm1d, LayerNorm2d
 from dragon.search_space.bricks.pooling import AVGPooling1D, AVGPooling2D, MaxPooling1D, MaxPooling2D
@@ -98,7 +98,7 @@ def activation_var(label, activations=None):
         neighbor=CatInterval(),
     )
 
-def operations_var(label, size, candidates):
+def operations_var(label, size, candidates, activations=activation_var("Activation")):
     """operations_var(label, size, candidates)
 
     Creates a `DynamicBlock` repeating `NodeVariable` objects corresponding to the candidates operations for a given DAG.
@@ -136,7 +136,7 @@ def operations_var(label, size, candidates):
                                 candidates,
                                 neighbor=CatHpInterval(neighborhood=0.7)
                             ),
-                        activation_function=activation_var("Activation"), # Default activation functions
+                        activation_function=activations, # Default activation functions
                         neighbor=NodeInterval()
                     ),
                     size,
@@ -188,7 +188,8 @@ def mlp_const_var(label, out):
     Creates a `HpVar` corresponding to the `MLP` (multi-layers perceptron) operation, but with a fix number of output channels.
     
     Parameters
-    ----------
+    ----------out = node_var("Out", operation=mlp_const_var('Operation', 1), activation_function=nn.Sigmoid())
+search_space = ArrayVar(dag, out, label="Search Space", neighbor=ArrayInterval())
     label : str
         Name of the variable.
     out : int
@@ -294,14 +295,36 @@ def recurrence_1d(label, max_h=20):
     
     return HpVar(label=label, operation=name, hyperparameters=hp, neighbor=HpInterval())
 
-def conv_2d(label, max_out=10, permute=True):
+def conv_2d(label, max_out=10, permute=True, padding="same"):
     name = Constant(label=label, value=Conv2d, neighbor=ConstantInterval())
     hp = {
             "kernel_size": IntVar(label + " kernel", lower=1, upper=max_out, neighbor=IntInterval(int_neighborhood(1, max_out))),
             "out_channels": IntVar(label + " d_out", lower=1, upper=64, neighbor=IntInterval(int_neighborhood(1,64))),
-            "padding": Constant(label="Padding", value="same", neighbor=ConstantInterval()),
+            "padding": Constant(label="Padding", value=padding, neighbor=ConstantInterval()),
             "permute": Constant(label="Permute", value=permute, neighbor=ConstantInterval())
         }
+    return HpVar(label=label, operation=name, hyperparameters=hp, neighbor=HpInterval())
+
+def conv_transpose_2d(label, max_out=10, permute=True):
+    name = Constant(label=label, value=ConvTranspose2d, neighbor=ConstantInterval())
+    hp = {
+        "kernel_size": IntVar(
+            label + " kernel", lower=1, upper=max_out,
+            neighbor=IntInterval(int_neighborhood(1, max_out))
+        ),
+        "out_channels": IntVar(
+            label + " d_out", lower=1, upper=64,
+            neighbor=IntInterval(int_neighborhood(1, 64))
+        ),
+        "padding": Constant(
+            label="Padding", value=0,
+            neighbor=ConstantInterval()
+        ),
+        "permute": Constant(
+            label="Permute", value=permute,
+            neighbor=ConstantInterval()
+        )
+    }
     return HpVar(label=label, operation=name, hyperparameters=hp, neighbor=HpInterval())
 
 def pooling_2d(label):
@@ -343,4 +366,6 @@ def attention_2d(label):
         }
     
     return HpVar(label=label, operation=name, hyperparameters=hp, neighbor=HpInterval())
+
+
 

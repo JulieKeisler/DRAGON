@@ -83,18 +83,38 @@ class DAGTwoPoint:
             - For each element between those points, if one of them is an `AdjMatrix`: use the `adj_matrix_crossover` function to mix the graphs.
         """
         size = min(len(ind1), len(ind2))
-        cxpoint1 = random.randint(1, size)
-        cxpoint2 = random.randint(1, size - 1)
-        if cxpoint2 >= cxpoint1:
-            cxpoint2 += 1
-        else:  # Swap the two cx points
-            cxpoint1, cxpoint2 = cxpoint2, cxpoint1
+        if size>1:
+            cxpoint1 = random.randint(1, size)
+            cxpoint2 = random.randint(1, size - 1)
+            if cxpoint2 >= cxpoint1:
+                cxpoint2 += 1
+            else:  # Swap the two cx points
+                cxpoint1, cxpoint2 = cxpoint2, cxpoint1
 
-        ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] = ind2[cxpoint1:cxpoint2], ind1[cxpoint1:cxpoint2]
+            ind1[cxpoint1:cxpoint2], ind2[cxpoint1:cxpoint2] = ind2[cxpoint1:cxpoint2], ind1[cxpoint1:cxpoint2]
 
-        for i in range(cxpoint1, cxpoint2):
-            if isinstance(ind1[i], AdjMatrix):
-                ind1[i], ind2[i] = adj_matrix_crossover(ind1[i], ind2[i], self.size)
+            for i in range(cxpoint1, cxpoint2):
+                if isinstance(ind1[i], AdjMatrix):
+                    if not hasattr(ind1[i], 'output_shape'):
+                        if hasattr(ind2[i], 'input_shape'):
+                            ind1[i].set(ind2[i].input_shape)
+                    elif not hasattr(ind2[i], 'output_shape'):
+                        if hasattr(ind1[i], 'input_shape'):
+                            ind2[i].set(ind1[i].input_shape)
+                    
+                    if hasattr(ind1[i], 'output_shape') and hasattr(ind2[i], 'output_shape'):
+                        ind1[i], ind2[i] = adj_matrix_crossover(ind1[i], ind2[i], self.size)
+        else:
+            if isinstance(ind1[0], AdjMatrix):
+                if not hasattr(ind1[0], 'output_shape'):
+                    if hasattr(ind2[0], 'input_shape'):
+                        ind1[0].set(ind2[0].input_shape)
+                elif not hasattr(ind2[0], 'output_shape'):
+                    if hasattr(ind1[0], 'input_shape'):
+                        ind2[0].set(ind1[0].input_shape)
+                
+                if hasattr(ind1[0], 'output_shape') and hasattr(ind2[0], 'output_shape'):
+                    ind1[0], ind2[0] = adj_matrix_crossover(ind1[0], ind2[0], self.size)
 
         return ind1, ind2
 
