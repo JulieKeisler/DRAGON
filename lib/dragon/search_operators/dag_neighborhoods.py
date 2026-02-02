@@ -380,20 +380,49 @@ class EvoDagInterval(VarNeighborhood):
         self._neighborhood = neighborhood
         self.nb_mutations = nb_mutations
 
+    def _sample_variable_indices(self, n_operations):
+        """Sample variable indices with bias towards fewer mutations.
+        
+        Parameters
+        ----------
+        n_operations : int
+            Number of operations in the DAG
+            
+        Returns
+        -------
+        list
+            Sampled indices with bias towards smaller samples
+        """
+        if self.nb_mutations is None:
+            max_mutations = n_operations
+        else:
+            max_mutations = min(self.nb_mutations, n_operations)
+        
+        # Probabilités décroissantes exponentiellement pour le nombre de mutations
+        probs = np.exp(-np.arange(1, max_mutations + 1) / 2)
+        probs = probs / probs.sum()
+        
+        # Échantillonner le nombre de mutations
+        n_mutations = np.random.choice(range(1, max_mutations + 1), p=probs)
+        
+        # Échantillonner les indices sans remplacement
+        return list(set(np.random.choice(range(n_operations), n_mutations, replace=False)))
+
     def __call__(self, value, size=1):
         if size == 1:
             valid = False
             while not valid:
                 inter = value.copy()
-                # choose the nodes that will be modified
-                if self.nb_mutations is None:
-                    nb_mutations = size=len(inter.operations)
-                else:
-                    nb_mutations = self.nb_mutations
-                variable_idx = list(set(np.random.choice(range(len(inter.operations)), nb_mutations)))
+                # choose the nodes that will be modified with bias towards fewer mutations
+                variable_idx = self._sample_variable_indices(len(inter.operations))
                 modifications = []
                 for i in range(len(variable_idx)):
                     idx = variable_idx[i]
+                    # Skip invalid indices
+                    if idx < 0 or idx >= len(inter.operations):
+                        logger.warning(f'Skipping invalid idx: {idx}, current operations length: {len(inter.operations)}')
+                        continue
+                        
                     if idx == 0:
                         choices = ['add', 'children']
                         if inter.matrix.shape[0] == self.target.max_size:
@@ -412,29 +441,38 @@ class EvoDagInterval(VarNeighborhood):
                             choices = ['add', 'delete', 'modify', 'children', 'parents']
                     # choose the modification we are going to perform
                     modification = random.choice(choices)
-                    if idx >= 0:
-                        inter = self.modification(modification, idx, inter)
-                        modifications.append(modification)
-                        if modification == "add":
-                            variable_idx[i+1:] = [j + 1 for j in variable_idx[i+1:]]
-                        elif modification == "delete":
-                            variable_idx[i+1:] = [j - 1 for j in variable_idx[i+1:]]
-                    else:
-                        logger.error(f'Idx: {idx}, modification: {modification}, modifications: {modifications}, variable idx: {variable_idx}')
-                        pass
+                    inter = self.modification(modification, idx, inter)
+                    modifications.append(modification)
+                    if modification == "add":
+                        # Update all subsequent indices (they shift by +1)
+                        for j in range(i + 1, len(variable_idx)):
+                            if variable_idx[j] > idx:
+                                variable_idx[j] += 1
+                    elif modification == "delete":
+                        # Update all subsequent indices (they shift by -1)
+                        for j in range(i + 1, len(variable_idx)):
+                            if variable_idx[j] > idx:
+                                variable_idx[j] -= 1
+                            elif variable_idx[j] == idx:
+                                # Mark for deletion if it was the deleted node
+                                variable_idx[j] = -1
                 try:
                     inter.assert_adj_matrix()
                     valid = True
                 except AssertionError as e:
-                    logger.error(f"Modifications = {modification}, idx={idx}, value=\n{value}\n{e}", exc_info=True)
+                    logger.error(f"Modifications = {modifications}, value=\n{value}\n{e}", exc_info=True)
             return inter
         else:
             res = []
             for _ in range(size):
                 inter = value.copy()
-                variable_idx = list(set(np.random.choice(range(len(inter.operations)), size=len(inter.operations))))
+                variable_idx = self._sample_variable_indices(len(inter.operations))
                 for i in range(len(variable_idx)):
                     idx = variable_idx[i]
+                    # Skip invalid indices
+                    if idx < 0 or idx >= len(inter.operations):
+                        continue
+                        
                     if idx == 0:
                         modification = random.choice(['add', 'children'])
                     elif idx == len(inter.operations) - 1:
@@ -443,9 +481,17 @@ class EvoDagInterval(VarNeighborhood):
                         modification = random.choice(['add', 'delete', 'modify', 'children', 'parents'])
                     inter = self.modification(modification, idx, inter)
                     if modification == "add":
-                        variable_idx[i + 1:] = [j + 1 for j in variable_idx[i + 1:]]
+                        # Update all subsequent indices (they shift by +1)
+                        for j in range(i + 1, len(variable_idx)):
+                            if variable_idx[j] > idx:
+                                variable_idx[j] += 1
                     elif modification == "delete":
-                        variable_idx[i + 1:] = [j - 1 for j in variable_idx[i + 1:]]
+                        # Update all subsequent indices (they shift by -1)
+                        for j in range(i + 1, len(variable_idx)):
+                            if variable_idx[j] > idx:
+                                variable_idx[j] -= 1
+                            elif variable_idx[j] == idx:
+                                variable_idx[j] = -1
                 inter.assert_adj_matrix()
 
                 res.append(inter)
@@ -473,6 +519,50 @@ class EvoDagInterval(VarNeighborhood):
                 f"Use `neighbor` kwarg when defining a variable "
             )
 
+    def _flip_single_connection(self, matrix, idx, connection_type):
+        """Flip a single connection (parent or child) for node idx.
+        
+        Parameters
+        ----------
+        matrix : np.ndarray
+            Adjacency matrix
+        idx : int
+            Node index
+        connection_type : str
+            Either 'parent' or 'child'
+        """
+        if connection_type == 'child':
+            # Modify children connections
+            if idx < matrix.shape[0] - 1:
+                available_children = list(range(idx + 1, matrix.shape[0]))
+                child_idx = random.choice(available_children)
+                matrix[idx, child_idx] = 1 - matrix[idx, child_idx]
+        else:  # parent
+            # Modify parent connections
+            if idx > 0:
+                available_parents = list(range(idx))
+                parent_idx = random.choice(available_parents)
+                matrix[parent_idx, idx] = 1 - matrix[parent_idx, idx]
+        
+        return matrix
+
+    def _ensure_valid_connections(self, matrix, idx, connection_type):
+        """Ensure node has at least one connection after modification."""
+        if connection_type == 'child':
+            # Check if node has at least one child
+            if idx < matrix.shape[0] - 1 and np.sum(matrix[idx, idx+1:]) == 0:
+                # Add one random child
+                child_idx = np.random.choice(range(idx + 1, matrix.shape[0]))
+                matrix[idx, child_idx] = 1
+        else:  # parent
+            # Check if node has at least one parent
+            if idx > 0 and np.sum(matrix[:idx, idx]) == 0:
+                # Add one random parent
+                parent_idx = np.random.choice(range(idx))
+                matrix[parent_idx, idx] = 1
+        
+        return matrix
+
     def modification(self, modif, idx, inter):
         assert modif in ['add', 'delete', 'modify', 'children', 'parents'], f"""Modification should be in ['add', 
         'delete', 'modify', 'children', 'parent'], got{modif} instead"""
@@ -481,13 +571,18 @@ class EvoDagInterval(VarNeighborhood):
             new_node = self.target.operations.value.random(1)
             inter.operations.insert(idxx, new_node)
             N = len(inter.operations)
-            parents = np.random.choice(2, idxx)
-            while sum(parents) == 0:
-                parents = np.random.choice(2, idxx)
-            children = np.random.choice(2, N - idxx - 1)
+            
+            # Créer exactement UNE connexion entrante
+            parents = np.zeros(idxx, dtype=int)
+            parent_idx = np.random.choice(idxx)
+            parents[parent_idx] = 1
+            
+            # Créer exactement UNE connexion sortante (si possible)
+            children = np.zeros(N - idxx - 1, dtype=int)
             if N - idxx - 1 > 0:
-                while sum(children) == 0:
-                    children = np.random.choice(2, N - idxx - 1)
+                child_idx = np.random.choice(N - idxx - 1)
+                children[child_idx] = 1
+            
             inter.matrix = np.insert(inter.matrix, idxx, 0, axis=0)
             inter.matrix = np.insert(inter.matrix, idxx, 0, axis=1)
             inter.matrix[idxx, idxx+1:] = children
@@ -500,39 +595,40 @@ class EvoDagInterval(VarNeighborhood):
         elif modif == "delete":  # Delete selected node
             inter.matrix = np.delete(inter.matrix, idx, axis=0)
             inter.matrix = np.delete(inter.matrix, idx, axis=1)
+            # Ensure all nodes have at least one parent and one child
             for i in range(inter.matrix.shape[0] - 1):
-                new_row = inter.matrix[i, i + 1:]
-                while sum(new_row) == 0:
-                    new_row = np.random.choice(2, inter.matrix.shape[0] - i - 1)
-                inter.matrix[i, i + 1:] = new_row
+                if np.sum(inter.matrix[i, i+1:]) == 0:
+                    child_idx = np.random.choice(range(i + 1, inter.matrix.shape[0]))
+                    inter.matrix[i, child_idx] = 1
             for j in range(1, inter.matrix.shape[1]):
-                new_col = inter.matrix[:j, j]
-                while sum(new_col) == 0:
-                    new_col = np.random.choice(2, j)
-                inter.matrix[:j, j] = new_col
+                if np.sum(inter.matrix[:j, j]) == 0:
+                    parent_idx = np.random.choice(range(j))
+                    inter.matrix[parent_idx, j] = 1
             inter.operations.pop(idx)
         elif modif == "modify":  # Modify node operation
             inter.operations[idx] = self.target.operations.value.neighbor(inter.operations[idx])
-        elif modif == "children":  # Modify node children
-            new_row = np.zeros(inter.matrix.shape[0] - idx - 1)
-            while sum(new_row) == 0:
-                new_row = np.random.choice(2, new_row.shape[0])
-            inter.matrix[idx, idx + 1:] = new_row
-            for j in range(1, inter.matrix.shape[1]):
-                new_col = inter.matrix[:j, j]
-                while sum(new_col) == 0:
-                    new_col = np.random.choice(2, j)
-                inter.matrix[:j, j] = new_col
-        elif modif == "parents":  # Modify node parents
-            new_col = np.zeros(idx)
-            while sum(new_col) == 0:
-                new_col = np.random.choice(2, new_col.shape[0])
-            inter.matrix[:idx, idx] = new_col
-            for i in range(inter.matrix.shape[0] - 1):
-                new_row = inter.matrix[i, i + 1:]
-                while sum(new_row) == 0:
-                    new_row = np.random.choice(2, inter.matrix.shape[0] - i - 1)
-                inter.matrix[i, i + 1:] = new_row
+        elif modif == "children":  # Modify ONE child connection
+            inter.matrix = self._flip_single_connection(inter.matrix, idx, 'child')
+            inter.matrix = self._ensure_valid_connections(inter.matrix, idx, 'child')
+            # Ensure only the modified child has at least one parent (if needed)
+            # On cherche quel enfant a été modifié
+            for j in range(idx + 1, inter.matrix.shape[1]):
+                if np.sum(inter.matrix[:j, j]) == 0:
+                    # Ce nœud n'a plus de parent, on lui en ajoute un
+                    parent_idx = np.random.choice(range(j))
+                    inter.matrix[parent_idx, j] = 1
+                    break  # On ne vérifie que le nœud concerné
+        elif modif == "parents":  # Modify ONE parent connection
+            inter.matrix = self._flip_single_connection(inter.matrix, idx, 'parent')
+            inter.matrix = self._ensure_valid_connections(inter.matrix, idx, 'parent')
+            # Ensure only the modified parent has at least one child (if needed)
+            # On cherche quel parent a été modifié
+            for i in range(idx):
+                if np.sum(inter.matrix[i, i+1:]) == 0:
+                    # Ce nœud n'a plus d'enfant, on lui en ajoute un
+                    child_idx = np.random.choice(range(i + 1, inter.matrix.shape[0]))
+                    inter.matrix[i, child_idx] = 1
+                    break  # On ne vérifie que le nœud concerné
             inter.matrix[-2, -1] = 1
         # Reconstruct nodes:
         for j in range(1, len(inter.operations)):
@@ -541,4 +637,3 @@ class EvoDagInterval(VarNeighborhood):
                     input_shapes = [inter.operations[i].output_shape for i in range(j) if inter.matrix[i, j] == 1]
                     inter.operations[j].modification(input_shapes=input_shapes)
         return inter
-

@@ -93,7 +93,7 @@ class SearchAlgorithm(ABC):
         Current minimum loss found.
 
     """
-    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False):
+    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False, clean_all=True):
         self.search_space = search_space
         self.n_iterations = n_iterations
         self.population_size = init_population_size
@@ -109,7 +109,8 @@ class SearchAlgorithm(ABC):
         self.storage = {}
         self.min_loss = np.inf
         self.pop_path = pop_path
-        self.verbose=verbose     
+        self.verbose=verbose
+        self.clean_all = clean_all
 
     @abstractmethod
     def select_next_configurations(self):
@@ -419,13 +420,14 @@ class SearchAlgorithm(ABC):
             logger.info(f"Search algorithm is done. Min Loss = {self.min_loss}")
             for i in range(1, self.mpi_dict['p']):
                 self.mpi_dict['comm'].send(dest=i, tag=0, obj=(None))
-            for x in os.listdir(self.save_dir):
-                if os.path.isdir(self.save_dir+f"/{x}"):
-                    if "best_model" not in x:
-                        shutil.rmtree(self.save_dir+f"/{x}")
-                else:
-                    if ".csv" not in x:
-                        os.remove(self.save_dir+f"/{x}")
+            if self.clean_all:
+                for x in os.listdir(self.save_dir):
+                    if os.path.isdir(self.save_dir+f"/{x}"):
+                        if "best_model" not in x:
+                            shutil.rmtree(self.save_dir+f"/{x}")
+                    else:
+                        if ".csv" not in x:
+                            os.remove(self.save_dir+f"/{x}")
         else:
             logger.info(f"Worker {rank} here.")
             stop = False
@@ -481,13 +483,14 @@ class SearchAlgorithm(ABC):
             t+=int(not np.isinf(loss))
             self.save_best_model(idx, loss)
         logger.info(f"Search algorithm is done. Min Loss = {self.min_loss}")
-        for x in os.listdir(self.save_dir):
-            if os.path.isdir(self.save_dir+f"/{x}"):
-                if "best_model" not in x:
-                    shutil.rmtree(self.save_dir+f"/{x}")
-            else:
-                if ".csv" not in x:
-                    os.remove(self.save_dir+f"/{x}")
+        if self.clean_all:
+            for x in os.listdir(self.save_dir):
+                if os.path.isdir(self.save_dir+f"/{x}"):
+                    if "best_model" not in x:
+                        shutil.rmtree(self.save_dir+f"/{x}")
+                else:
+                    if ".csv" not in x:
+                        os.remove(self.save_dir+f"/{x}")
 
 def timed_evaluation(x, idx, max_duration, evaluation):
     def handler(signum, frame):

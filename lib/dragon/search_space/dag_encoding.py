@@ -411,6 +411,104 @@ class Node(nn.Module):
                     new_dict[new_key] = value
             self.operation.load_state_dict(new_dict, **kwargs)
 
+class SymbolicNode(Node):
+    """
+    Node symbolique : aucune correction implicite des shapes.
+    Les incompatibilités lèvent une erreur.
+    """
+
+    def __init__(self, combiner, operation, hp, activation=nn.Identity()):
+        super().__init__(
+            combiner=combiner,
+            operation=operation,
+            hp=hp,
+            activation=activation,
+            input_comp=None  # inutilisé
+        )
+
+    def compute_input_shape(self, input_shapes):
+        """
+        Ici input_shapes = List[List[int]] (feature indices)
+        """
+        self.input_features = input_shapes
+        self.output_features = self.compute_output_features(input_shapes)
+        return (len(self.output_features),)
+
+    def compute_output_features(self, input_features):
+        """
+        Calcule les features de sortie d'un SymbolicNode.
+        - Pour add/mul : renvoie la taille max et aligne les vecteurs sur la dernière dimension
+        - Pour concat : concatène les features
+        """
+        if self.combiner in ["add", "mul"]:
+            # Taille max des vecteurs d'entrée
+            max_len = max(len(f) for f in input_features)
+            # Crée la liste des features de sortie
+            out = list(range(max_len))
+            return out
+
+        elif self.combiner == "concat":
+            out = []
+            for f in input_features:
+                out.extend(f)
+            return out
+
+        else:
+            raise InvalidArgumentError("combiner", self.combiner, input_features)
+
+
+    # --- COMBINER SANS PADDING ---
+
+    def combine(self, X):
+        """
+        Combine des tenseurs symboliques pour add/mul/concat avec alignement progressif.
+        
+        - La sortie a la taille maximale de la dernière dimension pour add/mul.
+        - add/mul sont appliqués aux éléments présents (éléments manquants ignorés).
+        - concat concatène simplement les tenseurs sur la dernière dimension.
+        """
+        if not isinstance(X, list):
+            return X
+
+        if self.combiner == "concat":
+            return torch.cat(X, dim=-1)
+
+        # Pour add/mul
+        max_len = max(x.shape[-1] for x in X)
+        batch_shape = X[0].shape[:-1]
+
+        padded = []
+        mask = []
+        for x in X:
+            pad_len = max_len - x.shape[-1]
+            pad = (pad_len, 0)  # padding à gauche
+            if self.combiner == "mul":
+                x_pad = nn.functional.pad(x, pad, value=1)
+                m = (torch.arange(max_len, device=x.device)[None, ...] >= pad_len).float()
+                m = m.expand(*batch_shape, -1) if batch_shape else m
+            else:  # add
+                x_pad = nn.functional.pad(x, pad, value=0)
+                m = (torch.arange(max_len, device=x.device)[None, ...] >= pad_len).float()
+                m = m.expand(*batch_shape, -1) if batch_shape else m
+            padded.append(x_pad)
+            mask.append(m)
+
+        stacked = torch.stack(padded, dim=0)
+        mask = torch.stack(mask, dim=0)
+
+        if self.combiner == "add":
+            out = torch.sum(stacked * mask, dim=0)
+        elif self.combiner == "mul":
+            stacked = torch.where(mask.bool(), stacked, torch.ones_like(stacked))
+            out = torch.prod(stacked, dim=0)
+        else:
+            raise InvalidArgumentError("symbolic-combine", self.combiner, {"shapes": [tuple(x.shape) for x in X]})
+
+        return out
+
+
+
+
 
 class AdjMatrix(nn.Module):
     """AdjMatrix(nn.Module)
@@ -573,7 +671,7 @@ class AdjMatrix(nn.Module):
     
 def fill_adj_matrix(matrix):
     """fill_adj_matrix(matrix)
-    Add random edges into an adjacency matrix in case it contains orphan nodes (no incoming connection) or nodes having no outgoing connection.
+    Add edges into an adjacency matrix in case it contains orphan nodes (no incoming connection) or nodes having no outgoing connection.
     Except from the first node, all nodes should have at least one incoming connection, meaning the corresponding column should not sum to zero.
     Except from the last node, all nodes should have at least one outgoing connection, meaning the corresponding row should not sum to zero.
 
@@ -587,16 +685,20 @@ def fill_adj_matrix(matrix):
         matrix: `np.array`
             Adjacency matrix from a DAG that does not contain orphan nodes.
     """
-    # Add outgoing connections if needed.
+    # Add outgoing connections if needed (one connection only).
     for i in range(matrix.shape[0] - 1):
-        new_row = matrix[i, i + 1:]
-        while sum(new_row) == 0:
-            new_row = np.random.choice(2, new_row.shape[0])
-        matrix[i, i + 1:] = new_row
-    # Add incoming connections if needed.
+        row = matrix[i, i + 1:]
+        if np.sum(row) == 0:
+            # Add exactly one outgoing connection to a random child
+            child_idx = np.random.choice(row.shape[0])
+            matrix[i, i + 1 + child_idx] = 1
+    
+    # Add incoming connections if needed (one connection only).
     for j in range(1, matrix.shape[1]):
-        new_col = matrix[:j, j]
-        while sum(new_col) == 0:
-            new_col = np.random.choice(2, new_col.shape[0])
-        matrix[:j, j] = new_col
+        col = matrix[:j, j]
+        if np.sum(col) == 0:
+            # Add exactly one incoming connection from a random parent
+            parent_idx = np.random.choice(col.shape[0])
+            matrix[parent_idx, j] = 1
+    
     return matrix

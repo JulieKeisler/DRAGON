@@ -387,7 +387,7 @@ Return ONLY JSON:
     
     def _analyze_past_performance(self):
         """Analyze performance (succinct)."""
-        if len(self.action_outcomes) < 3:
+        if len(self.action_outcomes) < 1:
             return "Insufficient data"
         
         recent = self.action_outcomes[-10:]
@@ -518,9 +518,9 @@ class AgenticSearchAlgorithm(Mutant_UCB):
     
     def __init__(self, search_space, T, K, N, E, evaluation, save_dir, 
                  models=None, pop_path=None, verbose=False, policy=None, 
-                 task_description=None, **args):
+                 task_description=None, clean_all=True, **args):
         super().__init__(search_space, T, K, N, E, evaluation, save_dir, 
-                        models, pop_path, verbose, **args)
+                        models, pop_path, verbose, clean_all, **args)
         
         if policy is None:
             raise ValueError("policy parameter is required")
@@ -746,6 +746,7 @@ class AgenticSearchAlgorithm(Mutant_UCB):
         """
         # Update storage with evaluation results
         if idx in self.sent:
+            self.sent[idx]['Idx'] = idx
             self.sent[idx]['Loss'] = loss
             self.sent[idx]['UCBLoss'] = (
                 loss + self.sent[idx]['N_bar'] * self.sent[idx]['UCBLoss']
@@ -756,6 +757,7 @@ class AgenticSearchAlgorithm(Mutant_UCB):
         else:
             # Handle initial population evaluation
             self.storage[idx] = {
+                "Idx": idx,
                 "N": 1, 
                 "N_bar": 1, 
                 "UCBLoss": loss, 

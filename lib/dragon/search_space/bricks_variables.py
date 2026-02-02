@@ -1,3 +1,4 @@
+from dragon.search_space.dag_encoding import Node
 import torch.nn as nn
 from dragon.search_operators.dag_neighborhoods import CatHpInterval, EvoDagInterval, HpInterval, NodeInterval, int_neighborhood
 from dragon.search_operators.base_neighborhoods import DynamicBlockInterval, FloatInterval, IntInterval, CatInterval, ConstantInterval
@@ -36,7 +37,7 @@ def dag_var(label, operations, complexity=None):
                     neighbor=EvoDagInterval() 
                 )
 
-def node_var(label, operation, activation_function):
+def node_var(label, operation, activation_function, node_type=Node):
     """node_var(label, operations, activation_function)
 
     Creates a node outside a DAG, with some specified candidate operation and activation function.
@@ -61,6 +62,7 @@ def node_var(label, operation, activation_function):
                 combiner=Constant(label="out_combiner", value="add", neighbor=ConstantInterval()),
                 operation=operation,
                 activation_function=Constant(label="out_act", value=activation_function, neighbor=ConstantInterval()),
+                node_type=node_type,
                 neighbor=NodeInterval())
 
 def activation_var(label, activations=None):
@@ -98,7 +100,7 @@ def activation_var(label, activations=None):
         neighbor=CatInterval(),
     )
 
-def operations_var(label, size, candidates, activations=activation_var("Activation")):
+def operations_var(label, size, candidates, activations=activation_var("Activation"), node_type=Node):
     """operations_var(label, size, candidates)
 
     Creates a `DynamicBlock` repeating `NodeVariable` objects corresponding to the candidates operations for a given DAG.
@@ -137,6 +139,7 @@ def operations_var(label, size, candidates, activations=activation_var("Activati
                                 neighbor=CatHpInterval(neighborhood=0.7)
                             ),
                         activation_function=activations, # Default activation functions
+                        node_type=node_type,
                         neighbor=NodeInterval()
                     ),
                     size,
