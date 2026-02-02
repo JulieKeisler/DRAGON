@@ -542,8 +542,8 @@ MUTATION TYPES:
 
 GUIDELINES:
 - Consider node interactions
-- change connections to modify the information flow
-- remove useless connections
+- use children/parents to change connections to modify the information flow
+- use children/parents to remove useless connections
 - Preserve successful patterns from analysis
 - Choose operations/combiners/activations based on population success
 - Each mutation should have clear purpose
