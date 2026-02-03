@@ -81,7 +81,7 @@ class Mutant_UCB(SearchAlgorithm):
     >>> search_algorithm = Mutant_UCB(search_space, save_dir="save/test_mutant", T=20, N=5, K=5, E=0.01, evaluation=loss_function)
     >>> search_algorithm.run()
     """
-    def __init__(self, search_space, T, K, N, E, evaluation, save_dir, models=None, pop_path=None, verbose=False, **args):
+    def __init__(self, search_space, T, K, N, E, evaluation, save_dir, models=None, pop_path=None, verbose=False, clean_all=True, **args):
         super(Mutant_UCB, self).__init__(search_space=search_space, 
                                             n_iterations=T, 
                                             init_population_size=K, 
@@ -90,6 +90,7 @@ class Mutant_UCB(SearchAlgorithm):
                                             models=models, pop_path=pop_path, 
                                             verbose=verbose,
                                             time_max=45)
+                                            clean_all=clean_all)
         
     
         self.N = N
@@ -175,13 +176,14 @@ class Mutant_UCB(SearchAlgorithm):
             Average loss across all evaluations.
         """
         if idx in self.sent.keys():
+            self.sent[idx]['Idx'] = idx
             self.sent[idx]['Loss'] = loss
             self.sent[idx]['UCBLoss'] = (loss + self.sent[idx]['N_bar']*self.sent[idx]['UCBLoss'])/(self.sent[idx]['N_bar']+1)
             self.sent[idx]['N'] +=1
             self.sent[idx]['N_bar'] +=1
             self.storage[idx] = self.sent.pop(idx)
         else:
-            self.storage[idx] = {"N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
+            self.storage[idx] = {"Idx": idx, "N": 1, "N_bar": 1, "UCBLoss": loss, "Loss": loss}
         return False, pd.DataFrame({k: [v] for k, v in self.storage[idx].items()}), loss
     
     def process_evaluated_row(self, row):

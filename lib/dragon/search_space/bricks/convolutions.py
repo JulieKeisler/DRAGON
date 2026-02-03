@@ -63,6 +63,58 @@ class Conv2d(Brick):
         super(Conv2d, self).load_state_dict(state_dict, **kwargs)
 
 
+class ConvTranspose2d(Brick):
+    def __init__(self, input_shape, out_channels, kernel_size, stride=None, padding=None, permute=False):
+        super().__init__(input_shape)
+        if permute:
+            h, w, in_channels = input_shape
+        else:
+            in_channels, h, w = input_shape
+
+        self.permute = permute
+        self.kernel_size = (kernel_size, kernel_size)
+        self.in_channels = in_channels
+        if stride is None:
+            stride = 2
+        if padding is None:
+            padding = 0
+
+        self.transconv = nn.ConvTranspose2d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=self.kernel_size,
+            stride=stride,
+            padding=padding,
+        )
+
+    def forward(self, X):
+        if self.permute:
+            X = X.permute(0, 3, 1, 2)  # NHWC → NCHW
+        X = self.transconv(X)
+        if self.permute:
+            X = X.permute(0, 2, 3, 1)  # NCHW → NHWC
+        return X
+
+    def modify_operation(self, input_shape):
+
+        if self.permute:
+            h, w, d_in = input_shape
+        else:
+            d_in, h, w = input_shape
+        diff = d_in - self.in_channels
+        sign = diff / np.abs(diff) if diff != 0 else 1
+        pad = (0, 0, 0, 0, 0,0,
+               int(sign * np.ceil(np.abs(diff)/2)), int(sign * np.floor(np.abs(diff)/2)))
+        self.transconv.weight.data = nn.functional.pad(self.transconv.weight, pad)
+        self.in_channels = d_in
+
+
+    def load_state_dict(self, state_dict, **kwargs):
+        input_shape = state_dict['transconv.weight'].shape[1]
+        self.modify_operation(input_shape)
+        super(ConvTranspose2d, self).load_state_dict(state_dict, **kwargs)
+
+
 class Conv1d(Brick):
     def __init__(self, input_shape, kernel_size, out_channels, padding="same", permute=False):
         super(Conv1d, self).__init__(input_shape)

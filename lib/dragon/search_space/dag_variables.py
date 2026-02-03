@@ -1,6 +1,8 @@
 import numpy as np
 from dragon.search_space.base_variables import Variable, DynamicBlock
 from dragon.search_space.dag_encoding import AdjMatrix, Node, fill_adj_matrix
+
+import torch.nn as nn
     
 class HpVar(Variable):
     """HpVar(Variable)
@@ -97,6 +99,7 @@ class HpVar(Variable):
         return isconstant
 
 class NodeVariable(Variable):
+
     """NodeVariable(Variable)
 
     The class `NodeVariable` defines `Variable` which represent DAGs nodes by creating objects from the `Node` class.
@@ -125,7 +128,7 @@ class NodeVariable(Variable):
     >>> node.random()
     (combiner) mul -- (name) <class 'dragon.search_space.bricks.basics.MLP'> -- (hp) {'out_channels': 2} -- (activation) SiLU() --
     """
-    def __init__(self, label, combiner, operation, activation_function, **kwargs):
+    def __init__(self, label, combiner, operation, activation_function, node_type=Node, **kwargs):
         super().__init__(label, **kwargs)
         assert isinstance(combiner, Variable), f"The combiner should be of type Variable but got {combiner} instead."
         assert isinstance(operation, Variable), f"The operation should be of type Variable but got {operation} instead."
@@ -134,7 +137,8 @@ class NodeVariable(Variable):
         self.combiner = combiner
         self.operation = operation
         self.activation_function = activation_function
-        
+        self.node_type = node_type
+    
     def random(self, size=1):
         """random(size=1)
 
@@ -155,7 +159,7 @@ class NodeVariable(Variable):
             op = self.operation.random()
             name, hp = op[0], op[1]
             f = self.activation_function.random()
-            return Node(c, name, hp, f)
+            return self.node_type(c, name, hp, f)
         else:
             res = []
             for _ in range(size):
@@ -163,7 +167,7 @@ class NodeVariable(Variable):
                 op = self.operation.random()
                 name, hp = op[0], op[1]
                 f = self.activation_function.random()
-                res.append(Node(c, name, hp, f))
+                res.append(self.node_type(c, name, hp, f))
             return res
     def isconstant(self):
         """isconstant()
@@ -178,6 +182,7 @@ class NodeVariable(Variable):
     
     def __repr__(self):
         return f"Combiner: {self.combiner.__repr__()} - Operation: {self.operation.__repr__()} - Act. Function: {self.activation_function.__repr__()}"
+
 
 class EvoDagVariable(Variable):
     """EvoDagVariable(Variable)
@@ -215,13 +220,14 @@ class EvoDagVariable(Variable):
     (combiner) concat -- (name) <class 'dragon.search_space.bricks.pooling.MaxPooling1D'> -- (hp) {'pool_size': 3} -- (activation) ELU(alpha=1.0) -- , 
     (combiner) add -- (name) <class 'dragon.search_space.bricks.pooling.AVGPooling1D'> -- (hp) {'pool_size': 4} -- (activation) ReLU() -- ] | MATRIX:[[0, 1, 1, 1], [0, 0, 1, 1], [0, 0, 0, 1], [0, 0, 0, 0]]
     """
-    def __init__(self, label, operations, init_complexity=None, **kwargs):
+    def __init__(self, label, operations, init_complexity=None, node_type=Node, **kwargs):
         assert isinstance(operations, DynamicBlock), f"""
         Operations must inherit from `DynamicBlock`, got {operations}
         """
         self.operations = operations
         self.max_size = operations.repeat
         self.complexity = init_complexity
+        self.node_type = node_type
         super(EvoDagVariable, self).__init__(label, **kwargs)
 
     def random(self, size=1):
@@ -248,9 +254,8 @@ class EvoDagVariable(Variable):
             if self.complexity is not None:
                 operations = operations[: min(self.complexity, len(operations))]
             from dragon.search_space.bricks import Identity
-            operations = [Node("add", Identity, {})] + operations
-            matrix = np.random.randint(0, 2, (len(operations), len(operations)))
-            matrix = np.triu(matrix, k=1)
+            operations = [self.node_type("add", Identity, {})] + operations
+            matrix = np.zeros((len(operations), len(operations)))
             matrix = fill_adj_matrix(matrix)
             adj_matrix = AdjMatrix(operations, matrix)
             matrices.append(adj_matrix)
