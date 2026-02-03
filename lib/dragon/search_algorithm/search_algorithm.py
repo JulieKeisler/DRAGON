@@ -64,6 +64,8 @@ class SearchAlgorithm(ABC):
         Path towards a directory containing an former evaluation that we aim to continue.
     verbose: bool, default=False
         Verbose boolean.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     Attributes
     ----------
@@ -91,9 +93,11 @@ class SearchAlgorithm(ABC):
         Dictionary storing the configurations from the population.
     min_loss: float, default=np.min
         Current minimum loss found.
+    time_max: int, default=45
+        Maximum number of time (in minutes) for one evaluation.
 
     """
-    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False, clean_all=True):
+    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False, time_max=45, clean_all=True):
         self.search_space = search_space
         self.n_iterations = n_iterations
         self.population_size = init_population_size
@@ -110,6 +114,7 @@ class SearchAlgorithm(ABC):
         self.min_loss = np.inf
         self.pop_path = pop_path
         self.verbose=verbose
+        self.time_max=time_max
         self.clean_all = clean_all
 
     @abstractmethod
@@ -181,6 +186,7 @@ class SearchAlgorithm(ABC):
             for i in list(self.storage.keys()):
                 if not os.path.exists(f"{self.save_dir}/x_{i}.pkl"):
                     self.storage.pop(i)
+            logger.info(f"Recovered population has size of {len(self.storage)}.")
         except FileNotFoundError:
             logger.error(f"{self.pop_path+'/computation_file.csv'} does not exist, starts from fresh population.")
             if os.path.exists(self.save_dir):
@@ -285,7 +291,7 @@ class SearchAlgorithm(ABC):
             nb_receive+=1
 
     
-    def evaluate(self, idx, timed=False):
+    def evaluate(self, idx):
         """evaluate()
         Evaluation function of the configuration `idx`.
         Load the corresponding configuration from `{self.save_dir}/x_{idx}.pkl`.
@@ -298,9 +304,6 @@ class SearchAlgorithm(ABC):
         -----------
         idx: int
             Index of the configuration to evaluated.
-        timed: boolean
-            Indicating it the evaluation should be resumed after a certain number of time.
-
         Returns
         --------
         loss: float
@@ -316,8 +319,8 @@ class SearchAlgorithm(ABC):
         x_path = f"{self.save_dir}/{idx}/"
         os.makedirs(x_path, exist_ok=True)
         try:
-            if timed:
-                loss = timed_evaluation(x, idx, 45*60, self.evaluation)
+            if self.time_max is not None:
+                loss = timed_evaluation(x, idx, self.time_max*60, self.evaluation)
             else:
                 loss = self.evaluation(x, idx)
             if not isinstance(loss, float):
@@ -374,7 +377,7 @@ class SearchAlgorithm(ABC):
                     shutil.rmtree(self.save_dir)
                 os.makedirs(self.save_dir+"/best_model/")
 
-            if len(self.storage) < self.population_size:
+            if (self.population_size - len(self.storage)) > self.mpi_dict['p']:
                 ### Create first population
                 self.create_population()
 
@@ -438,7 +441,7 @@ class SearchAlgorithm(ABC):
             while not stop:
                 idx = self.mpi_dict['comm'].recv(source=0, tag=0, status=self.mpi_dict['status'])
                 if idx is not None:
-                    loss, idx = self.evaluate(idx, timed=True)
+                    loss, idx = self.evaluate(idx)
                     self.mpi_dict['comm'].send(dest=0, tag=0, obj=[loss, idx])
                 else:
                     logger.info(f'Worker {rank} has been stopped')
