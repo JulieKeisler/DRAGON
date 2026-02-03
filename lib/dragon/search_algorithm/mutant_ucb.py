@@ -89,7 +89,7 @@ class Mutant_UCB(SearchAlgorithm):
                                             save_dir=save_dir, 
                                             models=models, pop_path=pop_path, 
                                             verbose=verbose,
-                                            time_max=45)
+                                            time_max=45,
                                             clean_all=clean_all)
         
     
