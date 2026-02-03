@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
-from dragon.utils.tools import logger
 from dragon.utils.exceptions import InvalidArgumentError
 
 

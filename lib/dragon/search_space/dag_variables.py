@@ -1,6 +1,7 @@
 import numpy as np
 from dragon.search_space.base_variables import Variable, DynamicBlock
 from dragon.search_space.dag_encoding import AdjMatrix, Node, fill_adj_matrix
+
 import torch.nn as nn
     
 class HpVar(Variable):
@@ -98,6 +99,7 @@ class HpVar(Variable):
         return isconstant
 
 class NodeVariable(Variable):
+
     """NodeVariable(Variable)
 
     The class `NodeVariable` defines `Variable` which represent DAGs nodes by creating objects from the `Node` class.

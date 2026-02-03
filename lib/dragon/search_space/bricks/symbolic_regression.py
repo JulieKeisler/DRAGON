@@ -154,3 +154,34 @@ class Substract(Brick):
 
     def __repr__(self):
         return "Substract()"
+
+
+class ConstantBrick(Brick):
+    def __init__(self, input_shape=None, value=0.0, **args):
+        """
+        Brick qui renvoie une constante pour tous les échantillons du batch.
+        """
+        super(ConstantBrick, self).__init__(input_shape)
+        self.value = float(value)
+
+    def forward(self, X=None):
+        """
+        Renvoie la constante avec la bonne shape.
+        X est optionnel : si fourni, renvoie batch_size x 1
+        """
+        if X is not None:
+            batch_size = X.shape[0]
+            device = X.device
+        else:
+            batch_size = 1
+            device = torch.device('cpu')
+        return torch.full((batch_size, 1), self.value, device=device)
+
+    def modify_operation(self, input_shape):
+        """
+        Conserve la compatibilité avec l'interface Dragon.
+        """
+        self.input_shape = input_shape
+
+    def __repr__(self):
+        return f"Constant(value={self.value})"

@@ -32,6 +32,8 @@ class IndividualProfile:
     connectivity_density: float
     operation_distribution: Dict[str, int]
     structural_hash: str
+    formula_analysis: Optional[Any] = None
+    symbolic_analysis: Optional[Any] = None
     
     def to_dict(self):
         return asdict(self)
@@ -541,11 +543,12 @@ MUTATION TYPES:
 - parents: Adjust input connections
 
 GUIDELINES:
-- Consider node interactions
-- use children/parents to change connections to modify the information flow
-- use children/parents to remove useless connections
 - Preserve successful patterns from analysis
 - Choose operations/combiners/activations based on population success
+- Use children/parents to change connections to modify the information flow
+- Use children/parents to remove useless connections
+- Keep the number of input connections small (parents)
+- Use delete to keep the graphs small and simple
 - Each mutation should have clear purpose
 
 Return ONLY JSON:

@@ -325,10 +325,14 @@ class SearchAlgorithm(ABC):
                     loss, model = loss
                     if hasattr(model, "save"):
                         model.save(x_path)
+                    if hasattr(model, "mini_x"):
+                        x = model.mini_x
                 elif len(loss) == 3:
                     loss, model, x = loss
                     if hasattr(model, "save"):
                         model.save(x_path)
+                    if hasattr(model, "mini_x"):
+                        x = model.mini_x
         except Exception as e:
             if self.verbose:
                 logger.error(f'Worker with individual {idx} failed with {e}, set loss to inf', exc_info=True)
