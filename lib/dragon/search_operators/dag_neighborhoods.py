@@ -425,17 +425,17 @@ class EvoDagInterval(VarNeighborhood):
                         
                     if idx == 0:
                         choices = ['add', 'children']
-                        if inter.matrix.shape[0] == self.target.max_size:
+                        if inter.matrix.shape[0] >= self.target.max_size:
                             choices = ["children"]
                     elif idx == len(inter.operations) - 1:
-                        if inter.matrix.shape[0] == self.target.max_size:
+                        if inter.matrix.shape[0] >= self.target.max_size:
                             choices = ['delete', 'modify', 'parents']
                         elif inter.matrix.shape[0] == 2:
                             choices = ['add', 'modify', 'parents']
                         else:
                             choices = ['add', 'delete', 'modify', 'parents']
                     else:
-                        if inter.matrix.shape[0] == self.target.max_size:
+                        if inter.matrix.shape[0] >= self.target.max_size:
                             choices = ['delete', 'modify', 'children', 'parents']
                         else:
                             choices = ['add', 'delete', 'modify', 'children', 'parents']
@@ -474,11 +474,24 @@ class EvoDagInterval(VarNeighborhood):
                         continue
                         
                     if idx == 0:
-                        modification = random.choice(['add', 'children'])
+                        choices = ['add', 'children']
+                        if inter.matrix.shape[0] >= self.target.max_size:
+                            choices = ['children']
+                        modification = random.choice(choices)
                     elif idx == len(inter.operations) - 1:
-                        modification = random.choice(['add', 'delete', 'modify', 'parents'])
+                        if inter.matrix.shape[0] >= self.target.max_size:
+                            choices = ['delete', 'modify', 'parents']
+                        elif inter.matrix.shape[0] == 2:
+                            choices = ['add', 'modify', 'parents']
+                        else:
+                            choices = ['add', 'delete', 'modify', 'parents']
+                        modification = random.choice(choices)
                     else:
-                        modification = random.choice(['add', 'delete', 'modify', 'children', 'parents'])
+                        if inter.matrix.shape[0] >= self.target.max_size:
+                            choices = ['delete', 'modify', 'children', 'parents']
+                        else:
+                            choices = ['add', 'delete', 'modify', 'children', 'parents']
+                        modification = random.choice(choices)
                     inter = self.modification(modification, idx, inter)
                     if modification == "add":
                         # Update all subsequent indices (they shift by +1)

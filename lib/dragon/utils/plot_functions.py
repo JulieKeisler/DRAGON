@@ -245,15 +245,35 @@ def graph_to_all_formulas(adj_matrix, X, nodes):
     return formulas
 
 
-def expr_to_mini_dag(expr, input_names):
+def expr_to_mini_dag(expr, input_names, max_nodes=None):
     """
     Compile une expression SymPy en DAG Dragon minimal et valide.
+
+    Parameters
+    ----------
+    expr : sympy.Expr
+        The symbolic expression to compile.
+    input_names : list[str]
+        Feature names matching the input tensor columns.
+    max_nodes : int or None, default=None
+        Maximum number of nodes allowed in the resulting DAG.
+        If the compiled expression would exceed this limit, a
+        ``ValueError`` is raised so the caller can skip the
+        mini-dag replacement.
     """
     from dragon.search_space.bricks.basics import Identity
     
     nodes = []
     edges = []
     cache = {}
+
+    def _check_budget():
+        """Raise if we have already exceeded *max_nodes*."""
+        if max_nodes is not None and len(nodes) >= max_nodes:
+            raise ValueError(
+                f"expr_to_mini_dag: expression requires more than "
+                f"{max_nodes} nodes – skipping mini-dag conversion."
+            )
 
     # ------------------------------------------------------------------
     # 0. Root node obligatoire
@@ -271,6 +291,7 @@ def expr_to_mini_dag(expr, input_names):
     # ------------------------------------------------------------------
     def create_symbol_copy(symbol_name):
         """Crée une nouvelle copie d'un symbole input"""
+        _check_budget()
         i = input_names.index(symbol_name)
         node = SymbolicNode(
             combiner="add",
@@ -308,6 +329,7 @@ def expr_to_mini_dag(expr, input_names):
         # Multiplier progressivement tous les facteurs
         current_idx = factors[0]
         for factor_idx in factors[1:]:
+            _check_budget()
             mul_node = SymbolicNode("mul", Identity, {}, nn.Identity())
             mul_idx = len(nodes)
             nodes.append(mul_node)
@@ -327,6 +349,7 @@ def expr_to_mini_dag(expr, input_names):
 
         # ---- Constantes ----
         if isinstance(e, (int, float, Integer, Rational, Float)):
+            _check_budget()
             value = float(e)
             const_node = SymbolicNode(
                 combiner="add",
@@ -339,6 +362,7 @@ def expr_to_mini_dag(expr, input_names):
             edges.append((0, const_idx))
             
             if value < 0:
+                _check_budget()
                 neg_node = SymbolicNode(
                     combiner="add",
                     operation=Negate,
@@ -363,6 +387,7 @@ def expr_to_mini_dag(expr, input_names):
         # ---- Addition ----
         if isinstance(e, Add):
             children = [compile_expr(a) for a in e.args]
+            _check_budget()
             node = SymbolicNode("add", Identity, {}, nn.Identity())
             idx = len(nodes)
             nodes.append(node)
@@ -382,6 +407,7 @@ def expr_to_mini_dag(expr, input_names):
                     children_expr.append(a)
 
             children = [compile_expr(a) for a in children_expr]
+            _check_budget()
             node = SymbolicNode("mul", Identity, {}, nn.Identity())
             idx = len(nodes)
             nodes.append(node)
@@ -390,6 +416,7 @@ def expr_to_mini_dag(expr, input_names):
 
             out = idx
             if negate:
+                _check_budget()
                 neg_node = SymbolicNode("add", Negate, {}, nn.Identity())
                 neg_idx = len(nodes)
                 nodes.append(neg_node)
@@ -406,6 +433,7 @@ def expr_to_mini_dag(expr, input_names):
             # Inverse
             if exponent == -1:
                 child = compile_expr(base)
+                _check_budget()
                 node = SymbolicNode("add", Inverse, {}, nn.Identity())
                 idx = len(nodes)
                 nodes.append(node)
@@ -423,6 +451,7 @@ def expr_to_mini_dag(expr, input_names):
             elif isinstance(exponent, (int, Integer)) and exponent < 0:
                 pos_exp = -int(exponent)
                 idx = multiply_chain(base, pos_exp)
+                _check_budget()
                 inv_node = SymbolicNode("add", Inverse, {}, nn.Identity())
                 inv_idx = len(nodes)
                 nodes.append(inv_node)
@@ -441,6 +470,7 @@ def expr_to_mini_dag(expr, input_names):
     output_expr_idx = compile_expr(expr)
     
     # Créer un nœud de sortie final (obligatoire pour le DAG)
+    _check_budget()
     output_node = SymbolicNode(
         combiner="add",
         operation=Identity,
