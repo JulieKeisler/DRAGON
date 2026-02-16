@@ -173,7 +173,26 @@ def apply_operation(out, node):
 
 from sympy import simplify, sympify
 
-def graph_to_formula(adj_matrix, X, nodes):
+def graph_to_formula(adj_matrix, X, nodes, channel=None):
+    """Extract a symbolic formula from the DAG.
+
+    Parameters
+    ----------
+    adj_matrix : np.ndarray
+        Adjacency matrix of the DAG.
+    X : np.ndarray
+        Array of feature names.
+    nodes : list
+        List of DAG operation nodes.
+    channel : int or None, default=None
+        Which output channel to extract the formula for.
+        If None, defaults to channel 0 (legacy behaviour).
+
+    Returns
+    -------
+    sympy.Expr
+        Simplified symbolic expression for the requested channel.
+    """
     n = adj_matrix.shape[0]
 
     d = X.shape[-1]
@@ -188,9 +207,42 @@ def graph_to_formula(adj_matrix, X, nodes):
         out = apply_operation(out, nodes[i])
         out_dict[i] = out
 
-    expr_str = out_dict[n - 1][0]
+    selected = channel if channel is not None else 0
+    if selected >= len(out_dict[n - 1]):
+        selected = 0
+    expr_str = out_dict[n - 1][selected]
     expr = sympify(expr_str)
     return simplify(expr)
+
+
+def graph_to_all_formulas(adj_matrix, X, nodes):
+    """Extract symbolic formulas for ALL output channels of the DAG.
+
+    Returns
+    -------
+    list[sympy.Expr]
+        List of simplified symbolic expressions, one per output channel.
+    """
+    n = adj_matrix.shape[0]
+
+    out_dict = {}
+    out_dict[0] = [f"{i}" for i in X]
+
+    for i in range(1, n):
+        parents = [j for j in range(i) if adj_matrix[j, i] == 1]
+        inputs = [out_dict[j] for j in parents]
+
+        out = op_tensors(inputs, nodes[i].combiner)
+        out = apply_operation(out, nodes[i])
+        out_dict[i] = out
+
+    formulas = []
+    for elem in out_dict[n - 1]:
+        try:
+            formulas.append(simplify(sympify(elem)))
+        except Exception:
+            formulas.append(None)
+    return formulas
 
 
 def expr_to_mini_dag(expr, input_names):
