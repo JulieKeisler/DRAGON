@@ -46,10 +46,69 @@ class Negate(Brick):
     def __repr__(self):
         return "Negate()"
 
+# class SelectFeatures(Brick):
+#     def __init__(self, input_shape, feature_indices=None, **args):
+#         super(SelectFeatures, self).__init__(input_shape)
+#         self.feature_indices = feature_indices
+
+#     def forward(self, X, h=None):
+#         if self.feature_indices is None:
+#             return X
+
+#         n_features = X.shape[-1]
+#         idx = torch.as_tensor(self.feature_indices, device=X.device)
+
+#         if idx.max() >=n_features:
+#             #logger.warning(f'Index {idx}>X shaepe: {X.shape}, returning X.')
+#             return X
+
+#         return X[..., idx]
+
+
+#     def modify_operation(self, input_shape):
+#         self.input_shape = input_shape
+
+#     def __repr__(self):
+#         return f"SelectFeatures(feature_indices={self.feature_indices})"
+    
+
 class SelectFeatures(Brick):
-    def __init__(self, input_shape, feature_indices=None, **args):
+    """Select (or sample) a subset of input features.
+
+    Parameters
+    ----------
+    input_shape : tuple
+        Shape of the input tensor (excluding batch dimension).
+    feature_indices : list[int] or None
+        Explicit indices to select.  When *None* and *feature_probs* is
+        provided, a single index is sampled according to *feature_probs*
+        at construction time.
+    feature_probs : list[float] or None
+        Per-feature probability / importance distribution (one value per
+        column of X).  Used in two ways:
+
+        1. **At init** – if *feature_indices* is ``None``, one index is
+           drawn from this distribution so the node starts with the most
+           important features.
+        2. **At search-config time** – pass the array to the static helper
+           :meth:`combination_weights` to obtain ``CatVar`` weights that
+           bias the evolutionary search toward combinations of important
+           features.
+    """
+
+    def __init__(self, input_shape, feature_indices=None, feature_probs=None, **args):
         super(SelectFeatures, self).__init__(input_shape)
-        self.feature_indices = feature_indices
+        self.feature_probs = feature_probs
+
+        if feature_indices is not None:
+            self.feature_indices = feature_indices
+        elif feature_probs is not None:
+            # Sample one feature index according to the importance distribution
+            import random as _rnd
+            population = list(range(len(feature_probs)))
+            self.feature_indices = _rnd.choices(population, weights=feature_probs, k=1)
+        else:
+            self.feature_indices = None
 
     def forward(self, X, h=None):
         if self.feature_indices is None:
@@ -58,12 +117,41 @@ class SelectFeatures(Brick):
         n_features = X.shape[-1]
         idx = torch.as_tensor(self.feature_indices, device=X.device)
 
-        if idx.max() >=n_features:
-            #logger.warning(f'Index {idx}>X shaepe: {X.shape}, returning X.')
+        if idx.max() >= n_features:
             return X
 
         return X[..., idx]
 
+    # ------------------------------------------------------------------
+    # Utility for search-space configuration
+    # ------------------------------------------------------------------
+    @staticmethod
+    def combination_weights(feature_probs, combinations):
+        """Convert per-feature importances into per-combination ``CatVar`` weights.
+
+        Parameters
+        ----------
+        feature_probs : list[float] or array-like
+            Importance score for every feature (e.g. from XGBoost).
+            Does **not** need to sum to 1 – it will be normalised internally.
+        combinations : list[list[int]]
+            The list of index-lists that will be passed as ``features``
+            to ``CatVar`` (e.g. ``[[0], [1], [0,1], …]``).
+
+        Returns
+        -------
+        weights : list[float]
+            Normalised weights (sum ≈ 1) ready for ``CatVar(…, weights=…)``.
+        """
+        import numpy as np
+        probs = np.asarray(feature_probs, dtype=float)
+        probs = probs / probs.sum()# normalise to probabilities
+        raw = []
+        for combo in combinations:
+            # Weight of a combination = sum of its members' importances
+            raw.append(float(sum(probs[i] for i in combo)))
+        total = sum(raw)
+        return [w / total for w in raw]
 
     def modify_operation(self, input_shape):
         self.input_shape = input_shape
