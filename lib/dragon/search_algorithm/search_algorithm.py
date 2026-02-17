@@ -97,7 +97,7 @@ class SearchAlgorithm(ABC):
         Maximum number of time (in minutes) for one evaluation.
 
     """
-    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False, time_max=45, clean_all=True):
+    def __init__(self, search_space, n_iterations: int, init_population_size: int, evaluation, save_dir, models=None, pop_path = None, verbose=False, time_max=45, clean_all=True, loss_threshold=None):
         self.search_space = search_space
         self.n_iterations = n_iterations
         self.population_size = init_population_size
@@ -116,6 +116,7 @@ class SearchAlgorithm(ABC):
         self.verbose=verbose
         self.time_max=time_max
         self.clean_all = clean_all
+        self.loss_threshold = loss_threshold
 
     @abstractmethod
     def select_next_configurations(self):
@@ -489,6 +490,9 @@ class SearchAlgorithm(ABC):
             loss, idx = self.evaluate(idx)
             t+=int(not np.isinf(loss))
             self.save_best_model(idx, loss)
+            if self.loss_threshold is not None and self.min_loss <= self.loss_threshold:
+                logger.info(f'Early stopping: loss {self.min_loss} <= threshold {self.loss_threshold}')
+                break
         logger.info(f"Search algorithm is done. Min Loss = {self.min_loss}")
         if self.clean_all:
             for x in os.listdir(self.save_dir):
