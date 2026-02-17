@@ -81,7 +81,7 @@ class Mutant_UCB(SearchAlgorithm):
     >>> search_algorithm = Mutant_UCB(search_space, save_dir="save/test_mutant", T=20, N=5, K=5, E=0.01, evaluation=loss_function)
     >>> search_algorithm.run()
     """
-    def __init__(self, search_space, T, K, N, E, evaluation, save_dir, models=None, pop_path=None, verbose=False, clean_all=True, **args):
+    def __init__(self, search_space, T, K, N, E, evaluation, save_dir, models=None, pop_path=None, verbose=False, clean_all=True, loss_threshold=None, **args):
         super(Mutant_UCB, self).__init__(search_space=search_space, 
                                             n_iterations=T, 
                                             init_population_size=K, 
@@ -90,7 +90,8 @@ class Mutant_UCB(SearchAlgorithm):
                                             models=models, pop_path=pop_path, 
                                             verbose=verbose,
                                             time_max=45,
-                                            clean_all=clean_all)
+                                            clean_all=clean_all,
+                                            loss_threshold=loss_threshold)
         
     
         self.N = N
