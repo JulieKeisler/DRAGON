@@ -245,25 +245,25 @@ class Substract(Brick):
         return "Substract()"
 
 
-# class ConstantBrick(Brick):
-#     def __init__(self, input_shape=None, value=0.0, **args):
-#         super().__init__(input_shape)
+class ConstantBrick(Brick):
+    def __init__(self, input_shape=None, value=0.0, **args):
+        super().__init__(input_shape)
 
-#         # Paramètre apprenable
-#         self.value = nn.Parameter(torch.tensor([[value]], dtype=torch.float32))
+        # Learnable parameter
+        self.value = nn.Parameter(torch.tensor([[value]], dtype=torch.float32))
 
-#     def forward(self, X=None):
-#         if X is not None:
-#             batch_size = X.shape[0]
-#             device = X.device
-#         else:
-#             batch_size = 1
-#             device = self.value.device
+    def forward(self, X=None):
+        if X is not None:
+            batch_size = X.shape[0]
+            device = X.device
+        else:
+            batch_size = 1
+            device = self.value.device
 
-#         return self.value.to(device).expand(batch_size, 1)
+        return self.value.to(device).expand(batch_size, 1)
 
-#     def modify_operation(self, input_shape):
-#         self.input_shape = input_shape
+    def modify_operation(self, input_shape):
+        self.input_shape = input_shape
 
-#     def __repr__(self):
-#         return f"Constant(value={self.value.item():.4f})"
+    def __repr__(self):
+        return f"Constant(value={self.value.item():.4f})"

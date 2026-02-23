@@ -5,7 +5,7 @@ import graphviz
 from sympy import Symbol, Add, Mul, Pow
 from dragon.search_space.dag_encoding import AdjMatrix, SymbolicNode, fill_adj_matrix
 from dragon.search_space.bricks.basics import Identity
-from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures#, ConstantBrick
+from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures, ConstantBrick
 import torch.nn as nn
 import numpy as np
 from sympy import Integer, Rational, Float
@@ -166,8 +166,12 @@ def apply_operation(out, node):
             return out
 
     if name == "ConstantBrick":
-        value = getattr(op, "value", 0.0)
-        return [str(value)]
+        value = getattr(op, "value", None)
+        if value is not None and hasattr(value, "item"):
+            value = value.item()
+        elif value is None:
+            value = 0.0
+        return [str(round(value, 6))]
 
     return out
 
