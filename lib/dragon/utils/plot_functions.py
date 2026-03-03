@@ -172,6 +172,13 @@ def apply_operation(out, node):
         elif value is None:
             value = 0.0
         return [str(round(value, 6))]
+    
+    if name == "Power":
+        exp = getattr(op, "exponent", 2.0)
+        exp_rounded = round(exp)
+        if abs(exp - exp_rounded) < 0.05:
+            exp = exp_rounded
+        return [f"({x})**{exp}" for x in out]
 
     return out
 
