@@ -175,6 +175,9 @@ def apply_operation(out, node):
     
     if name == "Power":
         exp = getattr(op, "exponent", 2.0)
+        if hasattr(exp, "item"):
+            exp = exp.item()
+        exp = float(exp)
         exp_rounded = round(exp)
         if abs(exp - exp_rounded) < 0.05:
             exp = exp_rounded

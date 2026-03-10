@@ -246,28 +246,27 @@ class Substract(Brick):
 
 
 class Power(Brick):
-    """Raise the input tensor to a fixed exponent.
+    """Raise the input tensor to a learnable exponent.
 
     The entire input (all features) is raised elementwise to a power
-    specified at construction time.  This exponent acts as a simple
-    hyperparameter and does **not** require a second input feature.
+    that is initialised from *exponent* and then optimised via gradient
+    descent together with the rest of the model.
     """
 
     def __init__(self, input_shape=None, exponent=2.0, **args):
         super(Power, self).__init__(input_shape)
-        self.exponent = exponent
+        self.exponent = nn.Parameter(torch.tensor(float(exponent)))
 
     def forward(self, X):
-        # No shape checks required – pow handles broadcasting.
-        return torch.pow(X, self.exponent)
-        # # Safe power: |X|^exp * sign(X) avoids NaN on negative inputs
-        # return torch.pow(torch.abs(X) + 1e-30, self.exponent) * torch.sign(X)
+        # Safe power: |X|^exp * sign(X) avoids NaN for negative inputs
+        # when the exponent is fractional.
+        return torch.pow(torch.abs(X) + 1e-30, self.exponent) * torch.sign(X)
 
     def modify_operation(self, input_shape):
         self.input_shape = input_shape
 
     def __repr__(self):
-        return f"Power(exponent={self.exponent})"
+        return f"Power(exponent={self.exponent.item():.4f})"
 
 
 class ConstantBrick(Brick):
