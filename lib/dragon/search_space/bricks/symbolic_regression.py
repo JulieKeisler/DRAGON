@@ -291,3 +291,53 @@ class ConstantBrick(Brick):
 
     def __repr__(self):
         return f"Constant(value={self.value.item():.4f})"
+
+
+class Log10(Brick):
+    """Element-wise log10. Returns X unchanged where X <= 0."""
+
+    def __init__(self, input_shape=None, **args):
+        super(Log10, self).__init__(input_shape)
+
+    def forward(self, X):
+        mask = X > 0
+        result = torch.where(mask, torch.log10(X + 1e-30), X)
+        return result
+
+    def modify_operation(self, input_shape):
+        self.input_shape = input_shape
+
+    def __repr__(self):
+        return "Log10()"
+
+# class Exp(Brick):
+#     """Element-wise exp. Returns X unchanged where exp(X) would overflow."""
+
+#     def __init__(self, input_shape=None, **args):
+#         super(Exp, self).__init__(input_shape)
+
+#     def forward(self, X):
+#         # Avoid overflow: cap the exponent at a reasonable value (e.g. 20)
+#         capped_X = torch.clamp(X, max=20)
+#         return torch.exp(capped_X)
+
+#     def modify_operation(self, input_shape):
+#         self.input_shape = input_shape
+
+#     def __repr__(self):
+#         return "Exp()"
+
+class Sqrt(Brick):
+    """Element-wise sqrt. Negative inputs are clamped to 0."""
+
+    def __init__(self, input_shape=None, **args):
+        super(Sqrt, self).__init__(input_shape)
+
+    def forward(self, X):
+        return torch.sqrt(torch.clamp(X, min=0))
+
+    def modify_operation(self, input_shape):
+        self.input_shape = input_shape
+
+    def __repr__(self):
+        return "Sqrt()"

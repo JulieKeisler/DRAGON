@@ -112,11 +112,17 @@ def op_tensors(inputs, combiner):
 
     n = max(len(l) for l in inputs)
 
-    # alignement à droite
+    # broadcasting: repeat single-element lists to match max length
+    # (mirrors PyTorch broadcast semantics used in the actual forward pass)
     padded = []
     for l in inputs:
-        pad = [neutral] * (n - len(l))
-        padded.append(pad + l)
+        if len(l) == 1 and n > 1:
+            padded.append(l * n)
+        elif len(l) == n:
+            padded.append(l)
+        else:
+            pad = [neutral] * (n - len(l))
+            padded.append(pad + l)
 
     result = []
     for j in range(n):
@@ -182,6 +188,8 @@ def apply_operation(out, node):
         if abs(exp - exp_rounded) < 0.05:
             exp = exp_rounded
         return [f"({x})**{exp}" for x in out]
+    if name == "Sqrt":
+        return [f"sqrt({x})" for x in out]
 
     return out
 
