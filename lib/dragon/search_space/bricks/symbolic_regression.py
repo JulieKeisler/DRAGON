@@ -327,17 +327,17 @@ class Log10(Brick):
 #     def __repr__(self):
 #         return "Exp()"
 
-class Sqrt(Brick):
-    """Element-wise sqrt. Negative inputs are clamped to 0."""
+# class Sqrt(Brick):
+#     """Element-wise sqrt. Negative inputs are clamped to 0."""
 
-    def __init__(self, input_shape=None, **args):
-        super(Sqrt, self).__init__(input_shape)
+#     def __init__(self, input_shape=None, **args):
+#         super(Sqrt, self).__init__(input_shape)
 
-    def forward(self, X):
-        return torch.sqrt(torch.clamp(X, min=0))
+#     def forward(self, X):
+#         return torch.sqrt(torch.clamp(X, min=0))
 
-    def modify_operation(self, input_shape):
-        self.input_shape = input_shape
+#     def modify_operation(self, input_shape):
+#         self.input_shape = input_shape
 
-    def __repr__(self):
-        return "Sqrt()"
+#     def __repr__(self):
+#         return "Sqrt()"
