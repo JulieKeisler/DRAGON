@@ -255,7 +255,8 @@ class Power(Brick):
 
     def __init__(self, input_shape=None, exponent=2.0, **args):
         super(Power, self).__init__(input_shape)
-        self.exponent = nn.Parameter(torch.tensor(float(exponent)))
+        #self.exponent = nn.Parameter(torch.tensor(float(exponent)))
+        self.register_buffer('exponent', torch.tensor(float(exponent)))
 
     def forward(self, X):
         # Safe power: |X|^exp * sign(X) avoids NaN for negative inputs
