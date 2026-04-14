@@ -112,13 +112,11 @@ def op_tensors(inputs, combiner):
 
     n = max(len(l) for l in inputs)
 
-    # broadcasting: repeat single-element lists to match max length
-    # (mirrors PyTorch broadcast semantics used in the actual forward pass)
+    # Left-pad with neutral elements to match SymbolicNode.combine() behaviour.
+    # (SymbolicNode pads on the left, NOT broadcast.)
     padded = []
     for l in inputs:
-        if len(l) == 1 and n > 1:
-            padded.append(l * n)
-        elif len(l) == n:
+        if len(l) == n:
             padded.append(l)
         else:
             pad = [neutral] * (n - len(l))
