@@ -188,6 +188,14 @@ def apply_operation(out, node):
         return [f"({x})**{exp}" for x in out]
     if name == "Sqrt":
         return [f"sqrt({x})" for x in out]
+    if name == "Ln":
+        return [f"ln({x})" for x in out]
+    if name == "Sin":
+        return [f"sin({x})" for x in out]
+    if name == "Cos":
+        return [f"cos({x})" for x in out]
+    if name == "Exp":
+        return [f"exp({x})" for x in out]
 
     return out
 
