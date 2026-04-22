@@ -8,11 +8,10 @@ using DataFrames
 using Printf
 
 # ── Configuration ─────────────────────────────────────────────────────
-TARGET = "BSI"  # Change this to search for different formulas
+TARGET = "AWEI_sh"  # Change this to search for different formulas
 DATA_PATH = "data/6000_points.csv"
-MAX_ITERS = 1000
 SELECT_K = 5          # auto-select top k features
-NITERATIONS = 2000     # PySR default
+NITERATIONS = 4000
 POPULATIONS = 15
 POPULATION_SIZE = 33
 
@@ -34,6 +33,12 @@ elseif TARGET == "NDMI"
     df[!, :NDMI] = (df.B8 .- df.B11) ./ (df.B8 .+ df.B11)
 elseif TARGET == "MSI"
     df[!, :MSI] = df.B11 ./ df.B8
+elseif TARGET == "BAI"
+    df[!, :BAI] = 1 ./ ((0.1 .- df.B11).^2 .+ (0.06 .- df.B4).^2)
+elseif TARGET == "WI2015"
+    df[!, :WI2015] = 1.7204 .+ 171*(df.B2 .+ df.B3 .+ df.B4) .- 3*(df.B2 .* df.B3) .- 1.8*(df.B2 .* df.B4) .- 48*(df.B3 .* df.B4) .- 0.8*(df.B8 .* df.B11)
+elseif TARGET == "AWEI_sh"
+    df[!, :AWEI_sh] = df.B2 .+ 2.5*df.B3 .- 1.5*(df.B11 .+ df.B12) .- 0.25*df.B8
 end
 
 # Remove rows with NaN/Inf in target
