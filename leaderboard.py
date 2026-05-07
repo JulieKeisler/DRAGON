@@ -14,12 +14,12 @@ Launch with:  python -u leaderboard.py
 TARGETS = [
     # Nguyen benchmarks (synthetic)
     # "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-    "n11", "n1"
+     # "n11", "n1",
     # Physics (synthetic)
     # "hubble", "newton", "rydberg", "idealgas", "kepler",
     # Remote sensing (from data/6000_points.csv)
-    # "savi", "bsi", "bai"
-    # "ndvi", "savi", "bsi", "wi2015", "awei_sh", "bai", "mndwi", "vari",
+    # "bai", "savi", "bsi"
+    "ndvi"# "ndvi", "savi", "bsi", "wi2015", "awei_sh", "bai", "mndwi", "vari",
 ]
 
 # ── Runs per target (R1–R5 in the HTML; strategies match HTML pill labels) ────
@@ -38,10 +38,15 @@ DRAGON_LOSS_THRESHOLD = 1e-30  # stop early if loss ≤ this
 # polynomial combinations directly (e.g. x+x²+x³ for Nguyen 1).
 VAR_AUG_MAX_DEGREE = 5   # raise to 6+ for higher-degree Nguyen formulas
 
+# Gaussian noise level applied to y for the +Noise ablation method
+# (relative to std(y)).  Only used when method_cfg["add_noise"] is True.
+NOISE_STD = 0.05
+
 # ── DragonSR — single method config  (id must match an HTML METHODS entry) ────
 # id:        "curr"  — curriculum DragonSR (matches HTML column "Curriculum*")
 # loss_mode: "full"  — nested OLS + poly-rational OLS (full pipeline)
 DRAGON_METHOD_CONFIGS = [
+    # Non functionnal
     # {
     #     "id":          "curr",
     #     "description": "DragonSR — full OLS pipeline (nested + poly-rational)",
@@ -54,13 +59,44 @@ DRAGON_METHOD_CONFIGS = [
     # },
     {
         "id":          "allops",
-        "description": "DragonSR — No parallel (N=1, all ops, full OLS)",
+        "description": "DragonSR — reference method (all ops, full OLS, var-aug, no noise)",
         "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
         "curriculum":  True,
         "parallel_N":  1,
         "loss_mode":   "full",
         "var_aug":     True,
         "add_noise":   False,
+    },
+    # ── Ablations of the reference method (allops) ────────────────────────
+    {
+        "id":          "noolsratn",
+        "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "channel",
+        "var_aug":     True,
+        "add_noise":   False,
+    },
+    {
+        "id":          "novaug",
+        "description": "Ablation of allops — NO variable augmentation (no x^2..x^k)",
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "full",
+        "var_aug":     False,
+        "add_noise":   False,
+    },
+    {
+        "id":          "noise",
+        "description": f"Ablation of allops — +Gaussian noise on y (σ = NOISE_STD·std(y))",
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "full",
+        "var_aug":     True,
+        "add_noise":   True,
     },
     {
         "id":          "allops_const",
@@ -83,6 +119,8 @@ DRAGON_METHOD_CONFIGS = [
         "var_aug":     True,
         "add_noise":   False,
     },
+
+    ## Legacy
     # {
     #     "id":          "allops_ols_complexity",
     #     "description": "DragonSR — all ops + sparse OLS only, complexity * T_PER_LEVEL budget",
@@ -163,8 +201,477 @@ from dragon.search_space.bricks.symbolic_regression import (
 )
 
 from dragon.search_algorithm.mutant_ucb import Mutant_UCB
-from dragon.utils.plot_functions import graph_to_all_formulas
+from dragon.utils.plot_functions import graph_to_all_formulas, str_operations
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  DAG INTROSPECTION HELPERS  — for the leaderboard modal
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _dag_summary(adj, nodes):
+    """Return (ops_used_str, has_const_str, dag_size, dag_text, dag_svg)."""
+    try:
+        descs_raw = str_operations(nodes)
+    except Exception:
+        descs_raw = [[str(n)] for n in nodes]
+
+    # Op-name list: take the second token of each row (the brick class name).
+    op_names = []
+    for row in descs_raw:
+        if len(row) >= 2:
+            op_names.append(str(row[1]))
+        elif row:
+            op_names.append(str(row[0]))
+    # Drop the synthetic "Input" entry on row 0 if present.
+    op_names_disp = op_names[1:] if op_names else []
+    ops_used_str = ", ".join(op_names_disp) if op_names_disp else "—"
+
+    # Constants: any brick whose name contains "Const".
+    const_count = sum(1 for n in op_names_disp if "const" in n.lower())
+    has_const_str = f"yes ({const_count})" if const_count > 0 else "no (0)"
+
+    dag_size = int(getattr(adj, "shape", (0,))[0]) if hasattr(adj, "shape") else len(nodes)
+
+    # Compact one-line description per node (combiner | brick | hp..., no activation).
+    descs = []
+    for row in descs_raw:
+        try:
+            descs.append(" | ".join(str(x) for x in row[:-1]) if len(row) > 1 else str(row[0]))
+        except Exception:
+            descs.append("?")
+
+    # Build textual DAG table (children + parents per node).
+    try:
+        n = adj.shape[0]
+        parents  = [[str(j) for j in range(n) if adj[j, i]] for i in range(n)]
+        children = [[str(j) for j in range(n) if adj[i, j]] for i in range(n)]
+        idx_w   = max(3, len(str(n - 1)) + 2)
+        child_w = max(8, max((len(",".join(c)) for c in children), default=1) + 2)
+        par_w   = max(8, max((len(",".join(p)) for p in parents),  default=1) + 2)
+        header  = (f"{'Idx'.ljust(idx_w)}| {'Children'.ljust(child_w)}| "
+                   f"{'Parents'.ljust(par_w)}| Description")
+        sep     = "-" * (len(header) + 10)
+        lines   = [sep, header, sep]
+        for i in range(n):
+            c = ",".join(children[i]) or "-"
+            p = ",".join(parents[i])  or "-"
+            d = (descs[i] if i < len(descs) else "?")[:80]
+            lines.append(f"[{str(i).rjust(idx_w-2)}] | {c.ljust(child_w)} | {p.ljust(par_w)} | {d}")
+        lines.append(sep)
+        dag_text = "\n".join(lines)
+    except Exception:
+        dag_text = "\n".join(f"[{i}] {d}" for i, d in enumerate(descs))
+
+    # ── Graphviz SVG (best-effort; degrades to None on failure) ────────────
+    dag_svg = None
+    try:
+        import shutil as _shutil
+        if _shutil.which("dot") is not None:
+            import graphviz as _gv
+            G = _gv.Digraph(
+                format="svg",
+                node_attr={"shape": "box", "fontsize": "11",
+                           "fontname": "sans-serif", "style": "rounded,filled"},
+                graph_attr={"rankdir": "TB", "bgcolor": "transparent",
+                            "nodesep": "0.25", "ranksep": "0.35"},
+            )
+            for i, d in enumerate(descs):
+                fill = "#3b6d11" if i == 0 else "#ffa600"
+                fc   = "#ECECEC" if i == 0 else "#1a1a1a"
+                label = f"[{i}] {d}".replace("\\", "\\\\").replace('"', '\\"')
+                G.node(str(i), label=label, fillcolor=fill, color="black",
+                       fontcolor=fc)
+            n = adj.shape[0]
+            for i in range(n):
+                for j in range(n):
+                    if adj[i, j]:
+                        G.edge(str(i), str(j))
+            svg_bytes = G.pipe(format="svg")
+            svg_str = svg_bytes.decode("utf-8", errors="ignore")
+            # Strip XML/DOCTYPE prologue so the SVG can be inlined cleanly.
+            _ix = svg_str.find("<svg")
+            if _ix >= 0:
+                svg_str = svg_str[_ix:]
+            dag_svg = svg_str
+    except Exception:
+        dag_svg = None
+
+    return ops_used_str, has_const_str, dag_size, dag_text, dag_svg
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  STATISTICAL VISUALISATIONS  (matplotlib SVG, embedded inline in modal)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _fig_to_svg(fig) -> str:
+    """Serialize a Matplotlib figure to a self-contained inlinable SVG string."""
+    import io as _io
+    buf = _io.StringIO()
+    fig.savefig(buf, format="svg", bbox_inches="tight")
+    import matplotlib.pyplot as _plt
+    _plt.close(fig)
+    s = buf.getvalue()
+    i = s.find("<svg")
+    return s[i:] if i >= 0 else s
+
+
+# ── Plotly helpers ───────────────────────────────────────────────────────────
+def _plotly_to_html(fig) -> str:
+    """Render a Plotly figure as a self-contained inlinable HTML snippet
+    (a <div> + a <script> calling Plotly.newPlot). The Plotly.js library
+    itself is loaded once via the CDN tag injected in <head>."""
+    import plotly.io as _pio
+    return _pio.to_html(
+        fig,
+        include_plotlyjs=False,
+        full_html=False,
+        config={"responsive": True, "displaylogo": False,
+                "modeBarButtonsToRemove": ["lasso2d", "select2d"]},
+    )
+
+
+def _make_dragon_landscape_svg(comp_csv_path: str):
+    """Return Plotly HTML snippet (3-panel: scatter+best, histogram, convergence).
+
+    The snippet is interactive (zoom, hover, toggle traces).  Returns None on failure.
+    """
+    try:
+        if not os.path.exists(comp_csv_path):
+            return None
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        df = pd.read_csv(comp_csv_path)
+        if "Loss" not in df.columns:
+            return None
+        df["Loss"] = df["Loss"].replace([np.inf, -np.inf], np.nan)
+        df["BestSoFar"] = df["Loss"].expanding().min()
+        finite = df["Loss"].dropna()
+        if finite.empty:
+            return None
+        best = float(finite.min())
+
+        # Wall-clock minutes (if TimeStamp present)
+        elapsed = None
+        if "TimeStamp" in df.columns:
+            try:
+                ts = pd.to_datetime(df["TimeStamp"], errors="coerce")
+                if ts.notna().any():
+                    elapsed = (ts - ts.iloc[0]).dt.total_seconds() / 60.0
+            except Exception:
+                elapsed = None
+        x_conv = elapsed if elapsed is not None else df["Idx"]
+        x_conv_label = "Wall-clock time (min)" if elapsed is not None else "Iteration index"
+
+        fig = make_subplots(
+            rows=1, cols=3,
+            subplot_titles=(
+                "Loss landscape (all evaluations)",
+                "Loss distribution",
+                f"Convergence ({x_conv_label.split(' ')[0].lower()})",
+            ),
+            horizontal_spacing=0.08,
+        )
+        # 1) Scatter + best-so-far
+        fig.add_trace(go.Scattergl(
+            x=df["Idx"], y=df["Loss"], mode="markers",
+            marker=dict(size=4, color="#185fa5", opacity=0.4),
+            name="Individual loss", hovertemplate="iter=%{x}<br>loss=%{y:.3e}<extra></extra>",
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=df["Idx"], y=df["BestSoFar"], mode="lines",
+            line=dict(color="#a32d2d", width=1.8),
+            name="Best so far", hovertemplate="iter=%{x}<br>best=%{y:.3e}<extra></extra>",
+        ), row=1, col=1)
+        fig.update_yaxes(type="log", row=1, col=1, title_text="Loss (1−|corr|)")
+        fig.update_xaxes(title_text="Iteration", row=1, col=1)
+
+        # 2) Histogram
+        fig.add_trace(go.Histogram(
+            x=finite, nbinsx=60, marker_color="#3b6d11",
+            opacity=0.8, name="Loss histogram",
+            hovertemplate="loss∈[%{x}]<br>count=%{y}<extra></extra>",
+        ), row=1, col=2)
+        fig.add_vline(x=best, line=dict(color="#a32d2d", dash="dash"),
+                      annotation_text=f"min = {best:.3e}",
+                      annotation_position="top right", row=1, col=2)
+        fig.update_xaxes(title_text="Loss", row=1, col=2)
+        fig.update_yaxes(title_text="Count", row=1, col=2)
+
+        # 3) Convergence
+        fig.add_trace(go.Scatter(
+            x=x_conv, y=df["BestSoFar"], mode="lines",
+            line=dict(color="#a32d2d", width=1.8),
+            name="Best so far",
+            hovertemplate=(x_conv_label + "=%{x:.2f}<br>best=%{y:.3e}<extra></extra>"),
+            showlegend=False,
+        ), row=1, col=3)
+        fig.update_yaxes(type="log", title_text="Best loss", row=1, col=3)
+        fig.update_xaxes(title_text=x_conv_label, row=1, col=3)
+
+        fig.update_layout(
+            template="plotly_white",
+            height=460, margin=dict(l=60, r=30, t=80, b=60),
+            title=dict(text=f"DragonSR search landscape — {len(df)} evaluations · best = {best:.3e}",
+                       font=dict(size=13)),
+            showlegend=True,
+            legend=dict(orientation="h", x=0, y=1.14, font=dict(size=11)),
+            paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+            font=dict(size=11, color="#1a1a1a"),
+        )
+        return _plotly_to_html(fig)
+    except Exception:
+        return None
+
+
+def _compute_pysr_scores(hof: list) -> list:
+    """Add a 'score' field to each HoF entry (PySR parsimony score = −Δln(loss)/Δcomplexity).
+
+    Sorted by ascending complexity beforehand.  The first entry has score=None.
+    Mutates and returns the same list.
+    """
+    if not hof:
+        return hof
+    try:
+        s = sorted(hof, key=lambda h: (h.get("complexity") or 0))
+        prev_loss = None
+        prev_cplx = None
+        for h in s:
+            c = h.get("complexity")
+            l = h.get("loss")
+            if (prev_loss is None or prev_cplx is None
+                    or l is None or c is None
+                    or l <= 0 or prev_loss <= 0
+                    or c == prev_cplx):
+                h["score"] = None
+            else:
+                try:
+                    h["score"] = float(-(np.log(l) - np.log(prev_loss)) / (c - prev_cplx))
+                except Exception:
+                    h["score"] = None
+            prev_loss = l if (l is not None and l > 0) else prev_loss
+            prev_cplx = c if c is not None else prev_cplx
+        return s
+    except Exception:
+        return hof
+
+
+def _make_pysr_pareto_svg(hof: list):
+    """Plotly Pareto frontier (complexity vs loss, log-y) with hover tooltips
+    showing the expression and parsimony score."""
+    try:
+        if not hof:
+            return None
+        import plotly.graph_objects as go
+        pts = [(h.get("complexity"), h.get("loss"),
+                h.get("formula") or "", h.get("score"))
+               for h in hof
+               if h.get("complexity") is not None and h.get("loss") is not None
+               and h.get("loss") > 0]
+        if not pts:
+            return None
+        pts.sort(key=lambda p: p[0])
+        cs = [p[0] for p in pts]; ls = [p[1] for p in pts]
+        forms = [p[2] for p in pts]
+        scores = [p[3] for p in pts]
+        # Custom hover: include formula + score
+        hov = [
+            f"complexity={c}<br>loss={l:.3e}<br>"
+            f"score={('—' if s is None else f'{s:.3f}')}<br>"
+            f"expr: {f if len(f) < 60 else f[:57] + '...'}"
+            for c, l, f, s in zip(cs, ls, forms, scores)
+        ]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=cs, y=ls, mode="lines+markers",
+            line=dict(color="#185fa5", width=1.5),
+            marker=dict(size=8, color="#185fa5",
+                        line=dict(width=1, color="#0a3460")),
+            text=hov, hoverinfo="text", name="Pareto frontier",
+        ))
+        fig.update_layout(
+            template="plotly_white",
+            height=420, margin=dict(l=60, r=30, t=60, b=55),
+            title=dict(text="PySR Pareto frontier (complexity vs loss)",
+                       font=dict(size=13)),
+            xaxis=dict(title="Complexity"),
+            yaxis=dict(title="Loss (PySR MSE)", type="log"),
+            paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+            font=dict(size=11, color="#1a1a1a"),
+        )
+        return _plotly_to_html(fig)
+    except Exception:
+        return None
+
+
+def _make_pysr_tree_svg(formula_str: str):
+    """Parse the PySR string formula via sympy and render the binary AST as
+    a Graphviz SVG tree.  Returns None on any failure."""
+    try:
+        if not formula_str or formula_str.strip() in ("N/A", ""):
+            return None
+        import shutil as _shutil
+        if _shutil.which("dot") is None:
+            return None
+        import sympy as sp
+        import graphviz as _gv
+
+        # Replace common PySR/SR.jl operator strings sympy doesn't grok.
+        cleaned = formula_str
+        # Remove a possible leading "y = " etc.
+        if "=" in cleaned and cleaned.split("=")[0].strip().isidentifier():
+            cleaned = cleaned.split("=", 1)[1].strip()
+        try:
+            expr = sp.sympify(cleaned, evaluate=False)
+        except Exception:
+            try:
+                from sympy.parsing.sympy_parser import (
+                    parse_expr, standard_transformations,
+                    implicit_multiplication_application,
+                    convert_xor)
+                tr = (standard_transformations
+                      + (implicit_multiplication_application, convert_xor))
+                expr = parse_expr(cleaned, evaluate=False, transformations=tr)
+            except Exception:
+                return None
+
+        G = _gv.Digraph(
+            format="svg",
+            node_attr={"shape": "ellipse", "fontsize": "11",
+                       "fontname": "monospace", "style": "filled"},
+            graph_attr={"rankdir": "TB", "bgcolor": "transparent",
+                        "nodesep": "0.20", "ranksep": "0.30"},
+        )
+        counter = [0]
+
+        def add(node):
+            i = counter[0]; counter[0] += 1
+            nid = f"n{i}"
+            if node.is_Atom:
+                lbl = str(node)
+                fill = "#3b6d11"; fc = "#ECECEC"
+            else:
+                lbl = type(node).__name__
+                # Friendlier op symbols
+                lbl = {"Add": "+", "Mul": "×", "Pow": "^",
+                       "exp": "exp", "log": "log",
+                       "sin": "sin", "cos": "cos",
+                       "sqrt": "√", "Abs": "|·|"}.get(lbl, lbl)
+                fill = "#ffa600"; fc = "#1a1a1a"
+            G.node(nid, label=lbl, fillcolor=fill, fontcolor=fc, color="black")
+            for child in getattr(node, "args", ()):
+                cid = add(child)
+                G.edge(nid, cid)
+            return nid
+
+        add(expr)
+        svg = G.pipe(format="svg").decode("utf-8", errors="ignore")
+        i = svg.find("<svg")
+        return svg[i:] if i >= 0 else svg
+    except Exception:
+        return None
+
+
+def _make_formula_stats_svg(per_cell):
+    """Per-formula across-method×runs interactive stats panel.
+
+    Returns a Plotly HTML snippet with three subplots:
+      (a) Box-plot of 1−R² per method  → spread + median + outliers
+      (b) ECDF (= performance profile) → "fraction of runs reaching loss ≤ τ"
+      (c) Scatter loss vs runtime      → cost/quality trade-off
+
+    `per_cell` is a list of {method, run, loss, runtime} dicts.
+    """
+    try:
+        if not per_cell:
+            return None
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        from collections import OrderedDict
+        groups = OrderedDict()
+        for d in per_cell:
+            m = d.get("method") or "?"
+            groups.setdefault(m, []).append(d)
+        methods = list(groups.keys())
+        if not methods:
+            return None
+
+        # Stable per-method colour
+        palette = ["#185fa5", "#a32d2d", "#3b6d11", "#ba7517", "#6e3a8a",
+                   "#117a8b", "#c2185b", "#7d6608", "#0a3460", "#4d4d4d"]
+        colour = {m: palette[i % len(palette)] for i, m in enumerate(methods)}
+
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=(
+                "Best vs median loss per method",
+                "Loss vs runtime (cost / quality)",
+            ),
+            horizontal_spacing=0.18,
+        )
+
+        # (a) Best vs median loss per method — grouped bars
+        names_x, best_vals, med_vals, bar_cols = [], [], [], []
+        for m in methods:
+            vs = [d["loss"] for d in groups[m]
+                  if d.get("loss") is not None and np.isfinite(d["loss"])
+                  and d["loss"] > 0]
+            if not vs:
+                continue
+            names_x.append(m)
+            best_vals.append(min(vs))
+            med_vals.append(float(np.median(vs)))
+            bar_cols.append(colour[m])
+        if names_x:
+            fig.add_trace(go.Bar(
+                x=names_x, y=best_vals, name="best",
+                marker=dict(color=bar_cols, line=dict(width=0.6, color="#222")),
+                hovertemplate="%{x}<br>best 1−R² = %{y:.3e}<extra></extra>",
+                showlegend=False,
+            ), row=1, col=1)
+            fig.add_trace(go.Bar(
+                x=names_x, y=med_vals, name="median",
+                marker=dict(color=bar_cols, opacity=0.45,
+                            line=dict(width=0.6, color="#222")),
+                hovertemplate="%{x}<br>median 1−R² = %{y:.3e}<extra></extra>",
+                showlegend=False,
+            ), row=1, col=1)
+
+        # (b) Scatter loss vs runtime
+        for m in methods:
+            xs = [d.get("runtime") for d in groups[m]
+                  if d.get("runtime") is not None
+                  and d.get("loss") is not None and np.isfinite(d["loss"])
+                  and d["loss"] > 0]
+            ys = [d["loss"] for d in groups[m]
+                  if d.get("runtime") is not None
+                  and d.get("loss") is not None and np.isfinite(d["loss"])
+                  and d["loss"] > 0]
+            if not xs:
+                continue
+            fig.add_trace(go.Scatter(
+                x=xs, y=ys, mode="markers", name=m,
+                marker=dict(color=colour[m], size=10,
+                            line=dict(width=0.6, color="#222")),
+                hovertemplate=f"{m}<br>runtime=%{{x:.1f}}s<br>1−R²=%{{y:.3e}}<extra></extra>",
+                legendgroup=m, showlegend=True,
+            ), row=1, col=2)
+
+        # Axes
+        fig.update_yaxes(type="log", title_text="1−R² (log)", row=1, col=1)
+        fig.update_xaxes(title_text="Method", tickangle=-25, row=1, col=1)
+        fig.update_xaxes(title_text="Runtime (s)", row=1, col=2)
+        fig.update_yaxes(type="log", title_text="1−R² (log)", row=1, col=2)
+
+        fig.update_layout(
+            template="plotly_white",
+            barmode="group",
+            height=460, margin=dict(l=70, r=40, t=90, b=80),
+            paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+            font=dict(size=11, color="#1a1a1a"),
+            legend=dict(orientation="h", x=0, y=1.14, font=dict(size=10)),
+        )
+        return _plotly_to_html(fig)
+    except Exception:
+        return None
 # ══════════════════════════════════════════════════════════════════════════════
 #  DATA PREPARATION
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1260,6 +1767,10 @@ def make_loss_function(search_space, train_loader, device, num_features,
         if optimize_constants:
             params = sum(p.numel() for p in model.parameters())
             if params == 1:
+                # Make sure model & data share dtype (some synthetic targets
+                # produce float64 tensors → backward() throws "Found dtype
+                # Double but expected Float").
+                model = model.float()
                 opt = torch.optim.Adam(model.parameters(), lr=0.001)
                 mse_fn = nn.MSELoss()
                 eps = 1e-12
@@ -1269,7 +1780,8 @@ def make_loss_function(search_space, train_loader, device, num_features,
                     epoch_loss = 0.0
                     n_seen = 0
                     for Xb, yb in train_loader:
-                        Xb, yb = Xb.to(device), yb.to(device)
+                        Xb = Xb.to(device).float()
+                        yb = yb.to(device).float()
                         opt.zero_grad()
                         pred = model(Xb)
                         loss = mse_fn(pred, yb)
@@ -1343,6 +1855,17 @@ def make_loss_function(search_space, train_loader, device, num_features,
                 nodes    = model.dag.operations
                 formulas = graph_to_all_formulas(adj, feature_names, nodes)
                 _state["best_formula"] = str(formulas[selected_c]) if formulas else "N/A"
+
+                # ── DAG meta (ops list, const presence, size, text view) ────
+                try:
+                    _ops_str, _const_str, _dag_size, _dag_text, _dag_svg = _dag_summary(adj, nodes)
+                    _state["ops_used"]   = _ops_str
+                    _state["has_const"]  = _const_str
+                    _state["dag_size"]   = _dag_size
+                    _state["dag_text"]   = _dag_text
+                    _state["dag_svg"]    = _dag_svg
+                except Exception:
+                    pass
 
                 # ── Extract all per-method formula variants ─────────────────
                 # Channel formula
@@ -1564,6 +2087,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
     loss_state = {}
     loss_history = []
     actual_T = None
+    landscape_svg = None
 
     try:
         # ── Data ─────────────────────────────────────────────────────
@@ -1718,6 +2242,13 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
                     loss_history = [[int(i), float(losses[i])] for i in idx_pts]
             except Exception:
                 pass
+            # Statistical landscape SVG (3-panel matplotlib).
+            try:
+                landscape_svg = _make_dragon_landscape_svg(comp_csv)
+            except Exception:
+                landscape_svg = None
+        else:
+            landscape_svg = None
 
     except Exception:
         tb = traceback.format_exc()
@@ -1737,6 +2268,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         "time_s":         elapsed,
         "log_path":       log_path,
         "description":    method_cfg["description"],
+        "search_space_ops": list(method_cfg.get("operators", [])),
         # ── rich OLS stats ─────────────────────────────────────────────
         "loss_mode":        method_cfg.get("loss_mode", "full"),
         "winner_type":      loss_state.get("winner_type", "channel"),
@@ -1747,6 +2279,11 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         "actualT":         int(actual_T) if actual_T is not None else None,
         # ── All formula variants ────────────────────────────────────────
         "all_channel_formulas": loss_state.get("all_channel_formulas", []),
+        "ops_used":         loss_state.get("ops_used"),
+        "has_const":        loss_state.get("has_const"),
+        "dag_size":         loss_state.get("dag_size"),
+        "dag_text":         loss_state.get("dag_text"),
+        "dag_svg":          loss_state.get("dag_svg"),
         "formula_channel":  loss_state.get("formula_channel"),
         "formula_ols":      loss_state.get("formula_ols"),
         "formula_nested":   loss_state.get("formula_nested"),
@@ -1761,6 +2298,8 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         "mse_ols":          loss_state.get("mse_ols"),
         "mse_nested":       loss_state.get("mse_nested"),
         "mse_polyrat":      loss_state.get("mse_polyrat", {}),
+        # Statistical search-landscape SVG (3-panel: scatter+best, hist, conv vs time)
+        "landscape_svg":    landscape_svg,
     }
 
 
@@ -1813,6 +2352,7 @@ def run_pysr(target: str, run_id: int) -> dict:
 
     best_loss = np.inf
     best_formula = "N/A"
+    hall_of_fame = []
     try:
         # Build a temporary Julia script for this target
         julia_script = _build_julia_script(target, result_file, run_id=run_id)
@@ -1845,7 +2385,7 @@ def run_pysr(target: str, run_id: int) -> dict:
             f.write(stderr)
 
         # parse results file
-        best_loss, best_formula = _parse_pysr_results(result_file)
+        best_loss, best_formula, hall_of_fame = _parse_pysr_results(result_file)
 
     except subprocess.TimeoutExpired:
         best_formula = "TIMEOUT"
@@ -1860,6 +2400,10 @@ def run_pysr(target: str, run_id: int) -> dict:
         best_loss = 1.0
         if best_formula in ("N/A", ""):
             best_formula = "PySR: no result"
+    # Compute parsimony scores per HoF entry (mutates list).
+    hall_of_fame = _compute_pysr_scores(hall_of_fame)
+    pareto_svg = _make_pysr_pareto_svg(hall_of_fame)
+    tree_svg   = _make_pysr_tree_svg(best_formula)
     return {
         "target":      target,
         "method":      "pysr",
@@ -1870,6 +2414,9 @@ def run_pysr(target: str, run_id: int) -> dict:
         "time_s":      elapsed,
         "log_path":    log_path,
         "description": "PySR (SymbolicRegression.jl)",
+        "hall_of_fame": hall_of_fame,
+        "pareto_svg": pareto_svg,
+        "tree_svg":   tree_svg,
     }
 
 
@@ -1899,7 +2446,7 @@ POPULATION_SIZE = {PYSR_POPULATION_SIZE}
 
 {data_block}
 
-println("Data: $(size(X_matrix, 1)) samples, $(size(X_matrix, 2)) features")
+println("Data: $(size(X_matrix, 2)) samples, $(size(X_matrix, 1)) features")
 
 options = Options(
     binary_operators=[+, -, *, /],
@@ -1984,8 +2531,9 @@ y = Float64.(y_raw[valid])
 X_df = df[valid, :]
 numeric_cols = [n for n in names(X_df) if eltype(X_df[!, n]) <: Number]
 X_df = X_df[!, numeric_cols]
-X_df = select(X_df, Not(Symbol("{target}")) |> x -> intersect(x, names(X_df)))
-X_matrix = Matrix{{Float64}}(X_df)
+X_df = "{target}" in names(X_df) ? select(X_df, Not(Symbol("{target}"))) : X_df
+# SymbolicRegression.jl expects X with shape [features, rows] -> transpose.
+X_matrix = permutedims(Matrix{{Float64}}(X_df))
 feature_names = names(X_df)
 """
 
@@ -2156,34 +2704,41 @@ X_matrix = [x yv]'; feature_names = ["x","y"]
 
 
 def _parse_pysr_results(result_file: str):
-    """Parse PySR results file, return (best_loss, best_formula)."""
+    """Parse PySR results file, return (best_loss, best_formula, hall_of_fame).
+
+    Each line of the result file looks like one of:
+        [ 1] complexity= 1  loss=3.09e-01  x
+        [ 1]  1  loss=3.09e-01  x
+    The parser is regex-based and tolerant to either layout.
+    """
+    import re as _re
     if not os.path.exists(result_file):
-        return np.inf, "N/A"
-    best_loss = np.inf
-    best_formula = "N/A"
+        return np.inf, "N/A", []
+    line_re = _re.compile(
+        r"^\s*\[\s*\d+\s*\]\s*"          # [  i ]
+        r"(?:complexity\s*=\s*)?(\d+)\s+"  # optional 'complexity=' then int
+        r"loss\s*=\s*(\S+)\s+"             # loss=NUMBER
+        r"(.+?)\s*$"                        # the rest = expression
+    )
+    best_loss, best_formula, hof = np.inf, "N/A", []
     try:
         with open(result_file) as f:
             for line in f:
-                line = line.strip()
-                if line.startswith("[") and "loss=" in line:
-                    try:
-                        parts = line.split()
-                        loss_str = [p for p in parts if p.startswith("loss=")][0]
-                        loss = float(loss_str.split("=")[1])
-                        # formula is everything after the last field that matches complexity=XX
-                        formula_start = line.find("  ", line.find("loss="))
-                        formula = line[formula_start:].strip() if formula_start > 0 else "?"
-                        # simpler: everything after 3rd token
-                        toks = line.split(None, 3)
-                        formula = toks[-1].strip() if len(toks) >= 4 else "?"
-                        if loss < best_loss:
-                            best_loss = loss
-                            best_formula = formula
-                    except Exception:
-                        pass
+                m = line_re.match(line)
+                if not m:
+                    continue
+                try:
+                    cplx    = int(m.group(1))
+                    loss    = float(m.group(2))
+                    formula = m.group(3).strip()
+                except Exception:
+                    continue
+                hof.append({"complexity": cplx, "loss": loss, "formula": formula})
+                if loss < best_loss:
+                    best_loss, best_formula = loss, formula
     except Exception:
         pass
-    return best_loss, best_formula
+    return best_loss, best_formula, hof
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2246,6 +2801,18 @@ def _result_to_db_entry(r):
     finite_loss = (float(loss) if loss is not None and np.isfinite(float(loss)) else None)
     wt   = _WINNER_REMAP.get(r.get("winner_type", ""), None)
     rd   = r.get("rat_degree")
+    is_pysr = (r.get("method") == "pysr")
+    if is_pysr:
+        total_t = PYSR_NITERATIONS
+        pop_k   = PYSR_POPULATION_SIZE
+        # Max complexity actually reached on the Pareto frontier.
+        _hof    = r.get("hall_of_fame") or []
+        _cplx   = [h.get("complexity") for h in _hof if h.get("complexity") is not None]
+        max_c   = max(_cplx) if _cplx else 20  # 20 = PySR options.maxsize cap
+    else:
+        total_t = int(r.get("actualT") if r.get("actualT") is not None else DRAGON_N_ITERATIONS)
+        pop_k   = DRAGON_K_INIT
+        max_c   = DRAGON_MAX_COMPLEXITY
     return {
         "oneMinusR2": round(finite_loss, 8) if finite_loss is not None else None,
         "mse":        None,
@@ -2255,20 +2822,40 @@ def _result_to_db_entry(r):
         "nestedLink": None,
         "finalExpr":  str(r.get("formula", "")),
         "runtime":    round(float(r.get("time_s", 0)), 2),
-        "totalT":     int(r.get("actualT") if r.get("actualT") is not None else DRAGON_N_ITERATIONS),
-        "K":          DRAGON_K_INIT,
-        "maxComp":    DRAGON_MAX_COMPLEXITY,
+        "totalT":     total_t,
+        "K":          pop_k,
+        "maxComp":    max_c,
         "phase":      None,
-        "ops":        None,
-        "nconst":     None,
-        "dagSize":    None,
-        "channels":      [
-            (
-                f"ch[{c['idx']}]{' *' if c.get('selected') else ''}  ·  "
-                f"1\u2212R\u00b2={c['loss']:.3e}  ·  {c['formula']}"
-                if c.get('loss') is not None
-                else f"ch[{c['idx']}]{' *' if c.get('selected') else ''}  ·  {c['formula']}"
+        # Min search loss reached (the actual quantity the search optimised).
+        # Dragon -> alignment_loss (1 - |corr|);  PySR -> raw MSE returned per member.
+        "searchLoss": (
+            (lambda _v: float(_v) if _v is not None and np.isfinite(_v) else None)(
+                min((h["loss"] for h in (r.get("hall_of_fame") or [])
+                     if h.get("loss") is not None and np.isfinite(h["loss"])),
+                    default=None)
             )
+            if is_pysr else
+            (float(r["alignment_loss"]) if r.get("alignment_loss") is not None
+             and np.isfinite(float(r["alignment_loss"])) else None)
+        ),
+        "searchLossKind": "PySR MSE" if is_pysr else "1\u2212|corr|",
+        "ops":        (", ".join(r["search_space_ops"]) if r.get("search_space_ops")
+                       else ("+, -, *, /, exp, sqrt, abs, sin, cos, log" if is_pysr else None)),
+        "nconst":     r.get("has_const") or ("yes (PySR constants always optimised)" if is_pysr else None),
+        "dagSize":    r.get("dag_size"),
+        "dagText":    r.get("dag_text"),
+        "dagSvg":     r.get("dag_svg"),
+        "hallOfFame": r.get("hall_of_fame") or [],
+        # ── Statistical visualisations (inline SVG) ─────────────────
+        "landscapeSvg": r.get("landscape_svg"),     # Dragon: 3-panel landscape
+        "paretoSvg":    r.get("pareto_svg"),        # PySR: Pareto frontier
+        "treeSvg":      r.get("tree_svg"),          # PySR: sympy/Graphviz AST
+        "channels":      [
+            {
+                "tag":  f"ch[{c['idx']}]" + (" *" if c.get('selected') else ""),
+                "text": (f"1\u2212R\u00b2={c['loss']:.3e}  \u00b7  {c['formula']}"
+                          if c.get('loss') is not None else str(c['formula'])),
+            }
             for c in (r.get("all_channel_formulas") or [])
         ],
         "notes":         str(r.get("description", "")) or None,
@@ -2302,7 +2889,24 @@ def build_html(results, notebook_path="dragonfsr_leaderboard_v2.html"):
     for r in results:
         key      = f"{r['target']}__{r['method']}__{int(r.get('run_id', 0))}"
         db[key]  = _result_to_db_entry(r)
-    db_json = json.dumps(db, ensure_ascii=False)
+    db_json = json.dumps(db, ensure_ascii=False).replace("</", "<\\/")
+
+    # ── Per-formula aggregate stats (boxplot + heatmap across method × run) ─
+    formula_stats = {}
+    by_target = {}
+    for r in results:
+        by_target.setdefault(r["target"], []).append({
+            "method": r.get("method"),
+            "run":    int(r.get("run_id", 0)),
+            "loss":   (float(r["loss"]) if r.get("loss") is not None
+                       and np.isfinite(float(r["loss"])) else None),
+            "runtime": (float(r["time_s"]) if r.get("time_s") is not None else None),
+        })
+    for tgt, cells in by_target.items():
+        svg = _make_formula_stats_svg(cells)
+        if svg:
+            formula_stats[tgt] = svg
+    formula_stats_json = json.dumps(formula_stats, ensure_ascii=False).replace("</", "<\\/")
 
     # ── Update notebook template (inject PRELOADED_DB constant) ─────────────
     tmpl = Path(__file__).parent / notebook_path
@@ -2319,10 +2923,10 @@ def build_html(results, notebook_path="dragonfsr_leaderboard_v2.html"):
         print(f"✓ Template updated ({len(db)} cells): {tmpl}")
 
     # ── Write standalone HTML ────────────────────────────────────────────────
-    _build_standalone_html(db, db_json)
+    _build_standalone_html(db, db_json, formula_stats_json)
 
 
-def _build_standalone_html(db: dict, db_json: str) -> None:
+def _build_standalone_html(db: dict, db_json: str, formula_stats_json: str = "{}") -> None:
     """
     Write leaderboard_standalone.html using the exact dragonfsr_leaderboard_v2
     design from the attachment.  PRELOADED_DB is injected as a JS constant;
@@ -2390,8 +2994,10 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 .wb-nested{background:#E1F5EE;color:#085041}
 .wb-ols{background:#E6F1FB;color:#0C447C}
 .wb-ch{background:#F1EFE8;color:#444441}
-.modal-wrap{display:none;min-height:600px;background:rgba(0,0,0,0.35);align-items:flex-start;justify-content:center;padding:20px 0}
-.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:1.25rem;width:560px;max-width:98vw}
+.modal-wrap{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:flex-start;justify-content:center;padding:24px 0;overflow-y:auto;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.modal{position:relative;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:1.25rem;width:1100px;max-width:98vw;max-height:calc(100vh - 48px);overflow-y:auto;box-shadow:0 18px 48px rgba(0,0,0,0.35)}
+.modal-close{position:absolute;top:10px;right:14px;width:30px;height:30px;border-radius:50%;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.modal-close:hover{background:var(--color-background-tertiary,#eee)}
 .modal h3{font-size:14px;font-weight:500;margin-bottom:1rem}
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.8rem}
 .mf{display:flex;flex-direction:column;gap:3px}
@@ -2468,14 +3074,13 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 <tr>
   <th class="fcol" rowspan="2" style="vertical-align:bottom">Formula</th>
   <th class="gh-pysr" colspan="1">PySR</th>
-  <th class="gh-drag" colspan="12">DragonSR</th>
+  <th class="gh-drag" colspan="11">DragonSR</th>
 </tr>
 <tr>
   <th class="gh-pysr">Baseline</th>
+  <th class="gh-drag">All ops ★ (ref)</th>
   <th class="gh-drag">+ConstBrick</th>
   <th class="gh-drag">Parallel</th>
-  <th class="gh-drag">No parallel</th>
-  <th class="gh-drag">All ops</th>
   <th class="gh-drag">All ops OLS</th>
   <th class="gh-drag">Curriculum*</th>
   <th class="gh-drag">Curr+palier**</th>
@@ -2492,16 +3097,16 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 
 <div id="ttbox" class="tt"></div>
 
-<div class="modal-wrap" id="mwrap" style="display:none">
+<div class="modal-wrap" id="mwrap" style="display:none" onclick="if(event.target===this)closeModal()">
 <div class="modal" id="mbox">
+  <button type="button" class="modal-close" onclick="closeModal()" title="Close (Esc)" aria-label="Close">×</button>
   <h3 id="mtitle">Log run</h3>
   <div class="mgrid">
     <div class="mf full"><label>Formula · method · run</label><input id="mflabel" readonly style="opacity:.6"/></div>
     <div class="mf full"><label>Init strategy (read-only)</label><input id="minit" readonly style="opacity:.6"/></div>
-    <div style="grid-column:1/-1" class="section-divider">
-      <div class="sec-label">Output channels — all formulas (one per channel)</div>
-      <div id="chlist"></div>
-      <button class="add-ch-btn" onclick="addChannelRow()">+ add channel</button>
+    <div style="grid-column:1/-1" class="section-divider" id="sec-channels">
+      <div class="sec-label" id="sec-channels-label">Output channels — all formulas (one per channel)</div>
+      <div id="chlist" style="max-height:260px;overflow-y:auto"></div>
     </div>
     <div style="grid-column:1/-1" class="section-divider">
       <div class="sec-label">Symbolic formulas <span style="font-weight:400;opacity:.7">(toggle to view each method's output)</span></div>
@@ -2516,18 +3121,25 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
         <div class="mf"><label>Total iterations (T)</label><input id="miter" readonly style="opacity:.6"/></div>
         <div class="mf"><label>Population K</label><input id="mpop" readonly style="opacity:.6"/></div>
         <div class="mf"><label>Max complexity reached</label><input id="mcomp" readonly style="opacity:.6"/></div>
-        <div class="mf"><label>Phase reached</label>
-          <select id="mphase" disabled style="opacity:.6">
-            <option value="">—</option>
-            <option value="alg">Algebraic only</option>
-            <option value="ln">+ Ln/Exp needed</option>
-            <option value="trig">+ Sin/Cos needed</option>
-            <option value="exploit">Exploitation pass</option>
-          </select>
-        </div>
+        <div class="mf"><label>Min search loss reached</label><input id="mphase" readonly style="opacity:.6"/></div>
         <div class="mf"><label>Ops used (list)</label><input id="mops" readonly style="opacity:.6"/></div>
         <div class="mf"><label>n_const (constants optimised)</label><input id="mnconst" readonly style="opacity:.6"/></div>
         <div class="mf"><label>DAG tree size (nodes)</label><input id="mdag" readonly style="opacity:.6"/></div>
+      </div>
+      <div id="mdagviz" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;white-space:pre;overflow-x:auto;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:6px;display:none"></div>
+    </div>
+    <!-- ── Statistical visualisations (per run) ──────────────────────── -->
+    <div style="grid-column:1/-1" class="section-divider">
+      <div class="sec-label">Search statistics &amp; landscape</div>
+      <div id="mlandscape" style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto"></div>
+      <div id="mpareto"    style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto"></div>
+      <div id="mtree"      style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto">
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:4px;text-align:left">Best PySR formula — syntactic AST (sympy → Graphviz)</div>
+        <div id="mtree-body"></div>
+      </div>
+      <div id="mformstats" style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto">
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:4px;text-align:left">Aggregated stats for this formula — box-plot per method · ECDF performance profile · loss-vs-runtime trade-off</div>
+        <div id="mformstats-body"></div>
       </div>
     </div>
     <div class="mf full" style="margin-top:8px"><label>Notes</label><input id="mnotes" readonly style="opacity:.6"/></div>
@@ -2550,6 +3162,7 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
     # ── JavaScript (attachment verbatim, with PRELOADED_DB injection) ─────────
     JS = f"""\
 const PRELOADED_DB={db_json};
+const FORMULA_STATS_SVG={formula_stats_json};
 const FORMULAS=[
   {{id:'hubble',name:'Hubble',cat:'physics',tex:'v = H_0 \\\\cdot d'}},
   {{id:'newton',name:'Newton gravity',cat:'physics',tex:'F = G m_1 m_2 / r^2'}},
@@ -2584,7 +3197,7 @@ const FORMULAS=[
   {{id:'savi',name:'SAVI',cat:'remote',tex:'1.5(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+R+0.5)'}},
   {{id:'expreal',name:'Exp. réelles',cat:'other',tex:'\\\\text{{real exponentiation forms}}'}},
 ];
-const METHODS=['pysr','allops_const','par','nopar','allops','allops_ols','curr','currpal','spar','noise','novaug','dilaoff','noolsratn'];
+const METHODS=['pysr','allops','allops_const','par','allops_ols','curr','currpal','spar','noise','novaug','dilaoff','noolsratn'];
 const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
@@ -2654,9 +3267,11 @@ function renderCell(fid,mid){{
   if(phases.length){{
     html+=`<div class="phase-pills">${{[...new Set(phases)].map(p=>phasePill(p)).join('')}}</div>`;
   }}
-  if(rts.length){{
-    const avgrt=rts.reduce((a,b)=>a+b,0)/rts.length;
-    html+=`<div class="smini">${{avgrt.toFixed(1)}}s</div>`;
+  // Per-run runtimes (R1..RN) listed individually
+  const allRts=[0,1,2,3,4].map(r=>{{const dd=DB[key(fid,mid,r)];return dd&&dd.runtime?dd.runtime:null;}});
+  if(allRts.some(t=>t!==null)){{
+    const parts=allRts.map((t,i)=>t!==null?`R${{i+1}}:\u202f${{t.toFixed(1)}}s`:`R${{i+1}}:\u202f\u2014`);
+    html+=`<div class="smini" style="white-space:normal;line-height:1.3">${{parts.join(' \u00b7 ')}}</div>`;
   }}
   html+='</div>';
   return html;
@@ -2675,12 +3290,21 @@ function buildTable(){{
     tbody.appendChild(sr);
     rows.forEach(f=>{{
       const tr=document.createElement('tr');
-      let cells=`<td class="fcol"><div>${{f.name}}</div><div class="ftex">${{f.tex}}</div></td>`;
+      let cells=`<td class="fcol"><div>${{f.name}}</div><div class="ftex">$${{f.tex}}$</div></td>`;
       METHODS.forEach(m=>{{cells+=`<td id="cell_${{f.id}}_${{m}}">${{renderCell(f.id,m)}}</td>`;}});
       tr.innerHTML=cells;tbody.appendChild(tr);
     }});
   }});
   updateStats();
+  // Render LaTeX in the formula column (KaTeX auto-render).
+  if(window.renderMathInElement){{
+    try{{
+      renderMathInElement(document.getElementById('tbl'),{{
+        delimiters:[{{left:'$',right:'$',display:false}}],
+        throwOnError:false,
+      }});
+    }}catch(e){{}}
+  }}
 }}
 
 function updateStats(){{
@@ -2702,22 +3326,54 @@ function updateStats(){{
   document.getElementById('s-rt').textContent=rts.length?(rts.reduce((a,b)=>a+b,0)/rts.length).toFixed(1)+'s':'—';
 }}
 
-function addChannelRow(idx,formula){{
-  chCount++;
+function _renderChannelsRO(channels){{
   const div=document.getElementById('chlist');
-  const row=document.createElement('div');row.className='ch-row';row.id=`chr_${{chCount}}`;
-  row.innerHTML=`<span class="ch-tag">ch[${{div.children.length}}]</span>
-    <input style="flex:1;font-size:10px;padding:3px 6px;border:0.5px solid var(--color-border-secondary);border-radius:4px;background:var(--color-background-secondary);color:var(--color-text-primary)"
-      placeholder="formula e.g. -Abs(a)**(3/2)" value="${{formula||''}}"/>
-    <button class="rm-ch" onclick="this.parentElement.remove();renumChans()">x</button>`;
-  div.appendChild(row);
+  div.innerHTML='';
+  if(!channels||!channels.length){{
+    div.innerHTML='<div style="font-size:10px;opacity:.6;padding:4px">(no channel info)</div>';
+    return;
+  }}
+  channels.forEach((c,i)=>{{
+    const row=document.createElement('div');row.className='ch-row';
+    row.style.cssText='display:flex;align-items:flex-start;gap:6px;padding:3px 4px;border-bottom:0.5px solid var(--color-border-tertiary)';
+    row.innerHTML=`<span class="ch-tag" style="font-family:var(--font-mono);font-size:10px;min-width:60px;color:var(--color-text-secondary)">${{c.tag||('ch['+i+']')}}</span>
+      <span style="flex:1;font-family:var(--font-mono);font-size:10px;white-space:pre-wrap;word-break:break-all;color:var(--color-text-primary)">${{(c.text||c).toString().replace(/</g,'&lt;')}}</span>`;
+    div.appendChild(row);
+  }});
 }}
-function renumChans(){{
-  const rows=document.querySelectorAll('#chlist .ch-row');
-  rows.forEach((r,i)=>{{const t=r.querySelector('.ch-tag');if(t)t.textContent=`ch[${{i}}]`;}});
+function _renderHallOfFame(hof){{
+  const div=document.getElementById('chlist');
+  div.innerHTML='';
+  if(!hof||!hof.length){{
+    div.innerHTML='<div style="font-size:10px;opacity:.6;padding:4px">(no Pareto frontier available)</div>';
+    return;
+  }}
+  const tbl=document.createElement('table');
+  tbl.style.cssText='width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10px';
+  tbl.innerHTML=`<thead><tr style="text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">
+    <th style="padding:3px 6px;width:30px">#</th>
+    <th style="padding:3px 6px;width:60px">cmplx</th>
+    <th style="padding:3px 6px;width:110px">loss</th>
+    <th style="padding:3px 6px;width:90px" title="PySR parsimony score = -Δln(loss)/Δcomplexity (higher = better gain per added complexity unit)">score</th>
+    <th style="padding:3px 6px">expression</th></tr></thead>`;
+  const tb=document.createElement('tbody');
+  hof.forEach((m,i)=>{{
+    const tr=document.createElement('tr');
+    tr.style.borderBottom='0.5px solid var(--color-border-tertiary)';
+    const lossStr=(m.loss!==null&&m.loss!==undefined)?Number(m.loss).toExponential(3):'—';
+    const scoreStr=(m.score!==null&&m.score!==undefined&&isFinite(m.score))?Number(m.score).toFixed(3):'—';
+    tr.innerHTML=`<td style="padding:3px 6px;color:var(--color-text-secondary)">${{i+1}}</td>
+      <td style="padding:3px 6px">${{m.complexity??'—'}}</td>
+      <td style="padding:3px 6px">${{lossStr}}</td>
+      <td style="padding:3px 6px;color:var(--color-text-secondary)">${{scoreStr}}</td>
+      <td style="padding:3px 6px;white-space:pre-wrap;word-break:break-all">${{(m.formula||'').replace(/</g,'&lt;')}}</td>`;
+    tb.appendChild(tr);
+  }});
+  tbl.appendChild(tb);
+  div.appendChild(tbl);
 }}
 
-function _buildFormulaTabs(d){{
+function _buildFormulaTabs(d, isPysr){{
   const container=document.getElementById('ftabs');
   const ta=document.getElementById('mfexpr');
   container.innerHTML='';
@@ -2745,6 +3401,12 @@ function _buildFormulaTabs(d){{
     }});
   }}
 
+  // Hide the lossInfo line for PySR up-front (no R²/MSE applicable; hidden
+  // even on early-return below when there are no per-method tabs).
+  const lossInfo=document.getElementById('ftab-lossinfo');
+  if(isPysr&&lossInfo){{ lossInfo.textContent=''; lossInfo.style.display='none'; }}
+  else if(lossInfo){{ lossInfo.style.display=''; lossInfo.textContent=''; }}
+
   // Fallback: if no per-method formulas, show the single finalExpr
   if(!tabs.length){{
     ta.value=d?.finalExpr??'(no formula)';
@@ -2759,8 +3421,6 @@ function _buildFormulaTabs(d){{
       bestLoss=tab.loss; activeIdx=i;
     }}
   }});
-
-  const lossInfo=document.getElementById('ftab-lossinfo');
 
   function activate(idx){{
     activeIdx=idx;
@@ -2792,7 +3452,7 @@ function _buildFormulaTabs(d){{
 function openModal(fid,mid,run){{
   const f=FORMULAS.find(x=>x.id===fid);
   const midx=METHODS.indexOf(mid);
-  const mnames=['PySR baseline','+ConstantBrick','Parallel','No parallel','All ops','All ops OLS','Curriculum*','Curr+palier**','Smart parallel***','+Noise','No var aug','Dilation+offset','No OLS/rat/nest'];
+  const mnames=['PySR baseline','All ops ★ (ref)','+ConstantBrick','Parallel','All ops OLS','Curriculum*','Curr+palier**','Smart parallel***','+Noise','No var aug','Dilation+offset','No OLS/rat/nest'];
   pending={{fid,mid,run}};
   document.getElementById('mtitle').textContent='Log run result';
   document.getElementById('mflabel').value=`${{f.name}}  ·  ${{mnames[midx]}}  ·  Run ${{run+1}}`;
@@ -2802,24 +3462,117 @@ function openModal(fid,mid,run){{
     document.getElementById('minit').value=`R${{run+1}}: ${{MINIT[run]}}`;
   }}
   const k=key(fid,mid,run);const d=DB[k]||{{}};
-  // ── Formula tabs ─────────────────────────────────────────────────
-  _buildFormulaTabs(d);
+  // ── Formula tabs (suppress R²/MSE info-line for PySR which uses raw MSE) ──
+  _buildFormulaTabs(d, mid==='pysr');
   document.getElementById('mrt').value=d.runtime??'';
   document.getElementById('miter').value=d.totalT??'';
   document.getElementById('mpop').value=d.K??'';
   document.getElementById('mcomp').value=d.maxComp??'';
-  document.getElementById('mphase').value=d.phase??'';
+  // Min search loss reached (Dragon: alignment loss = 1−corr; PySR: best MSE)
+  {{
+    const sl=d.searchLoss;
+    document.getElementById('mphase').value=(sl===null||sl===undefined)?'':
+      (Number(sl).toExponential(4)+(d.searchLossKind?'  ('+d.searchLossKind+')':''));
+  }}
   document.getElementById('mops').value=d.ops??'';
   document.getElementById('mnconst').value=d.nconst??'';
   document.getElementById('mdag').value=d.dagSize??'';
   document.getElementById('mnotes').value=d.notes??'';
-  document.getElementById('chlist').innerHTML='';chCount=0;
-  (d.channels||[]).forEach(c=>addChannelRow(null,c));
+  // ── Section: channels (DRAGON) or hall-of-fame (PySR) ──────────────
+  const secLbl=document.getElementById('sec-channels-label');
+  if(mid==='pysr'){{
+    if(secLbl) secLbl.textContent='PySR hall of fame — Pareto frontier (complexity vs loss)';
+    _renderHallOfFame(d.hallOfFame||[]);
+  }} else {{
+    if(secLbl) secLbl.textContent='Output channels — all formulas (one per channel, read-only)';
+    _renderChannelsRO(d.channels||[]);
+  }}
+  // ── DAG visualisation (SVG if available, otherwise textual table) ──
+  const dviz=document.getElementById('mdagviz');
+  if(dviz){{
+    if(d.dagSvg){{
+      dviz.style.display='block';
+      dviz.style.whiteSpace='normal';
+      dviz.style.textAlign='center';
+      dviz.innerHTML=d.dagSvg;
+      const svgEl=dviz.querySelector('svg');
+      if(svgEl){{ svgEl.style.maxWidth='100%'; svgEl.style.height='auto'; }}
+    }} else if(d.dagText){{
+      dviz.style.display='block';
+      dviz.style.whiteSpace='pre';
+      dviz.style.textAlign='left';
+      dviz.textContent=d.dagText;
+    }} else {{
+      dviz.style.display='none';
+      dviz.innerHTML='';
+    }}
+  }}
+  // ── Statistical visualisations (per-run + per-formula) ─────────────
+  function _execScripts(container){{
+    // <script> tags inserted via innerHTML do not auto-execute. Re-create them
+    // so embedded Plotly.newPlot() calls actually run.
+    container.querySelectorAll('script').forEach(old=>{{
+      const s=document.createElement('script');
+      if(old.src) s.src=old.src; else s.textContent=old.textContent;
+      old.parentNode.replaceChild(s,old);
+    }});
+  }}
+  function _setSvgBlock(elId, svg, isWrappedBody){{
+    const el=document.getElementById(elId);
+    if(!el) return;
+    if(svg){{
+      el.style.display='block';
+      const tgt=isWrappedBody?el.querySelector('#'+elId+'-body'):el;
+      if(tgt){{
+        tgt.innerHTML=svg;
+        const s=tgt.querySelector('svg');
+        if(s){{s.style.maxWidth='100%';s.style.height='auto';}}
+        _execScripts(tgt);
+      }}
+    }} else {{
+      el.style.display='none';
+      const tgt=isWrappedBody?el.querySelector('#'+elId+'-body'):el;
+      if(tgt) tgt.innerHTML='';
+    }}
+  }}
+  // IMPORTANT: show the modal BEFORE injecting Plotly content. Plotly reads
+  // the container's clientWidth at render time; if the modal is still
+  // display:none the width is 0 and the chart is rendered squashed.
   const mwrap=document.getElementById('mwrap');
   mwrap.style.display='flex';
-  setTimeout(()=>mwrap.scrollIntoView({{behavior:'smooth',block:'start'}}),50);
+  document.body.style.overflow='hidden';
+  // Dragon: 3-panel landscape; PySR: Pareto + AST tree.
+  _setSvgBlock('mlandscape', mid==='pysr' ? null : (d.landscapeSvg||null), false);
+  _setSvgBlock('mpareto',    mid==='pysr' ? (d.paretoSvg||null) : null,   false);
+  _setSvgBlock('mtree',      mid==='pysr' ? (d.treeSvg||null)   : null,   true);
+  // Per-formula aggregate stats (boxplot + heatmap), shared across runs/methods.
+  _setSvgBlock('mformstats', (typeof FORMULA_STATS_SVG!=='undefined' && FORMULA_STATS_SVG[fid]) || null, true);
+  // Force Plotly to re-fit each visible chart now that the modal width is set.
+  setTimeout(()=>{{
+    if(window.Plotly){{
+      ['mlandscape','mpareto','mformstats'].forEach(id=>{{
+        const el=document.getElementById(id);
+        if(!el||el.style.display==='none') return;
+        el.querySelectorAll('.js-plotly-plot').forEach(p=>{{
+          try{{ window.Plotly.Plots.resize(p); }}catch(e){{}}
+        }});
+      }});
+    }}
+  }},80);
+  setTimeout(()=>{{ const mb=document.getElementById('mbox'); if(mb) mb.scrollTop=0; }},20);
 }}
-function closeModal(){{document.getElementById('mwrap').style.display='none';pending=null;}}
+function closeModal(){{
+  document.getElementById('mwrap').style.display='none';
+  document.body.style.overflow='';
+  pending=null;
+}}
+// Esc closes the modal popup
+document.addEventListener('keydown',function(e){{
+  if(e.key==='Escape'){{
+    const mw=document.getElementById('mwrap');
+    if(mw&&mw.style.display!=='none') closeModal();
+  }}
+}});
 function saveRun(){{
   if(!pending) return;
   const {{fid,mid,run}}=pending;
@@ -2852,7 +3605,7 @@ function saveRun(){{
 function showTT(e,fid,mid,run){{
   const k=key(fid,mid,run);const d=DB[k];
   const f=FORMULAS.find(x=>x.id===fid);
-  const mnames=['PySR','ConstBrick','Parallel','No parallel','All ops','All ops OLS','Curriculum','Curr+palier','Smart par','+Noise','No var aug','Dil+off','No OLS'];
+  const mnames=['PySR','All ops ★ (ref)','ConstBrick','Parallel','All ops OLS','Curriculum','Curr+palier','Smart par','+Noise','No var aug','Dil+off','No OLS'];
   const midx=METHODS.indexOf(mid);
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
@@ -2923,6 +3676,12 @@ init();"""
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>DragonSR vs PySR — Leaderboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"
+  onload="if(typeof buildTable==='function')buildTable();"></script>
+<!-- Plotly (for interactive Search statistics & landscape charts) -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
 {CSS_VARS}
 {CSS}
