@@ -14,9 +14,9 @@ Launch with:  python -u leaderboard.py
 TARGETS = [
     # Nguyen benchmarks (synthetic)
     # "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-     # "n11", "n1",
+     "n11", "n1",
     # Physics (synthetic)
-    # "hubble", "newton", "rydberg", "idealgas", "kepler",
+    "rydberg",# "hubble", "newton", "rydberg", "idealgas", "kepler",
     # Remote sensing (from data/6000_points.csv)
     # "bai", "savi", "bsi"
     "ndvi"# "ndvi", "savi", "bsi", "wi2015", "awei_sh", "bai", "mndwi", "vari",
@@ -29,7 +29,7 @@ INIT_STRATEGIES = ["random", "diverse", "xgboost", "warmstart", "adversarial"]
 # ── DragonSR search budget ────────────────────────────────────────────────────
 DRAGON_N_ITERATIONS   = 1000     # total iterations (raise to ~2000 for real runs)
 DRAGON_K_INIT         = 50      # population size  (raise to ~100  for real runs)
-DRAGON_MAX_COMPLEXITY = 3      # max DAG complexity (raise to ~7  for real runs)
+DRAGON_MAX_COMPLEXITY = 5      # max DAG complexity (raise to ~7  for real runs)
 DRAGON_T_PER_LEVEL    = 100     # iters per complexity level
 DRAGON_LOSS_THRESHOLD = 1e-30  # stop early if loss ≤ this
 
@@ -46,21 +46,11 @@ NOISE_STD = 0.05
 # id:        "curr"  — curriculum DragonSR (matches HTML column "Curriculum*")
 # loss_mode: "full"  — nested OLS + poly-rational OLS (full pipeline)
 DRAGON_METHOD_CONFIGS = [
-    # Non functionnal
-    # {
-    #     "id":          "curr",
-    #     "description": "DragonSR — full OLS pipeline (nested + poly-rational)",
-    #     "operators":   ["select", "unary", "power"], # "sum" not placed for now
-    #     "curriculum":  True,   # single phase; multi-phase curriculum: TODO
-    #     "parallel_N":  1,
-    #     "loss_mode":   "full",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    # },
+
     {
         "id":          "allops",
         "description": "DragonSR — reference method (all ops, full OLS, var-aug, no noise)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"], 
         "curriculum":  True,
         "parallel_N":  1,
         "loss_mode":   "full",
@@ -68,59 +58,61 @@ DRAGON_METHOD_CONFIGS = [
         "add_noise":   False,
     },
     # ── Ablations of the reference method (allops) ────────────────────────
-    {
-        "id":          "noolsratn",
-        "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "channel",
-        "var_aug":     True,
-        "add_noise":   False,
-    },
-    {
-        "id":          "novaug",
-        "description": "Ablation of allops — NO variable augmentation (no x^2..x^k)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     False,
-        "add_noise":   False,
-    },
-    {
-        "id":          "noise",
-        "description": f"Ablation of allops — +Gaussian noise on y (σ = NOISE_STD·std(y))",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     True,
-        "add_noise":   True,
-    },
-    {
-        "id":          "allops_const",
-        "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     True,
-        "add_noise":   False,
-        "optimize_constants": True,
-    },
-    {
-        "id":          "allops_ols",
-        "description": "DragonSR — all ops + sparse OLS only",
-        "operators":   ["select", "unary", "ln", "exp"], #"sin", "cos"
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "ols",
-        "var_aug":     True,
-        "add_noise":   False,
-    },
+    # {
+    #     "id":          "noolsratn",
+    #     "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "channel",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    # },
+    # {
+    #     "id":          "novaug",
+    #     "description": "Ablation of allops — NO variable augmentation (no x^2..x^k)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     False,
+    #     "add_noise":   False,
+    # },
+    # {
+    #     "id":          "noise",
+    #     "description": f"Ablation of allops — +Gaussian noise on y (σ = NOISE_STD·std(y))",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   True,
+    # },
+    # {
+    #     "id":          "allops_const",
+    #     "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    #     "optimize_constants": True,
+    # },
+    # {
+    #     "id":          "allops_ols",
+    #     "description": "DragonSR — all ops + sparse OLS only",
+    #     "operators":   ["select", "unary", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "ols",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    # },
 
-    ## Legacy
+    ################################################
+    #################### Legacy ####################
+    ################################################
     # {
     #     "id":          "allops_ols_complexity",
     #     "description": "DragonSR — all ops + sparse OLS only, complexity * T_PER_LEVEL budget",
@@ -131,6 +123,16 @@ DRAGON_METHOD_CONFIGS = [
     #     "var_aug":     True,
     #     "add_noise":   False,
     #     "budget_mode": "complexity",
+    # },
+    # {
+    #     "id":          "curr",
+    #     "description": "DragonSR — full OLS pipeline (nested + poly-rational)",
+    #     "operators":   ["select", "unary", "power"], # "sum" not placed for now
+    #     "curriculum":  True,   # single phase; multi-phase curriculum: TODO
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
     # },
 ]
 
@@ -2341,12 +2343,19 @@ def _extract_best_formula_from_log(log_path: str) -> str:
 #  PySR WORKER  — calls Julia subprocess
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_pysr(target: str, run_id: int) -> dict:
-    """Run PySR via Julia for a given target."""
-    run_dir = os.path.join(OUTPUT_DIR, target, "pysr", f"run_{run_id}")
+def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
+    """Run PySR via Julia for a given target.
+
+    add_noise=True   -> Gaussian noise (sigma = NOISE_STD * std(y)) added to y
+                        BEFORE PySR sees it.  Mirrors the Dragon `+Noise`
+                        ablation so PySR can be benchmarked on a noisy target.
+                        Method id is then "pysr_noise" instead of "pysr".
+    """
+    method_id = "pysr_noise" if add_noise else "pysr"
+    run_dir = os.path.join(OUTPUT_DIR, target, method_id, f"run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
-    result_file = os.path.join(run_dir, f"pysr_{target}_results.txt")
-    log_path = os.path.join(run_dir, f"{target}_pysr{LOG_SUFFIX}")
+    result_file = os.path.join(run_dir, f"{method_id}_{target}_results.txt")
+    log_path = os.path.join(run_dir, f"{target}_{method_id}{LOG_SUFFIX}")
 
     t_start = time.time()
 
@@ -2355,8 +2364,10 @@ def run_pysr(target: str, run_id: int) -> dict:
     hall_of_fame = []
     try:
         # Build a temporary Julia script for this target
-        julia_script = _build_julia_script(target, result_file, run_id=run_id)
-        jl_path = os.path.join(run_dir, f"run_pysr_{target}.jl")
+        julia_script = _build_julia_script(
+            target, result_file, run_id=run_id, add_noise=add_noise
+        )
+        jl_path = os.path.join(run_dir, f"run_{method_id}_{target}.jl")
         with open(jl_path, "w") as f:
             f.write(julia_script)
 
@@ -2406,25 +2417,31 @@ def run_pysr(target: str, run_id: int) -> dict:
     tree_svg   = _make_pysr_tree_svg(best_formula)
     return {
         "target":      target,
-        "method":      "pysr",
+        "method":      method_id,
         "run_id":      run_id,
         "loss":        float(best_loss),
         "r2":          float(1.0 - best_loss) if best_loss <= 1.0 else 0.0,
         "formula":     str(best_formula),
         "time_s":      elapsed,
         "log_path":    log_path,
-        "description": "PySR (SymbolicRegression.jl)",
+        "description": (
+            "PySR +Noise (SymbolicRegression.jl, sigma = NOISE_STD * std(y))"
+            if add_noise else "PySR (SymbolicRegression.jl)"
+        ),
         "hall_of_fame": hall_of_fame,
         "pareto_svg": pareto_svg,
         "tree_svg":   tree_svg,
     }
 
 
-def _build_julia_script(target: str, result_file: str, run_id: int = 0) -> str:
+def _build_julia_script(target: str, result_file: str, run_id: int = 0,
+                        add_noise: bool = False) -> str:
     """Generate a Julia script for PySR for the given target.
 
     For synthetic targets (physics / Nguyen) we generate data inline in Julia.
     For remote sensing targets we load the CSV.
+    If add_noise=True, inject Gaussian noise (sigma = NOISE_STD * std(y)) on y
+    after the data block (mirrors the Dragon `+Noise` ablation).
     """
     result_file_escaped = result_file.replace("\\", "/")
     seed = RANDOM_SEED + run_id
@@ -2435,8 +2452,20 @@ def _build_julia_script(target: str, result_file: str, run_id: int = 0) -> str:
     else:
         data_block = _julia_csv_block(target)
 
+    noise_block = ""
+    if add_noise:
+        noise_seed = seed + 9999
+        noise_block = f"""
+# +Noise: add Gaussian noise sigma = {NOISE_STD} * std(y) to y
+using Random; _noise_rng = Xoshiro({noise_seed})
+_noise_sigma = {NOISE_STD} * Statistics.std(y)
+y = y .+ _noise_sigma .* randn(_noise_rng, length(y))
+println("+Noise: sigma = $(_noise_sigma)")
+"""
+
     return f"""#!/usr/bin/env julia
 using SymbolicRegression
+using Statistics
 using Printf
 
 TARGET = "{target}"
@@ -2445,7 +2474,7 @@ POPULATIONS = {PYSR_POPULATIONS}
 POPULATION_SIZE = {PYSR_POPULATION_SIZE}
 
 {data_block}
-
+{noise_block}
 println("Data: $(size(X_matrix, 2)) samples, $(size(X_matrix, 1)) features")
 
 options = Options(
@@ -2774,6 +2803,13 @@ def run_all(targets=TARGETS, n_runs=N_RUNS):
                   f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
             print(f"           formula: {r['formula'][:100]}")
 
+            # PySR +Noise (mirror of Dragon `+Noise` ablation)
+            r = run_pysr(target, run_id, add_noise=True)
+            results.append(r)
+            print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
+                  f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
+            print(f"           formula: {r['formula'][:100]}")
+
         # Checkpoint after each target
         with open(results_path, "w") as f:
             json.dump(results, f, indent=2, default=str)
@@ -3073,22 +3109,23 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 <thead>
 <tr>
   <th class="fcol" rowspan="2" style="vertical-align:bottom">Formula</th>
-  <th class="gh-pysr" colspan="1">PySR</th>
+  <th class="gh-pysr" colspan="2">PySR</th>
   <th class="gh-drag" colspan="11">DragonSR</th>
 </tr>
 <tr>
   <th class="gh-pysr">Baseline</th>
+  <th class="gh-pysr">+Noise</th>
   <th class="gh-drag">All ops ★ (ref)</th>
   <th class="gh-drag">+ConstBrick</th>
-  <th class="gh-drag">Parallel</th>
   <th class="gh-drag">All ops OLS</th>
   <th class="gh-drag">Curriculum*</th>
   <th class="gh-drag">Curr+palier**</th>
-  <th class="gh-drag">Smart par***</th>
   <th class="gh-drag">+Noise</th>
   <th class="gh-drag">No var aug</th>
   <th class="gh-drag">Dilat+offset</th>
   <th class="gh-drag">No OLS/rat/nest</th>
+  <th class="gh-drag">Parallel</th>
+  <th class="gh-drag">Smart par***</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
@@ -3197,7 +3234,7 @@ const FORMULAS=[
   {{id:'savi',name:'SAVI',cat:'remote',tex:'1.5(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+R+0.5)'}},
   {{id:'expreal',name:'Exp. réelles',cat:'other',tex:'\\\\text{{real exponentiation forms}}'}},
 ];
-const METHODS=['pysr','allops','allops_const','par','allops_ols','curr','currpal','spar','noise','novaug','dilaoff','noolsratn'];
+const METHODS=['pysr','pysr_noise','allops','allops_const','allops_ols','curr','currpal','noise','novaug','dilaoff','noolsratn','par','spar'];
 const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
@@ -3452,7 +3489,7 @@ function _buildFormulaTabs(d, isPysr){{
 function openModal(fid,mid,run){{
   const f=FORMULAS.find(x=>x.id===fid);
   const midx=METHODS.indexOf(mid);
-  const mnames=['PySR baseline','All ops ★ (ref)','+ConstantBrick','Parallel','All ops OLS','Curriculum*','Curr+palier**','Smart parallel***','+Noise','No var aug','Dilation+offset','No OLS/rat/nest'];
+  const mnames=['PySR baseline','PySR +Noise','All ops ★ (ref)','+ConstantBrick','All ops OLS','Curriculum*','Curr+palier**','+Noise','No var aug','Dilation+offset','No OLS/rat/nest','Parallel','Smart parallel***'];
   pending={{fid,mid,run}};
   document.getElementById('mtitle').textContent='Log run result';
   document.getElementById('mflabel').value=`${{f.name}}  ·  ${{mnames[midx]}}  ·  Run ${{run+1}}`;
@@ -3605,7 +3642,7 @@ function saveRun(){{
 function showTT(e,fid,mid,run){{
   const k=key(fid,mid,run);const d=DB[k];
   const f=FORMULAS.find(x=>x.id===fid);
-  const mnames=['PySR','All ops ★ (ref)','ConstBrick','Parallel','All ops OLS','Curriculum','Curr+palier','Smart par','+Noise','No var aug','Dil+off','No OLS'];
+  const mnames=['PySR','PySR +Noise','All ops ★ (ref)','ConstBrick','All ops OLS','Curriculum','Curr+palier','+Noise','No var aug','Dil+off','No OLS','Parallel','Smart par'];
   const midx=METHODS.indexOf(mid);
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
