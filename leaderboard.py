@@ -13,13 +13,13 @@ Launch with:  python -u leaderboard.py
 # ── Formula IDs — must match the HTML FORMULAS[].id list exactly ─────────────
 TARGETS = [
     # Nguyen benchmarks (synthetic)
-    # "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-     "n11", "n1",
+    "n1",# "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
+    #  "n11", "n1",
     # Physics (synthetic)
-    "rydberg",# "hubble", "newton", "rydberg", "idealgas", "kepler",
+    "leavitt"# "rydberg",# "hubble", "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt"
     # Remote sensing (from data/6000_points.csv)
     # "bai", "savi", "bsi"
-    "ndvi"# "ndvi", "savi", "bsi", "wi2015", "awei_sh", "bai", "mndwi", "vari",
+   #"wi2015", "awei_sh", "bai"# "ndvi", "savi", "bsi", , "mndwi", "vari",
 ]
 
 # ── Runs per target (R1–R5 in the HTML; strategies match HTML pill labels) ────
@@ -42,6 +42,21 @@ VAR_AUG_MAX_DEGREE = 5   # raise to 6+ for higher-degree Nguyen formulas
 # (relative to std(y)).  Only used when method_cfg["add_noise"] is True.
 NOISE_STD = 0.05
 
+# ── Smart-parallel operator subsets  ───────────────────────────────────────────
+# Used by the "spar" DragonSR method: 4 streams launched in parallel via
+# ThreadPoolExecutor, each Mutant_UCB run scoped to a different operator
+# subset.  Best loss across the 4 streams wins and is reported as "spar".
+#   - all          : every operator (reference)
+#   - alg          : pure algebraic (select / unary / power)
+#   - alg_trig     : algebraic + trigonometric (sin, cos)
+#   - alg_explog   : algebraic + exponential / logarithm (exp, ln)
+SPAR_OP_GROUPS = {
+    "all":        ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    "alg":        ["select", "unary", "power"],
+    "alg_trig":   ["select", "unary", "power", "sin", "cos"],
+    "alg_explog": ["select", "unary", "power", "ln", "exp"],
+}
+
 # ── DragonSR — single method config  (id must match an HTML METHODS entry) ────
 # id:        "curr"  — curriculum DragonSR (matches HTML column "Curriculum*")
 # loss_mode: "full"  — nested OLS + poly-rational OLS (full pipeline)
@@ -56,6 +71,51 @@ DRAGON_METHOD_CONFIGS = [
         "loss_mode":   "full",
         "var_aug":     True,
         "add_noise":   False,
+    },
+    {
+        "id":          "spar",
+        "description": ("DragonSR — smart-parallel: 4 op-subset streams "
+                        "(all / alg / alg+trig / alg+exp,ln) run in parallel "
+                        "via ThreadPoolExecutor; best loss wins."),
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "full",
+        "var_aug":     True,
+        "add_noise":   False,
+        "smart_parallel": True,
+    },
+    {
+        "id":          "boosted_spar",
+        "description": ("DragonSR — boosted smart-parallel: same 4 op-subset "
+                        "streams as 'spar' run concurrently, then their "
+                        "winning predictions ŷ_stream are stacked and "
+                        "meta-combined via sparse-OLS / nested-OLS / "
+                        "poly-rational-OLS (whichever fits best)."),
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "full",
+        "var_aug":     True,
+        "add_noise":   False,
+        "smart_parallel": True,
+        "boosted":        True,
+    },
+    {
+        "id":          "spar_denoise",
+        "description": ("DragonSR — smart-parallel + blind denoising: same 4 "
+                        "op-subset streams as 'spar', but the target y is "
+                        "first denoised by a non-parametric KNN regressor "
+                        "whose neighbourhood size is chosen by leave-one-out "
+                        "CV (no prior assumption on the noise level)."),
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "full",
+        "var_aug":     True,
+        "add_noise":   True,
+        "smart_parallel": True,
+        "denoise":        True,
     },
     # ── Ablations of the reference method (allops) ────────────────────────
     # {
@@ -204,6 +264,26 @@ from dragon.search_space.bricks.symbolic_regression import (
 
 from dragon.search_algorithm.mutant_ucb import Mutant_UCB
 from dragon.utils.plot_functions import graph_to_all_formulas, str_operations
+
+# ── Thread-safe SIGALRM patch ─────────────────────────────────────────────────
+# DRAGON's `timed_evaluation` installs a SIGALRM handler, which raises
+# `ValueError: signal only works in main thread of the main interpreter` when
+# called from a worker thread (smart-parallel branch).  We patch it to fall
+# back to a plain call (no timeout) when not on the main thread.
+import threading as _threading
+import dragon.search_algorithm.search_algorithm as _dragon_sa
+
+_original_timed_evaluation = _dragon_sa.timed_evaluation
+
+
+def _timed_evaluation_thread_safe(x, idx, max_duration, evaluation):
+    if _threading.current_thread() is _threading.main_thread():
+        return _original_timed_evaluation(x, idx, max_duration, evaluation)
+    # Non-main thread: SIGALRM unavailable, just call the evaluation directly.
+    return evaluation(x, idx)
+
+
+_dragon_sa.timed_evaluation = _timed_evaluation_thread_safe
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  DAG INTROSPECTION HELPERS  — for the leaderboard modal
@@ -886,6 +966,65 @@ def build_dataset(target: str, data_path: str = DATA_PATH):
     # keep only numeric
     X = X.select_dtypes(include=[np.number])
     return X, y
+
+
+def _blind_denoise(X: pd.DataFrame, y: pd.Series, k_grid=None, max_k=None):
+    """Blind denoising of *y* given features *X* — no prior on noise level.
+
+    Uses k-Nearest Neighbours regression (Euclidean distance on standardised
+    features) and picks *k* by minimising leave-one-out CV residual variance.
+    The fitted ŷ ≈ E[y | X] is returned as the denoised target. This is a
+    classic non-parametric estimator: when the data are noiseless KNN-LOO
+    selects k=1 (no smoothing); when noise dominates it selects a large k.
+
+    Returns
+    -------
+    y_clean : pd.Series   — denoised target (same index/name as ``y``)
+    info    : dict        — {"k_opt", "loo_mse", "noise_var", "snr_db"}
+    """
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.preprocessing import StandardScaler as _SS
+
+    n = len(y)
+    if n < 5:
+        return y.copy(), {"k_opt": 1, "loo_mse": 0.0, "noise_var": 0.0, "snr_db": float("inf")}
+
+    Xs = _SS().fit_transform(X.values.astype(float))
+    yv = y.values.astype(float)
+
+    # LOO via KNN with k+1 neighbours, drop the self-neighbour (distance 0).
+    if max_k is None:
+        max_k = max(3, min(int(np.sqrt(n)) + 5, n - 1))
+    if k_grid is None:
+        # Geometric-ish grid: 1,2,3,5,7,10,15,20, …
+        base = sorted({1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100})
+        k_grid = [k for k in base if k <= max_k]
+        if not k_grid:
+            k_grid = [1]
+
+    best = (float("inf"), 1, None)
+    for k in k_grid:
+        knn = KNeighborsRegressor(n_neighbors=min(k + 1, n))
+        knn.fit(Xs, yv)
+        # neighbours, distances; drop the self (idx 0) because we fitted on the same set
+        _, idx = knn.kneighbors(Xs, n_neighbors=min(k + 1, n))
+        loo_pred = yv[idx[:, 1:]].mean(axis=1) if idx.shape[1] > 1 else yv.copy()
+        mse = float(np.mean((yv - loo_pred) ** 2))
+        if mse < best[0]:
+            best = (mse, k, loo_pred)
+
+    loo_mse, k_opt, _ = best
+    # Fit a non-LOO prediction with k_opt for the actual returned denoised y.
+    knn = KNeighborsRegressor(n_neighbors=min(k_opt, n))
+    knn.fit(Xs, yv)
+    y_hat = knn.predict(Xs)
+    var_y = float(np.var(yv))
+    snr_db = 10.0 * np.log10(max(var_y - loo_mse, 1e-30) / max(loo_mse, 1e-30)) if loo_mse > 0 else float("inf")
+    return (
+        pd.Series(y_hat, index=y.index, name=y.name),
+        {"k_opt": int(k_opt), "loo_mse": float(loo_mse),
+         "noise_var": float(loo_mse), "snr_db": float(snr_db)},
+    )
 
 
 def xgboost_feature_selection(X: pd.DataFrame, y: pd.Series, n_top: int = N_TOP_FEATURES):
@@ -1852,6 +1991,16 @@ def make_loss_function(search_space, train_loader, device, num_features,
             _state["corr_value"]     = corr_val
             _state["alignment_loss"] = float(alignment_loss)
             _state["rat_degree"]     = rat_degree
+            # ── Stash the winning prediction (used by 'boosted_spar' to
+            #    OLS-combine the 4 stream-best ŷ across threads).
+            try:
+                _y_pred_np = (y_pred.detach().cpu().numpy()
+                              if isinstance(y_pred, torch.Tensor)
+                              else np.asarray(y_pred, dtype=np.float64))
+                _state["best_pred_np"] = np.asarray(_y_pred_np, dtype=np.float64).ravel()
+                _state["best_y_np"]    = np.asarray(y_np, dtype=np.float64).ravel()
+            except Exception:
+                pass
             try:
                 adj      = model.dag.matrix
                 nodes    = model.dag.operations
@@ -2076,8 +2225,159 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
     run_id     : 0..N_RUNS-1, also indexes INIT_STRATEGIES
     """
     method_id   = method_cfg["id"]
+
+    # ── Smart-parallel dispatcher ────────────────────────────────────
+    # When `smart_parallel` is enabled and we are NOT already inside a
+    # spawned stream, fan out 4 worker streams (each with its own operator
+    # subset) using a ThreadPoolExecutor and return the best result.
+    if method_cfg.get("smart_parallel") and not method_cfg.get("_in_smart_stream"):
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        stream_results = []
+        with ThreadPoolExecutor(max_workers=len(SPAR_OP_GROUPS)) as ex:
+            futs = {}
+            for stream_id, ops in SPAR_OP_GROUPS.items():
+                sub_cfg = dict(method_cfg)
+                sub_cfg["operators"]         = list(ops)
+                sub_cfg["_in_smart_stream"]  = True
+                sub_cfg["_stream_id"]        = stream_id
+                futs[ex.submit(dragon_worker, sub_cfg, target, run_id)] = stream_id
+            for f in as_completed(futs):
+                try:
+                    stream_results.append(f.result())
+                except Exception:
+                    print(f"[spar/{target}/run{run_id}] stream {futs[f]} ERROR:")
+                    traceback.print_exc()
+        if not stream_results:
+            return {
+                "target": target, "method": method_id, "run_id": run_id,
+                "strategy": INIT_STRATEGIES[run_id],
+                "loss": float(np.inf), "r2": 0.0,
+                "formula": "ERROR: all smart-parallel streams failed",
+                "time_s": 0.0, "log_path": "",
+                "description": method_cfg["description"],
+                "search_space_ops": list(method_cfg.get("operators", [])),
+            }
+        best = min(stream_results, key=lambda r: r.get("loss", float("inf")))
+        # Re-brand as the parent method ("spar") and attach a per-stream summary.
+        best["method"]            = method_id
+        best["description"]       = method_cfg["description"]
+        best["search_space_ops"]  = list(method_cfg.get("operators", []))
+        # ── Total search effort accounting ──────────────────────────────
+        # `actualT` from each stream = #rows in its computation_file.csv,
+        # i.e. the number of model evaluations actually performed by that
+        # Mutant_UCB run.  For a fair comparison with serial methods we
+        # report the *sum* across all streams as the total search budget
+        # consumed (wall-clock / CPU-equivalent).  We also keep the
+        # winner's own count under `actualT_winner` and the per-stream
+        # breakdown under `actualT_per_stream` for diagnostics.
+        per_stream_T = {
+            r.get("_stream_id", "?"): int(r["actualT"])
+            for r in stream_results if r.get("actualT") is not None
+        }
+        best["actualT_per_stream"] = per_stream_T
+        best["actualT_winner"]     = best.get("actualT")
+        if per_stream_T:
+            best["actualT"] = int(sum(per_stream_T.values()))
+        best["smart_parallel_streams"] = [
+            {"stream":  r.get("_stream_id", "?"),
+             "ops":     r.get("search_space_ops", []),
+             "loss":    r.get("loss"),
+             "formula": r.get("formula"),
+             "time_s":  r.get("time_s"),
+             "actualT": r.get("actualT")}
+            for r in stream_results
+        ]
+        # ── Boosted combination across streams (boosted_spar) ───────────
+        # Stack each stream's winning ŷ as columns of a [n × K] matrix and
+        # let `_ols_eval` pick the best meta-combiner among
+        # sparse-OLS / nested-OLS / poly-rational-OLS.  Replaces the best
+        # only if the boosted loss is strictly lower than the best stream.
+        if method_cfg.get("boosted"):
+            try:
+                # Collect aligned (ŷ, y) pairs.  Streams may have permuted
+                # the data differently (per-thread DataLoader shuffle); we
+                # re-align by stably sorting on y so column indices match.
+                preds, sids, y_ref = [], [], None
+                ref_order = None
+                for r in stream_results:
+                    p  = r.get("_best_pred_np")
+                    yy = r.get("_best_y_np")
+                    if p is None or yy is None:
+                        continue
+                    p  = np.asarray(p,  dtype=np.float64).ravel()
+                    yy = np.asarray(yy, dtype=np.float64).ravel()
+                    if p.shape != yy.shape or p.size < 4:
+                        continue
+                    if not np.all(np.isfinite(p)):
+                        continue
+                    if y_ref is None:
+                        y_ref     = yy.copy()
+                        ref_order = np.argsort(y_ref, kind="stable")
+                        y_ref_sorted = y_ref[ref_order]
+                    else:
+                        if yy.size != y_ref.size:
+                            continue
+                        # Same multiset of y values? (sanity check)
+                        if not np.allclose(np.sort(yy), np.sort(y_ref),
+                                           rtol=1e-8, atol=1e-12):
+                            continue
+                    self_order = np.argsort(yy, kind="stable")
+                    # p in y_ref order: place p[self_order[i]] at ref_order[i]
+                    p_aligned = np.empty_like(p)
+                    p_aligned[ref_order] = p[self_order]
+                    preds.append(p_aligned)
+                    sids.append(r.get("_stream_id", "?"))
+                if len(preds) >= 2:
+                    P = np.column_stack(preds).astype(np.float64)
+                    (mse_b, sel_c_b, w_b, ch_loss_b,
+                     _lr_b, nested_b, rational_b, _vidx_b, ana_b) = _ols_eval(
+                        torch.tensor(P), torch.tensor(y_ref).reshape(-1, 1),
+                        loss_mode="full")
+                    if np.isfinite(mse_b) and mse_b < best.get("loss", float("inf")):
+                        # Build a concise textual formula
+                        if rational_b is not None:
+                            wtype = "boosted-polyrat"
+                            f_str = (f"poly-rational(deg≤{rational_b.get('max_degree','?')}) "
+                                     f"over {len(sids)} streams")
+                        elif nested_b is not None:
+                            wtype = "boosted-nested"
+                            f_str = f"nested-OLS over {len(sids)} streams"
+                        elif w_b is not None and np.any(np.asarray(w_b) != 0):
+                            wtype = "boosted-ols"
+                            wts   = np.asarray(w_b).ravel()
+                            bias  = float(ana_b.get("ols_bias", 0.0)) if ana_b else 0.0
+                            terms = []
+                            for sid, w in zip(sids, wts):
+                                if abs(float(w)) > 1e-8:
+                                    terms.append(f"{float(w):+.4g}·ŷ_{sid}")
+                            if abs(bias) > 1e-8:
+                                terms.append(f"{bias:+.4g}")
+                            f_str = " ".join(terms) if terms else "(boosted-OLS)"
+                        else:
+                            wtype = "boosted-channel"
+                            f_str = f"best ŷ_{sids[sel_c_b]} (boosted)"
+                        best["loss"]           = float(mse_b)
+                        best["r2"]             = float(1.0 - mse_b) if mse_b <= 1.0 else 0.0
+                        best["formula"]        = "boosted: " + f_str
+                        best["winner_type"]    = wtype
+                        best["alignment_loss"] = float(ch_loss_b) if ch_loss_b is not None else float(mse_b)
+                        best["boosted_streams"] = list(sids)
+            except Exception as _e:
+                print(f"[{method_id}/{target}/run{run_id}] boost FAILED: {_e}")
+        # Strip numpy arrays before returning (not JSON-serialisable).
+        for r in stream_results:
+            r.pop("_best_pred_np", None)
+            r.pop("_best_y_np",    None)
+        best.pop("_best_pred_np", None)
+        best.pop("_best_y_np",    None)
+        return best
+
     strategy    = INIT_STRATEGIES[run_id]
-    run_dir     = os.path.join(OUTPUT_DIR, target, method_id, f"run_{run_id}")
+    if method_cfg.get("_in_smart_stream"):
+        run_dir = os.path.join(OUTPUT_DIR, target, method_id, f"run_{run_id}",
+                               f"stream_{method_cfg['_stream_id']}")
+    else:
+        run_dir = os.path.join(OUTPUT_DIR, target, method_id, f"run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     log_path    = os.path.join(run_dir, f"{target}_{method_id}{LOG_SUFFIX}")
     save_dir    = os.path.join(run_dir, "save")
@@ -2102,6 +2402,23 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         if method_cfg.get("add_noise", False):
             noise_rng = np.random.default_rng(seed + 9999)
             y = y + noise_rng.normal(0, NOISE_STD * float(y.std()), len(y))
+
+        # ── Optional: blind denoising of y (KNN + LOO-CV) ────────────
+        # Used by the 'spar_denoise' method: estimate E[y|X] without any
+        # prior on the noise level, then optimise DragonSR against the
+        # denoised target.
+        denoise_info = None
+        if method_cfg.get("denoise", False):
+            try:
+                y_denoised, denoise_info = _blind_denoise(X_df, y)
+                y = y_denoised
+                print(f"[{method_id}/{target}/run{run_id}] blind-denoise: "
+                      f"k_opt={denoise_info['k_opt']}  "
+                      f"loo_mse={denoise_info['loo_mse']:.3e}  "
+                      f"SNR≈{denoise_info['snr_db']:.1f} dB")
+            except Exception as _e:
+                print(f"[{method_id}/{target}/run{run_id}] denoise FAILED ({_e}); "
+                      f"continuing with raw y")
 
         # ── Variable augmentation for synthetic targets ───────────────
         # For Nguyen / physics targets (single or few vars), add x², x³, x⁴
@@ -2259,11 +2576,14 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
 
     elapsed = time.time() - t_start
 
-    return {
+    result = {
         "target":         target,
         "method":         method_id,
         "run_id":         run_id,
         "strategy":       strategy,
+        # Carry the stream id so the smart-parallel dispatcher can build
+        # a per-stream summary; harmless / absent otherwise.
+        "_stream_id":     method_cfg.get("_stream_id"),
         "loss":           float(best_loss),
         "r2":             float(1.0 - best_loss) if best_loss <= 1.0 else 0.0,
         "formula":        str(best_formula),
@@ -2303,6 +2623,12 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         # Statistical search-landscape SVG (3-panel: scatter+best, hist, conv vs time)
         "landscape_svg":    landscape_svg,
     }
+    # Pass raw winning prediction to the smart-parallel dispatcher when
+    # running inside a stream (numpy arrays — never JSON-serialised).
+    if method_cfg.get("_in_smart_stream"):
+        result["_best_pred_np"] = loss_state.get("best_pred_np")
+        result["_best_y_np"]    = loss_state.get("best_y_np")
+    return result
 
 
 def _extract_best_formula_from_log(log_path: str) -> str:
@@ -2849,6 +3175,9 @@ def _result_to_db_entry(r):
         total_t = int(r.get("actualT") if r.get("actualT") is not None else DRAGON_N_ITERATIONS)
         pop_k   = DRAGON_K_INIT
         max_c   = DRAGON_MAX_COMPLEXITY
+    # Smart-parallel extras (only present when method == 'spar').
+    actual_t_winner     = r.get("actualT_winner")
+    actual_t_per_stream = r.get("actualT_per_stream") or {}
     return {
         "oneMinusR2": round(finite_loss, 8) if finite_loss is not None else None,
         "mse":        None,
@@ -2859,6 +3188,8 @@ def _result_to_db_entry(r):
         "finalExpr":  str(r.get("formula", "")),
         "runtime":    round(float(r.get("time_s", 0)), 2),
         "totalT":     total_t,
+        "actualTWinner":   int(actual_t_winner) if actual_t_winner is not None else None,
+        "actualTPerStream": {str(k): int(v) for k, v in actual_t_per_stream.items()},
         "K":          pop_k,
         "maxComp":    max_c,
         "phase":      None,
@@ -3110,12 +3441,14 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 <tr>
   <th class="fcol" rowspan="2" style="vertical-align:bottom">Formula</th>
   <th class="gh-pysr" colspan="2">PySR</th>
-  <th class="gh-drag" colspan="11">DragonSR</th>
+  <th class="gh-drag" colspan="13">DragonSR</th>
 </tr>
 <tr>
   <th class="gh-pysr">Baseline</th>
   <th class="gh-pysr">+Noise</th>
   <th class="gh-drag">All ops ★ (ref)</th>
+  <th class="gh-drag">Smart par***</th>
+  <th class="gh-drag">Boosted spar***</th>
   <th class="gh-drag">+ConstBrick</th>
   <th class="gh-drag">All ops OLS</th>
   <th class="gh-drag">Curriculum*</th>
@@ -3125,7 +3458,7 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
   <th class="gh-drag">Dilat+offset</th>
   <th class="gh-drag">No OLS/rat/nest</th>
   <th class="gh-drag">Parallel</th>
-  <th class="gh-drag">Smart par***</th>
+  <th class="gh-drag">Smart par w/ denoise***</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
@@ -3234,7 +3567,7 @@ const FORMULAS=[
   {{id:'savi',name:'SAVI',cat:'remote',tex:'1.5(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+R+0.5)'}},
   {{id:'expreal',name:'Exp. réelles',cat:'other',tex:'\\\\text{{real exponentiation forms}}'}},
 ];
-const METHODS=['pysr','pysr_noise','allops','allops_const','allops_ols','curr','currpal','noise','novaug','dilaoff','noolsratn','par','spar'];
+const METHODS=['pysr','pysr_noise','allops','spar','boosted_spar','allops_const','allops_ols','curr','currpal','noise','novaug','dilaoff','noolsratn','par','spar_denoise'];
 const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
@@ -3489,7 +3822,7 @@ function _buildFormulaTabs(d, isPysr){{
 function openModal(fid,mid,run){{
   const f=FORMULAS.find(x=>x.id===fid);
   const midx=METHODS.indexOf(mid);
-  const mnames=['PySR baseline','PySR +Noise','All ops ★ (ref)','+ConstantBrick','All ops OLS','Curriculum*','Curr+palier**','+Noise','No var aug','Dilation+offset','No OLS/rat/nest','Parallel','Smart parallel***'];
+  const mnames=['PySR baseline','PySR +Noise','All ops ★ (ref)','Smart parallel***','Boosted spar***','+ConstantBrick','All ops OLS','Curriculum*','Curr+palier**','+Noise','No var aug','Dilation+offset','No OLS/rat/nest','Parallel','Smart parallel w/ denoise***'];
   pending={{fid,mid,run}};
   document.getElementById('mtitle').textContent='Log run result';
   document.getElementById('mflabel').value=`${{f.name}}  ·  ${{mnames[midx]}}  ·  Run ${{run+1}}`;
@@ -3502,7 +3835,19 @@ function openModal(fid,mid,run){{
   // ── Formula tabs (suppress R²/MSE info-line for PySR which uses raw MSE) ──
   _buildFormulaTabs(d, mid==='pysr');
   document.getElementById('mrt').value=d.runtime??'';
-  document.getElementById('miter').value=d.totalT??'';
+  // Total iterations (T): for smart-parallel ('spar') show
+  // total = sum(streams)  +  per-stream breakdown  +  winner count.
+  {{
+    let tval = (d.totalT==null) ? '' : Number(d.totalT).toLocaleString();
+    if (d.actualTPerStream && Object.keys(d.actualTPerStream).length){{
+      const parts = Object.entries(d.actualTPerStream)
+        .map(([k,v])=>`${{k}}=${{Number(v).toLocaleString()}}`).join(', ');
+      const winStr = (d.actualTWinner!=null)
+        ? `  ·  winner=${{Number(d.actualTWinner).toLocaleString()}}` : '';
+      tval = `${{Number(d.totalT).toLocaleString()}}  (Σ streams: ${{parts}}${{winStr}})`;
+    }}
+    document.getElementById('miter').value = tval;
+  }}
   document.getElementById('mpop').value=d.K??'';
   document.getElementById('mcomp').value=d.maxComp??'';
   // Min search loss reached (Dragon: alignment loss = 1−corr; PySR: best MSE)
@@ -3624,6 +3969,8 @@ function saveRun(){{
     finalExpr:DB[k]?.finalExpr??null,
     runtime:DB[k]?.runtime??null,
     totalT:DB[k]?.totalT??null,
+    actualTWinner:DB[k]?.actualTWinner??null,
+    actualTPerStream:DB[k]?.actualTPerStream??{{}},
     K:DB[k]?.K??null,
     maxComp:DB[k]?.maxComp??null,
     phase:DB[k]?.phase??null,
@@ -3642,7 +3989,7 @@ function saveRun(){{
 function showTT(e,fid,mid,run){{
   const k=key(fid,mid,run);const d=DB[k];
   const f=FORMULAS.find(x=>x.id===fid);
-  const mnames=['PySR','PySR +Noise','All ops ★ (ref)','ConstBrick','All ops OLS','Curriculum','Curr+palier','+Noise','No var aug','Dil+off','No OLS','Parallel','Smart par'];
+  const mnames=['PySR','PySR +Noise','All ops ★ (ref)','Smart par','Boosted spar','ConstBrick','All ops OLS','Curriculum','Curr+palier','+Noise','No var aug','Dil+off','No OLS','Parallel','Smart par+denoise'];
   const midx=METHODS.indexOf(mid);
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
@@ -3671,6 +4018,12 @@ function showTT(e,fid,mid,run){{
     if(d.phase) h+=`<div class="ttr"><span>Phase</span><span>${{PHASE_LABELS[d.phase]||d.phase}}</span></div>`;
     if(d.maxComp) h+=`<div class="ttr"><span>Max complexity</span><span>${{d.maxComp}}</span></div>`;
     if(d.totalT) h+=`<div class="ttr"><span>Total iters T</span><span>${{d.totalT.toLocaleString()}}</span></div>`;
+    if(d.actualTPerStream && Object.keys(d.actualTPerStream).length){{
+      const parts=Object.entries(d.actualTPerStream)
+        .map(([k,v])=>`${{k}}:${{Number(v).toLocaleString()}}`).join('  ');
+      h+=`<div class="ttr"><span>Streams T</span><span style="font-size:9px">${{parts}}</span></div>`;
+      if(d.actualTWinner!=null) h+=`<div class="ttr"><span>Winner T</span><span>${{Number(d.actualTWinner).toLocaleString()}}</span></div>`;
+    }}
     if(d.K) h+=`<div class="ttr"><span>Pop K</span><span>${{d.K}}</span></div>`;
     if(d.runtime) h+=`<div class="ttr"><span>Runtime</span><span>${{d.runtime.toFixed(2)}}s</span></div>`;
     if(d.ops) h+=`<div class="ttr"><span>Ops</span><span style="font-size:9px">${{d.ops}}</span></div>`;
