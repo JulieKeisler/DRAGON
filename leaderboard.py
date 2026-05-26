@@ -12,31 +12,31 @@ Launch with:  python -u leaderboard.py
 
 # ── Formula IDs — must match the HTML FORMULAS[].id list exactly ─────────────
 TARGETS = [
+    # ── TEST RUN: only n4 and ndvi ──────────────────────────────────────────────────────
+    # "n4", "ndvi"
     # Nguyen benchmarks (synthetic)
-    "n1",# "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-    #  "n11", "n1",
+    "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
     # Physics (synthetic)
-    "leavitt"# "rydberg",# "hubble", "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt"
+    "hubble", "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck",
     # Remote sensing (from data/6000_points.csv)
-    # "bai", "savi", "bsi"
-   #"wi2015", "awei_sh", "bai"# "ndvi", "savi", "bsi", , "mndwi", "vari",
+    "wi2015", "awei_sh", "bai", "ndvi", "savi", "bsi", "evi2", "mndwi", "vari", "nirv",
 ]
 
 # ── Runs per target (R1–R5 in the HTML; strategies match HTML pill labels) ────
-N_RUNS          = 2
+N_RUNS          = 2              # todo: change back to 2
 INIT_STRATEGIES = ["random", "diverse", "xgboost", "warmstart", "adversarial"]
 
 # ── DragonSR search budget ────────────────────────────────────────────────────
-DRAGON_N_ITERATIONS   = 1000     # total iterations (raise to ~2000 for real runs)
-DRAGON_K_INIT         = 50      # population size  (raise to ~100  for real runs)
-DRAGON_MAX_COMPLEXITY = 5      # max DAG complexity (raise to ~7  for real runs)
-DRAGON_T_PER_LEVEL    = 100     # iters per complexity level
-DRAGON_LOSS_THRESHOLD = 1e-30  # stop early if loss ≤ this
-
-# ── Variable augmentation for synthetic targets (Nguyen / physics) ────────────
-# Adds x², x³, …, x^VAR_AUG_MAX_DEGREE as extra columns so OLS can find
-# polynomial combinations directly (e.g. x+x²+x³ for Nguyen 1).
-VAR_AUG_MAX_DEGREE = 5   # raise to 6+ for higher-degree Nguyen formulas
+# DRAGON_N_ITERATIONS : hard cap on the *total* number of iterations across all
+#   complexity levels (curriculum) or for the single flat run.  Each complexity
+#   level receives up to DRAGON_T_PER_LEVEL evaluations; once the cumulative
+#   total would exceed DRAGON_N_ITERATIONS the remaining budget is trimmed and
+#   the search stops early.
+DRAGON_N_ITERATIONS   = 10000      # 10000
+DRAGON_K_INIT         = 500       # 500
+DRAGON_MAX_COMPLEXITY = 10        # 10
+DRAGON_T_PER_LEVEL    = 1000       # 1000
+DRAGON_LOSS_THRESHOLD = 1e-30   # stop early if loss ≤ this
 
 # Gaussian noise level applied to y for the +Noise ablation method
 # (relative to std(y)).  Only used when method_cfg["add_noise"] is True.
@@ -58,8 +58,7 @@ SPAR_OP_GROUPS = {
 }
 
 # ── DragonSR — single method config  (id must match an HTML METHODS entry) ────
-# id:        "curr"  — curriculum DragonSR (matches HTML column "Curriculum*")
-# loss_mode: "full"  — nested OLS + poly-rational OLS (full pipeline)
+
 DRAGON_METHOD_CONFIGS = [
 
     {
@@ -103,104 +102,58 @@ DRAGON_METHOD_CONFIGS = [
     },
     {
         "id":          "spar_denoise",
-        "description": ("DragonSR — smart-parallel + blind denoising: same 4 "
-                        "op-subset streams as 'spar', but the target y is "
-                        "first denoised by a non-parametric KNN regressor "
-                        "whose neighbourhood size is chosen by leave-one-out "
-                        "CV (no prior assumption on the noise level)."),
+        "description": ("DragonSR — smart-parallel + stochastic subsampling "
+                        "denoising: each candidate formula is evaluated on a "
+                        "fresh random subset of the data at every iteration.  "
+                        "Noisy samples never consistently dominate the loss "
+                        "signal; their influence is diluted by implicit "
+                        "averaging across iterations (SSD)."),
         "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
         "curriculum":  True,
         "parallel_N":  1,
         "loss_mode":   "full",
         "var_aug":     True,
-        "add_noise":   True,
-        "smart_parallel": True,
-        "denoise":        True,
+        "add_noise":   False,
+        "smart_parallel":  True,
+        # subsample_ratio: fraction of the dataset drawn without replacement
+        # at each loss evaluation.  0.5 = 50 % of rows per call.
+        "denoise_method":  "stoch_sub",
+        "subsample_ratio": 0.2,
     },
     # ── Ablations of the reference method (allops) ────────────────────────
-    # {
-    #     "id":          "noolsratn",
-    #     "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
-    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "channel",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    # },
-    # {
-    #     "id":          "novaug",
-    #     "description": "Ablation of allops — NO variable augmentation (no x^2..x^k)",
-    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "full",
-    #     "var_aug":     False,
-    #     "add_noise":   False,
-    # },
-    # {
-    #     "id":          "noise",
-    #     "description": f"Ablation of allops — +Gaussian noise on y (σ = NOISE_STD·std(y))",
-    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "full",
-    #     "var_aug":     True,
-    #     "add_noise":   True,
-    # },
-    # {
-    #     "id":          "allops_const",
-    #     "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
-    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "full",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    #     "optimize_constants": True,
-    # },
-    # {
-    #     "id":          "allops_ols",
-    #     "description": "DragonSR — all ops + sparse OLS only",
-    #     "operators":   ["select", "unary", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "ols",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    # },
-
-    ################################################
-    #################### Legacy ####################
-    ################################################
-    # {
-    #     "id":          "allops_ols_complexity",
-    #     "description": "DragonSR — all ops + sparse OLS only, complexity * T_PER_LEVEL budget",
-    #     "operators":   ["select", "unary", "ln", "exp"], #"sin", "cos"
-    #     "curriculum":  True,
-    #     "parallel_N":  1,
-    #     "loss_mode":   "ols",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    #     "budget_mode": "complexity",
-    # },
-    # {
-    #     "id":          "curr",
-    #     "description": "DragonSR — full OLS pipeline (nested + poly-rational)",
-    #     "operators":   ["select", "unary", "power"], # "sum" not placed for now
-    #     "curriculum":  True,   # single phase; multi-phase curriculum: TODO
-    #     "parallel_N":  1,
-    #     "loss_mode":   "full",
-    #     "var_aug":     True,
-    #     "add_noise":   False,
-    # },
+    {
+        "id":          "noolsratn",
+        "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "channel",
+        "var_aug":     True,
+        "add_noise":   False,
+    },
+    {
+        "id":          "allops_const",
+        "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
+        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
+        "curriculum":  True,
+        "parallel_N":  1,
+        "loss_mode":   "channel",
+        "var_aug":     True,
+        "add_noise":   False,
+        "optimize_constants": True,
+    }
 ]
 
 # ── PySR config ───────────────────────────────────────────────────────────────
-PYSR_NITERATIONS     = 1000   # TEST: restore to 10000
-PYSR_POPULATIONS     = 5      # TEST: restore to 15
-PYSR_POPULATION_SIZE = 30     # TEST: restore to 33
+PYSR_NITERATIONS     = 4000   # 4000
+PYSR_POPULATIONS     = 5      # 5
+PYSR_POPULATION_SIZE = 120     # 120
+PYSR_MAXSIZE         = 30     # 30
 PYSR_JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.dragonenv/julia_env"
+# PySR's operators:
+
+PYSR_BINARY_OPERATORS = ["+", "-", "*", "/"]
+PYSR_UNARY_OPERATORS  = ["log", "exp", "sin", "cos"]
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_PATH      = "data/6000_points.csv"   # remote sensing CSV
@@ -211,7 +164,7 @@ LOG_SUFFIX     = "_found_formulas.txt"
 # ── Misc ──────────────────────────────────────────────────────────────────────
 RANDOM_SEED    = 42
 N_TOP_FEATURES = 10
-N_SYNTH_SAMPLES = 200    # samples for physics/Nguyen synthetic datasets
+N_SYNTH_SAMPLES = 1000   # samples for physics/Nguyen synthetic datasets
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -219,6 +172,10 @@ N_SYNTH_SAMPLES = 200    # samples for physics/Nguyen synthetic datasets
 # ══════════════════════════════════════════════════════════════════════════════
 import os
 import sys
+
+# Allow overriding Julia config via environment variables (cluster usage)
+if os.environ.get("PYSR_JULIA_PROJECT"):
+    PYSR_JULIA_PROJECT = os.environ["PYSR_JULIA_PROJECT"]
 import time
 import json
 import shutil
@@ -377,7 +334,20 @@ def _dag_summary(adj, nodes):
     except Exception:
         dag_svg = None
 
-    return ops_used_str, has_const_str, dag_size, dag_text, dag_svg
+    # ── Structured DAG data (JSON-serialisable) for JS fallback renderer ─────
+    dag_data = []
+    try:
+        _n = adj.shape[0]
+        dag_data = [
+            {"idx": i,
+             "children": [int(j) for j in range(_n) if adj[i, j]],
+             "desc": descs[i] if i < len(descs) else "?"}
+            for i in range(_n)
+        ]
+    except Exception:
+        dag_data = []
+
+    return ops_used_str, has_const_str, dag_size, dag_text, dag_svg, dag_data
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -648,6 +618,86 @@ def _make_pysr_tree_svg(formula_str: str):
         svg = G.pipe(format="svg").decode("utf-8", errors="ignore")
         i = svg.find("<svg")
         return svg[i:] if i >= 0 else svg
+    except Exception:
+        return None
+
+
+def _make_pysr_tree_data(formula_str: str):
+    """Parse a PySR formula string via sympy and return a JSON-serialisable
+    node list [{id, label, kind, children}] for the JS _renderFormulaTree
+    renderer.  Works without graphviz.  Returns None on failure."""
+    try:
+        if not formula_str or formula_str.strip() in ("N/A", ""):
+            return None
+        import sympy as sp
+        cleaned = formula_str
+        if "=" in cleaned and cleaned.split("=")[0].strip().isidentifier():
+            cleaned = cleaned.split("=", 1)[1].strip()
+        try:
+            expr = sp.sympify(cleaned, evaluate=False)
+        except Exception:
+            try:
+                from sympy.parsing.sympy_parser import (
+                    parse_expr, standard_transformations,
+                    implicit_multiplication_application, convert_xor)
+                tr = (standard_transformations
+                      + (implicit_multiplication_application, convert_xor))
+                expr = parse_expr(cleaned, evaluate=False, transformations=tr)
+            except Exception:
+                return None
+        _LABELS = {"Add": "+", "Mul": "\u00d7", "Pow": "^",
+                   "exp": "exp", "log": "log",
+                   "sin": "sin", "cos": "cos",
+                   "sqrt": "\u221a", "Abs": "|x|"}
+        nodes = []
+
+        def _visit(node):
+            idx = len(nodes)
+            is_atom = node.is_Atom
+            if is_atom and node.is_Number:
+                try:
+                    lbl = f"{float(node):.4g}"
+                except Exception:
+                    lbl = str(node)
+            elif is_atom:
+                lbl = str(node)
+            else:
+                lbl = _LABELS.get(type(node).__name__, type(node).__name__)
+            kind = ("var" if (is_atom and not node.is_Number)
+                    else "const" if is_atom else "op")
+            nodes.append({"id": idx, "label": lbl, "kind": kind, "children": []})
+            for child in getattr(node, "args", ()):
+                child_idx = _visit(child)
+                nodes[idx]["children"].append(child_idx)
+            return idx
+
+        _visit(expr)
+        if not nodes:
+            return None
+        # Binarize: sympy flattens Add/Mul into n-ary nodes; convert to binary
+        # right-leaning chains so the tree always has at most 2 children/node.
+        bin_nodes: list = []
+
+        def _binarize(old_idx: int) -> int:
+            nd = nodes[old_idx]
+            old_ch = nd["children"]
+            new_ch = [_binarize(c) for c in old_ch]
+            if len(new_ch) <= 2:
+                idx = len(bin_nodes)
+                bin_nodes.append({"id": idx, "label": nd["label"],
+                                   "kind": nd["kind"], "children": new_ch})
+                return idx
+            # Right-leaning: Add(a,b,c,d) -> Add(a, Add(b, Add(c,d)))
+            chain = new_ch[-1]
+            for c in reversed(new_ch[:-1]):
+                idx = len(bin_nodes)
+                bin_nodes.append({"id": idx, "label": nd["label"],
+                                   "kind": nd["kind"], "children": [c, chain]})
+                chain = idx
+            return chain
+
+        _binarize(0)
+        return bin_nodes if bin_nodes else None
     except Exception:
         return None
 
@@ -954,6 +1004,8 @@ def build_dataset(target: str, data_path: str = DATA_PATH):
         df['wi2015'] = (1.7204 + 171*(df['B2'] + df['B3'] + df['B4'])
                         - 3*(df['B2']*df['B3']) - 1.8*(df['B2']*df['B4'])
                         - 48*(df['B3']*df['B4']) - 0.8*(df['B8']*df['B11']))
+    elif target == "nirv":
+        df['nirv'] = df['B8'] * ((df['B8'] - df['B4']) / (df['B8'] + df['B4']))
 
     if target not in df.columns:
         raise ValueError(f"Target '{target}' not found / not defined in build_dataset().")
@@ -1025,6 +1077,91 @@ def _blind_denoise(X: pd.DataFrame, y: pd.Series, k_grid=None, max_k=None):
         {"k_opt": int(k_opt), "loo_mse": float(loo_mse),
          "noise_var": float(loo_mse), "snr_db": float(snr_db)},
     )
+
+
+def _gpr_denoise(X: pd.DataFrame, y: pd.Series, max_samples: int = 500):
+    """Denoise *y* using Gaussian Process Regression (scikit-learn).
+
+    Fits an RBF + WhiteKernel GP to (X, y), optimises hyper-parameters via
+    marginal likelihood, then returns ŷ = GP.predict(X) as the denoised
+    target.  Large datasets are subsampled to ``max_samples`` rows for
+    fitting (GPR is O(n³)) while prediction still covers all rows.
+
+    Returns
+    -------
+    y_clean : pd.Series  — denoised target (same index/name as ``y``)
+    info    : dict       — {"method", "noise_level", "length_scale", "n_fit"}
+    """
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+    from sklearn.preprocessing import StandardScaler as _SS
+
+    n = len(y)
+    if n < 5:
+        return y.copy(), {"method": "gpr", "n_fit": n, "noise_level": None}
+
+    _scaler_X = _SS()
+    Xs = _scaler_X.fit_transform(X.values.astype(float))
+    yv = y.values.astype(float)
+
+    # Subsample for fitting when n is large (GPR is O(n³))
+    if n > max_samples:
+        _rng = np.random.default_rng(RANDOM_SEED)
+        _idx = _rng.choice(n, size=max_samples, replace=False)
+        Xs_fit, yv_fit = Xs[_idx], yv[_idx]
+    else:
+        Xs_fit, yv_fit = Xs, yv
+
+    kernel = RBF(length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level_bounds=(1e-6, 1e1))
+    gpr = GaussianProcessRegressor(
+        kernel=kernel, n_restarts_optimizer=2, normalize_y=True,
+        random_state=RANDOM_SEED,
+    )
+    gpr.fit(Xs_fit, yv_fit)
+    y_hat = gpr.predict(Xs)
+
+    # Extract fitted kernel parameters for logging
+    try:
+        noise_level   = float(gpr.kernel_.k2.noise_level)
+        length_scale  = gpr.kernel_.k1.length_scale
+        if hasattr(length_scale, "__len__"):
+            length_scale = float(np.mean(length_scale))
+        else:
+            length_scale = float(length_scale)
+    except Exception:
+        noise_level, length_scale = None, None
+
+    return (
+        pd.Series(y_hat, index=y.index, name=y.name),
+        {"method": "gpr", "n_fit": len(Xs_fit),
+         "noise_level": noise_level, "length_scale": length_scale},
+    )
+
+
+def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
+    """Dispatch to the requested denoising helper.
+
+    Parameters
+    ----------
+    method : "knn" → ``_blind_denoise`` (KNN leave-one-out CV)
+             "gpr" → ``_gpr_denoise``   (Gaussian Process Regression)
+
+    Returns
+    -------
+    (y_clean, info) — same convention as ``_blind_denoise`` / ``_gpr_denoise``.
+    """
+    if method == "knn":
+        return _blind_denoise(X, y)
+    elif method == "gpr":
+        return _gpr_denoise(X, y)
+    elif method == "stoch_sub":
+        # Not a pre-processing step: the actual subsampling happens inside
+        # loss_function at each Dragon evaluation.  Return y unchanged so
+        # the run_all precompute loop is a transparent no-op for this method.
+        return y.copy(), {"method": "stoch_sub", "note": "in-loop subsampling"}
+    else:
+        raise ValueError(f"Unknown denoise_method: {method!r}. "
+                         f"Supported values: 'knn', 'gpr', 'stoch_sub'.")
 
 
 def xgboost_feature_selection(X: pd.DataFrame, y: pd.Series, n_top: int = N_TOP_FEATURES):
@@ -1866,7 +2003,8 @@ def build_search_space(feature_names, feature_scores, operator_keys, all_combos=
 
 def make_loss_function(search_space, train_loader, device, num_features,
                        feature_names, log_path, loss_mode="full",
-                       optimize_constants=False):
+                       optimize_constants=False,
+                       subsample_ratio=1.0, _X_np=None, _y_np=None):
     """Factory returning (loss_function, state_dict) for DRAGON.
 
     loss_mode: 'full' = nested+rational OLS | 'ols' = sparse linear | 'channel' = best channel
@@ -1937,14 +2075,31 @@ def make_loss_function(search_space, train_loader, device, num_features,
                         break
 
         model.eval()
-        all_pred, all_true = [], []
-        with torch.no_grad():
-            for Xb, yb in train_loader:
-                Xb, yb = Xb.to(device), yb.to(device)
-                all_pred.append(model(Xb).detach().cpu())
-                all_true.append(yb.detach().cpu())
-        pred_all = torch.cat(all_pred)
-        true_all = torch.cat(all_true)
+        # ── Stochastic subsampling: draw a fresh random subset each call ──
+        # Each DAG evaluation sees a different slice of the data; noisy
+        # samples never consistently dominate the loss signal.  Over many
+        # iterations the noise averages out (implicit denoising).
+        if subsample_ratio < 1.0 and _X_np is not None and _y_np is not None:
+            _n_total = len(_y_np)
+            _n_sub   = max(int(_n_total * subsample_ratio), min(_n_total, 20))
+            # Seed on idx so the same DAG gets the same subset within one
+            # Dragon iteration but different subsets across iterations.
+            _sub_rng = np.random.default_rng(int(idx) % (2 ** 31))
+            _sub_idx = _sub_rng.choice(_n_total, _n_sub, replace=False)
+            _Xb_sub  = torch.tensor(_X_np[_sub_idx], dtype=torch.float32).to(device)
+            _yb_sub  = torch.tensor(_y_np[_sub_idx], dtype=torch.float32).reshape(-1, 1).to(device)
+            with torch.no_grad():
+                pred_all = model(_Xb_sub).detach().cpu()
+            true_all = _yb_sub.detach().cpu()
+        else:
+            all_pred, all_true = [], []
+            with torch.no_grad():
+                for Xb, yb in train_loader:
+                    Xb, yb = Xb.to(device), yb.to(device)
+                    all_pred.append(model(Xb).detach().cpu())
+                    all_true.append(yb.detach().cpu())
+            pred_all = torch.cat(all_pred)
+            true_all = torch.cat(all_true)
 
         (mse, selected_c, ols_weights, alignment_loss,
          _lr, nested, rational, valid_idx_global, _analysis) = _ols_eval(pred_all, true_all, loss_mode)
@@ -2009,12 +2164,13 @@ def make_loss_function(search_space, train_loader, device, num_features,
 
                 # ── DAG meta (ops list, const presence, size, text view) ────
                 try:
-                    _ops_str, _const_str, _dag_size, _dag_text, _dag_svg = _dag_summary(adj, nodes)
+                    _ops_str, _const_str, _dag_size, _dag_text, _dag_svg, _dag_data = _dag_summary(adj, nodes)
                     _state["ops_used"]   = _ops_str
                     _state["has_const"]  = _const_str
                     _state["dag_size"]   = _dag_size
                     _state["dag_text"]   = _dag_text
                     _state["dag_svg"]    = _dag_svg
+                    _state["dag_data"]   = _dag_data
                 except Exception:
                     pass
 
@@ -2218,7 +2374,9 @@ def _build_random_seed_dags(feature_names, operator_keys, seed=0, n_seeds=200):
 #  DRAGON WORKER — runs in a subprocess
 # ══════════════════════════════════════════════════════════════════════════════
 
-def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
+def dragon_worker(method_cfg: dict, target: str, run_id: int,
+                  *, _y_predenoised=None, _denoise_info=None,
+                  _max_iters: int = None) -> dict:
     """Entry point for each parallel DRAGON process.
 
     method_cfg : one element of DRAGON_METHOD_CONFIGS
@@ -2235,12 +2393,20 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         stream_results = []
         with ThreadPoolExecutor(max_workers=len(SPAR_OP_GROUPS)) as ex:
             futs = {}
+            # Divide the hard cap evenly across parallel streams so the
+            # total actual_T stays within DRAGON_N_ITERATIONS.
+            _n_streams      = len(SPAR_OP_GROUPS)
+            _iter_cap       = _max_iters if _max_iters is not None else DRAGON_N_ITERATIONS
+            _stream_budget  = max(1, _iter_cap // _n_streams)
             for stream_id, ops in SPAR_OP_GROUPS.items():
                 sub_cfg = dict(method_cfg)
                 sub_cfg["operators"]         = list(ops)
                 sub_cfg["_in_smart_stream"]  = True
                 sub_cfg["_stream_id"]        = stream_id
-                futs[ex.submit(dragon_worker, sub_cfg, target, run_id)] = stream_id
+                futs[ex.submit(dragon_worker, sub_cfg, target, run_id,
+                               _y_predenoised=_y_predenoised,
+                               _denoise_info=_denoise_info,
+                               _max_iters=_stream_budget)] = stream_id
             for f in as_completed(futs):
                 try:
                     stream_results.append(f.result())
@@ -2403,16 +2569,32 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
             noise_rng = np.random.default_rng(seed + 9999)
             y = y + noise_rng.normal(0, NOISE_STD * float(y.std()), len(y))
 
-        # ── Optional: blind denoising of y (KNN + LOO-CV) ────────────
-        # Used by the 'spar_denoise' method: estimate E[y|X] without any
-        # prior on the noise level, then optimise DragonSR against the
-        # denoised target.
+        # ── Optional: blind denoising of y ──────────────────────────
+        # The preferred path uses a precomputed (y_clean, info) passed in
+        # from run_all(), where denoising is done ONCE per (target, run_id)
+        # and shared across all Dragon methods that request the same method.
+        # Fallback: compute here if no precomputed value was provided.
         denoise_info = None
-        if method_cfg.get("denoise", False):
+        dm = method_cfg.get("denoise_method")
+        if dm:
+            if _y_predenoised is not None:
+                # Use the precomputed denoised y (fast path — no recomputation)
+                y = _y_predenoised
+                denoise_info = _denoise_info
+            else:
+                # Fallback: compute denoising here (e.g. called standalone)
+                try:
+                    y, denoise_info = _apply_denoise(X_df, y, dm)
+                    print(f"[{method_id}/{target}/run{run_id}] denoise({dm}): "
+                          f"{denoise_info}")
+                except Exception as _e:
+                    print(f"[{method_id}/{target}/run{run_id}] denoise({dm}) "
+                          f"FAILED ({_e}); continuing with raw y")
+        elif method_cfg.get("denoise", False):
+            # Legacy key for backward compatibility
             try:
-                y_denoised, denoise_info = _blind_denoise(X_df, y)
-                y = y_denoised
-                print(f"[{method_id}/{target}/run{run_id}] blind-denoise: "
+                y, denoise_info = _blind_denoise(X_df, y)
+                print(f"[{method_id}/{target}/run{run_id}] blind-denoise(knn): "
                       f"k_opt={denoise_info['k_opt']}  "
                       f"loo_mse={denoise_info['loo_mse']:.3e}  "
                       f"SNR≈{denoise_info['snr_db']:.1f} dB")
@@ -2421,15 +2603,105 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
                       f"continuing with raw y")
 
         # ── Variable augmentation for synthetic targets ───────────────
-        # For Nguyen / physics targets (single or few vars), add x², x³, x⁴
-        # so the OLS layer can discover polynomial combinations directly.
+        # Progressive template-matching: rank all unary/binary candidate
+        # features by Pearson r² with y; add only the single best feature
+        # (or the two features that form the best binary pair when neither
+        # a single candidate nor a raw feature already explains y well).
         use_var_aug = method_cfg.get("var_aug", True)
         if use_var_aug and target in _SYNTH_CATEGORIES:
-            aug_cols = {}
-            for col in X_df.columns:
-                for d in range(2, VAR_AUG_MAX_DEGREE + 1):
-                    aug_cols[f"{col}^{d}"] = X_df[col].values ** d
-            X_df = pd.concat([X_df, pd.DataFrame(aug_cols, index=X_df.index)], axis=1)
+            from itertools import combinations as _combos
+            _F32_MAX  = np.finfo(np.float32).max
+            _THRESHOLD = 0.999
+            _raw_set  = set(X_df.columns.tolist())
+            _y_arr    = y.values.ravel().astype(np.float64)
+            # ── Candidate generation ──────────────────────────────────
+            _cands = {c: X_df[c].values.astype(np.float64) for c in X_df.columns}
+            for _c in list(X_df.columns):
+                _v = _cands[_c]
+                _cands[f"({_c})**2"]            = _v ** 2
+                _cands[f"({_c})**3"]            = _v ** 3
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    _cands[f"1/({_c})"]         = np.where(np.abs(_v) > 1e-12, 1.0 / _v, 0.0)
+                _cands[f"sqrt(abs({_c}))"]      = np.sqrt(np.abs(_v))
+                _cands[f"-({_c})"]              = -_v
+                _cands[f"log(abs({_c})+1e-12)"] = np.log(np.abs(_v) + 1e-12)
+            for _ci, _cj in _combos(list(X_df.columns), 2):
+                _vi = X_df[_ci].values.astype(np.float64)
+                _vj = X_df[_cj].values.astype(np.float64)
+                _cands[f"({_ci}+{_cj})"]  = _vi + _vj
+                _cands[f"({_ci}-{_cj})"]  = _vi - _vj
+                _cands[f"({_cj}-{_ci})"]  = _vj - _vi
+                _cands[f"({_ci}*{_cj})"]  = np.clip(_vi * _vj, -_F32_MAX, _F32_MAX)
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    _cands[f"({_ci}/{_cj})"] = np.where(np.abs(_vj) > 1e-12, _vi / _vj, 0.0)
+                    _cands[f"({_cj}/{_ci})"] = np.where(np.abs(_vi) > 1e-12, _vj / _vi, 0.0)
+            # ── Clean (clip, drop constant non-raw features) ─────────
+            _cands = {
+                _nm: np.clip(np.where(np.isfinite(_v), _v, 0.0), -_F32_MAX, _F32_MAX)
+                for _nm, _v in _cands.items()
+                if _nm in _raw_set or np.std(_v) > 1e-15
+            }
+            _cand_names = list(_cands.keys())
+            _cand_vals  = np.array([_cands[_nm] for _nm in _cand_names], dtype=np.float64)
+            # ── Vectorised Pearson r² (batch over N candidates × n_samples) ──
+            _n   = len(_y_arr)
+            _y_c = _y_arr - _y_arr.mean()
+            _y_s = _y_arr.std()
+
+            def _batch_r2(_T):
+                _T  = np.where(np.isfinite(_T), _T, 0.0)
+                _Tc = _T - _T.mean(axis=1, keepdims=True)
+                _Ts = np.sqrt((_Tc ** 2).mean(axis=1))
+                _d  = _Tc @ _y_c / _n
+                return np.divide(_d, _Ts * _y_s,
+                                 where=_Ts > 1e-15,
+                                 out=np.zeros(_T.shape[0])) ** 2
+
+            # ── Phase 1: best single candidate ───────────────────────
+            _r2_s     = _batch_r2(_cand_vals)
+            _bi       = int(np.argmax(_r2_s))
+            _best_s_nm, _best_s_r2 = _cand_names[_bi], float(_r2_s[_bi])
+            # ── Phase 2: best binary pair ─────────────────────────────
+            _N    = len(_cand_names)
+            _bp_r2 = 0.0
+            _bp    = (None, None)
+            for _i in range(_N):
+                _V2 = _cand_vals[_i + 1:]
+                if _V2.shape[0] == 0:
+                    break
+                _v1 = _cand_vals[_i]
+                _br = np.zeros(_V2.shape[0])
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    _templates = [
+                        _v1 + _V2,
+                        _v1 - _V2,
+                        _V2 - _v1,
+                        np.clip(_v1 * _V2, -_F32_MAX, _F32_MAX),
+                        np.where(np.abs(_V2) > 1e-12, _v1 / _V2, 0.0),
+                        np.where(np.abs(_v1) > 1e-12, _V2 / _v1, 0.0),
+                    ]
+                for _T in _templates:
+                    _r2 = _batch_r2(np.atleast_2d(_T))
+                    _m  = _r2 > _br
+                    _br[_m] = _r2[_m]
+                for _k in range(_V2.shape[0]):
+                    if _br[_k] > _bp_r2:
+                        _bp_r2 = _br[_k]
+                        _bp    = (_cand_names[_i], _cand_names[_i + 1 + _k])
+            # ── Decision: prefer single if r² is high enough ─────────
+            _s_new = 0 if _best_s_nm in _raw_set else 1
+            _p_new = sum(1 for _nm in _bp if _nm and _nm not in _raw_set)
+            if _best_s_r2 >= _THRESHOLD and _s_new <= _p_new:
+                _to_add = [] if _best_s_nm in _raw_set else [_best_s_nm]
+                print(f"[var_aug/{target}] single: {_best_s_nm}  r²={_best_s_r2:.4f}")
+            else:
+                _to_add = [_nm for _nm in _bp if _nm and _nm not in _raw_set]
+                print(f"[var_aug/{target}] pair: {_bp}  r²={_bp_r2:.4f}")
+            if _to_add:
+                X_df = pd.concat(
+                    [X_df, pd.DataFrame({_nm: _cands[_nm] for _nm in _to_add},
+                                        index=X_df.index)], axis=1)
+            print(f"[var_aug/{target}] {X_df.shape[1]} features after augmentation")
 
         # ── Feature selection / init strategy ────────────────────────
         if use_var_aug and strategy in ("xgboost", "diverse"):
@@ -2468,10 +2740,23 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         )
 
         loss_mode = method_cfg.get("loss_mode", "full")
+        # ── Stochastic subsampling: pass raw arrays to make_loss_function ──
+        # When denoise_method == "stoch_sub" the actual denoising is done
+        # inside each loss_function call (fresh random subset per eval).
+        # No y pre-processing needed — just capture X_sel / y as numpy arrays.
+        _subsample_ratio = 1.0
+        _X_np_sub        = None
+        _y_np_sub        = None
+        if method_cfg.get("denoise_method") == "stoch_sub":
+            _subsample_ratio = float(method_cfg.get("subsample_ratio", 0.5))
+            _X_np_sub = X_sel.values.astype(np.float32)
+            _y_np_sub = y.values.astype(np.float32).ravel()
         loss_fn, loss_state = make_loss_function(
             search_space, loader, device, num_features,
             feature_names, log_path, loss_mode=loss_mode,
             optimize_constants=method_cfg.get("optimize_constants", False),
+            subsample_ratio=_subsample_ratio,
+            _X_np=_X_np_sub, _y_np=_y_np_sub,
         )
 
         # ── Diverse init: build seed_dags (chain/fan/skip/rand topologies)
@@ -2485,24 +2770,30 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         os.makedirs(save_dir, exist_ok=True)
         parallel_N = method_cfg.get("parallel_N", 1)
         use_curriculum = method_cfg.get("curriculum", False)
-        use_palier     = method_cfg.get("curriculum_palier", False)
 
         if use_curriculum:
-            global_best  = np.inf
-            prev_plateau = False
-            budget_mode  = method_cfg.get("budget_mode", "default")
+            global_best   = np.inf
+            budget_mode   = method_cfg.get("budget_mode", "default")
+            total_iters   = 0  # cumulative iterations across all levels
+            _iter_cap     = _max_iters if _max_iters is not None else DRAGON_N_ITERATIONS
             for complexity in range(1, DRAGON_MAX_COMPLEXITY + 1):
+                # ── How many iterations remain in the global budget? ──
+                remaining = _iter_cap - total_iters
+                if remaining <= 0:
+                    break  # global cap exhausted
                 dag.complexity = complexity
                 clean = (complexity == 1)
+                _csv_path = os.path.join(save_dir, "computation_file.csv")
+                pop_size  = (len(pd.read_csv(_csv_path))
+                             if not clean and os.path.exists(_csv_path) else 0)
                 if clean or budget_mode == "complexity":
-                    T_level = DRAGON_T_PER_LEVEL * complexity
+                    T_level = pop_size + complexity * DRAGON_T_PER_LEVEL
                     extra   = {}
                 else:
-                    extra = {"pop_path": save_dir}
-                    pop_size = len(pd.read_csv(os.path.join(save_dir, "computation_file.csv")))
-                    T_level = pop_size + DRAGON_T_PER_LEVEL * complexity
-                if use_palier and prev_plateau:
-                    T_level = int(DRAGON_T_PER_LEVEL * 1.5)
+                    extra   = {"pop_path": save_dir}
+                    T_level = pop_size + complexity * DRAGON_T_PER_LEVEL
+                # Cap to the remaining global budget
+                T_level = min(T_level, remaining)
                 sa_kwargs = dict(
                     search_space=search_space,
                     evaluation=loss_fn,
@@ -2519,6 +2810,12 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
                     sa_kwargs["models"] = seed_models
                 sa = Mutant_UCB(**sa_kwargs)
                 sa.run()
+                # Update cumulative budget from the CSV (actual evaluations done)
+                try:
+                    _csv = os.path.join(save_dir, "computation_file.csv")
+                    total_iters = len(pd.read_csv(_csv))
+                except Exception:
+                    total_iters += T_level  # fallback estimate
                 level_best = sa.min_loss
                 prev_plateau = (level_best >= global_best - 1e-6)
                 global_best  = min(global_best, level_best)
@@ -2526,10 +2823,11 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
                     break
             best_loss = global_best
         else:
+            _iter_cap = _max_iters if _max_iters is not None else DRAGON_N_ITERATIONS
             sa_kwargs = dict(
                 search_space=search_space,
                 evaluation=loss_fn,
-                T=DRAGON_N_ITERATIONS,
+                T=_iter_cap,
                 K=DRAGON_K_INIT,
                 N=parallel_N, E=1000,
                 save_dir=save_dir,
@@ -2606,6 +2904,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int) -> dict:
         "dag_size":         loss_state.get("dag_size"),
         "dag_text":         loss_state.get("dag_text"),
         "dag_svg":          loss_state.get("dag_svg"),
+        "dag_data":         loss_state.get("dag_data", []),
         "formula_channel":  loss_state.get("formula_channel"),
         "formula_ols":      loss_state.get("formula_ols"),
         "formula_nested":   loss_state.get("formula_nested"),
@@ -2670,77 +2969,80 @@ def _extract_best_formula_from_log(log_path: str) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
-    """Run PySR via Julia for a given target.
+    """Run PySR via the PySRRegressor Python API (SymbolicRegression.jl backend).
 
-    add_noise=True   -> Gaussian noise (sigma = NOISE_STD * std(y)) added to y
-                        BEFORE PySR sees it.  Mirrors the Dragon `+Noise`
-                        ablation so PySR can be benchmarked on a noisy target.
-                        Method id is then "pysr_noise" instead of "pysr".
+    add_noise=True → pass denoise=True to PySRRegressor (built-in GP denoising).
+    Method id is then "pysr_noise".
     """
+    from pysr import PySRRegressor
     method_id = "pysr_noise" if add_noise else "pysr"
     run_dir = os.path.join(OUTPUT_DIR, target, method_id, f"run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
-    result_file = os.path.join(run_dir, f"{method_id}_{target}_results.txt")
     log_path = os.path.join(run_dir, f"{target}_{method_id}{LOG_SUFFIX}")
 
     t_start = time.time()
-
     best_loss = np.inf
     best_formula = "N/A"
     hall_of_fame = []
+
     try:
-        # Build a temporary Julia script for this target
-        julia_script = _build_julia_script(
-            target, result_file, run_id=run_id, add_noise=add_noise
+        # ── Load data ────────────────────────────────────────────────────────
+        X_df, y_series = load_dataset(target, run_id)
+        X = X_df.values.astype(np.float64)
+        y = y_series.values.ravel().astype(np.float64)
+        feature_names = list(X_df.columns)
+
+        # ── Fit ──────────────────────────────────────────────────────────────
+        model = PySRRegressor(
+            niterations=PYSR_NITERATIONS,
+            populations=PYSR_POPULATIONS,
+            population_size=PYSR_POPULATION_SIZE,
+            maxsize=PYSR_MAXSIZE,
+            binary_operators=PYSR_BINARY_OPERATORS,
+            unary_operators=PYSR_UNARY_OPERATORS,
+            denoise=add_noise,
+            julia_project=PYSR_JULIA_PROJECT,
+            verbosity=0,
+            random_state=RANDOM_SEED + run_id,
         )
-        jl_path = os.path.join(run_dir, f"run_{method_id}_{target}.jl")
-        with open(jl_path, "w") as f:
-            f.write(julia_script)
+        model.fit(X, y, variable_names=feature_names)
 
-        # Resolve Julia binary: prefer known absolute path, fall back to PATH
-        _JULIA_ABSOLUTE = os.path.join(
-            PYSR_JULIA_PROJECT, "pyjuliapkg", "install", "bin", "julia")
-        import shutil as _shutil
-        julia_bin = (_JULIA_ABSOLUTE if os.path.isfile(_JULIA_ABSOLUTE)
-                     else _shutil.which("julia"))
-        if julia_bin is None:
-            best_formula = "SKIP (julia not found)"
-            raise FileNotFoundError("julia not found at known path or on PATH")
+        # ── Write run log ────────────────────────────────────────────────────
+        with open(log_path, "w") as _lf:
+            _lf.write(
+                f"target={target} method={method_id} run_id={run_id}\n"
+                f"niterations={PYSR_NITERATIONS} populations={PYSR_POPULATIONS} "
+                f"population_size={PYSR_POPULATION_SIZE} maxsize={PYSR_MAXSIZE} "
+                f"denoise={add_noise}\n"
+            )
 
-        proc = subprocess.run(
-            [julia_bin, f"--project={PYSR_JULIA_PROJECT}", "--threads=1", jl_path],
-            capture_output=True, text=True, timeout=7200,  # 2h max
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-        )
-        stdout = proc.stdout
-        stderr = proc.stderr
-        # save stdout as log
-        with open(log_path, "w") as f:
-            f.write("=== STDOUT ===\n")
-            f.write(stdout)
-            f.write("\n=== STDERR ===\n")
-            f.write(stderr)
+        # ── Extract results ──────────────────────────────────────────────────
+        df = model.equations_
+        if df is not None and len(df) > 0:
+            for _, row in df.iterrows():
+                hall_of_fame.append({
+                    "complexity": int(row["complexity"]),
+                    "loss":       float(row["loss"]),
+                    "formula":    str(row["equation"]),
+                })
+            best_loss    = min(h["loss"] for h in hall_of_fame if np.isfinite(h["loss"]))
+            best_row     = df.loc[df["loss"].idxmin()]
+            best_formula = str(best_row["equation"])
 
-        # parse results file
-        best_loss, best_formula, hall_of_fame = _parse_pysr_results(result_file)
-
-    except subprocess.TimeoutExpired:
-        best_formula = "TIMEOUT"
     except Exception:
         tb = traceback.format_exc()
         best_formula = f"ERROR: {tb[:200]}"
         print(f"[PySR/{target}] ERROR:\n{tb}")
 
     elapsed = time.time() - t_start
-    # If Julia produced no result, treat as complete failure (loss=1.0)
     if not np.isfinite(best_loss):
         best_loss = 1.0
         if best_formula in ("N/A", ""):
             best_formula = "PySR: no result"
-    # Compute parsimony scores per HoF entry (mutates list).
     hall_of_fame = _compute_pysr_scores(hall_of_fame)
-    pareto_svg = _make_pysr_pareto_svg(hall_of_fame)
-    tree_svg   = _make_pysr_tree_svg(best_formula)
+    pareto_svg   = _make_pysr_pareto_svg(hall_of_fame)
+    tree_svg     = _make_pysr_tree_svg(best_formula)
+    tree_data    = _make_pysr_tree_data(best_formula)
     return {
         "target":      target,
         "method":      method_id,
@@ -2751,349 +3053,17 @@ def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
         "time_s":      elapsed,
         "log_path":    log_path,
         "description": (
-            "PySR +Noise (SymbolicRegression.jl, sigma = NOISE_STD * std(y))"
+            "PySR +Noise with GP denoising step (built-in PySR denoise=True)"
             if add_noise else "PySR (SymbolicRegression.jl)"
         ),
         "hall_of_fame": hall_of_fame,
-        "pareto_svg": pareto_svg,
-        "tree_svg":   tree_svg,
+        "pareto_svg":   pareto_svg,
+        "tree_svg":     tree_svg,
+        "tree_data":    tree_data,
     }
 
 
-def _build_julia_script(target: str, result_file: str, run_id: int = 0,
-                        add_noise: bool = False) -> str:
-    """Generate a Julia script for PySR for the given target.
 
-    For synthetic targets (physics / Nguyen) we generate data inline in Julia.
-    For remote sensing targets we load the CSV.
-    If add_noise=True, inject Gaussian noise (sigma = NOISE_STD * std(y)) on y
-    after the data block (mirrors the Dragon `+Noise` ablation).
-    """
-    result_file_escaped = result_file.replace("\\", "/")
-    seed = RANDOM_SEED + run_id
-
-    # ── Data generation block ─────────────────────────────────────────
-    if target in _SYNTH_CATEGORIES:
-        data_block = _julia_synth_block(target, N_SYNTH_SAMPLES, seed)
-    else:
-        data_block = _julia_csv_block(target)
-
-    noise_block = ""
-    if add_noise:
-        noise_seed = seed + 9999
-        noise_block = f"""
-# +Noise: add Gaussian noise sigma = {NOISE_STD} * std(y) to y
-using Random; _noise_rng = Xoshiro({noise_seed})
-_noise_sigma = {NOISE_STD} * Statistics.std(y)
-y = y .+ _noise_sigma .* randn(_noise_rng, length(y))
-println("+Noise: sigma = $(_noise_sigma)")
-"""
-
-    return f"""#!/usr/bin/env julia
-using SymbolicRegression
-using Statistics
-using Printf
-
-TARGET = "{target}"
-NITERATIONS = {PYSR_NITERATIONS}
-POPULATIONS = {PYSR_POPULATIONS}
-POPULATION_SIZE = {PYSR_POPULATION_SIZE}
-
-{data_block}
-{noise_block}
-println("Data: $(size(X_matrix, 2)) samples, $(size(X_matrix, 1)) features")
-
-options = Options(
-    binary_operators=[+, -, *, /],
-    unary_operators=[exp, sqrt, abs, sin, cos, log],
-    populations=POPULATIONS,
-    population_size=POPULATION_SIZE,
-    maxsize=20,
-    parsimony=0.0032f0,
-)
-
-hall_of_fame = equation_search(
-    X_matrix, y;
-    options=options,
-    niterations=NITERATIONS,
-    variable_names=feature_names,
-    parallelism=:multithreading,
-)
-
-println("\\n" * "="^60)
-println("  Results for $TARGET")
-println("="^60)
-
-dominating = calculate_pareto_frontier(hall_of_fame)
-
-open("{result_file_escaped}", "w") do f
-    println(f, "Target: $TARGET")
-    println(f, "\\nPareto frontier:")
-    for (i, member) in enumerate(dominating)
-        complexity = compute_complexity(member, options)
-        loss = member.loss
-        @printf(f, "[%2d] complexity=%2d  loss=%.8e  %s\\n", i, complexity, loss, string_tree(member.tree, options))
-    end
-end
-
-println("Results saved to {result_file_escaped}")
-"""
-
-
-def _julia_csv_block(target: str) -> str:
-    """Julia data-loading snippet for remote sensing CSV targets."""
-    data_path = DATA_PATH.replace("\\", "/")
-    target_jl_map = {
-        # old names
-        "BSI":  '(df.B11 .+ df.B4 .- df.B8 .- df.B2) ./ (df.B11 .+ df.B4 .+ df.B8 .+ df.B2)',
-        "NDVI": '(df.B8 .- df.B4) ./ (df.B8 .+ df.B4)',
-        "SAVI": '(df.B8 .- df.B4) ./ (df.B8 .+ df.B4 .+ 0.5) .* 1.5',
-        "MNDWI": '(df.B3 .- df.B11) ./ (df.B3 .+ df.B11)',
-        "NDMI": '(df.B8 .- df.B11) ./ (df.B8 .+ df.B11)',
-        "MSI":  'df.B11 ./ df.B8',
-        "NDWI_McFeeters": '(df.B3 .- df.B8) ./ (df.B3 .+ df.B8)',
-        "BAI":  '1 ./ ((0.1 .- df.B4).^2 .+ (0.06 .- df.B8).^2)',
-        "AWEI_sh": 'df.B2 .+ 2.5*df.B3 .- 1.5*(df.B11 .+ df.B12) .- 0.25*df.B8',
-        "AWEI_nsh": '4*(df.B3 .- df.B11) .- (0.25*df.B8 .+ 2.75*df.B12)',
-        "WI2015": '1.7204 .+ 171*(df.B2 .+ df.B3 .+ df.B4) .- 3*(df.B2 .* df.B3) .- 1.8*(df.B2 .* df.B4) .- 48*(df.B3 .* df.B4) .- 0.8*(df.B8 .* df.B11)',
-        # lowercase HTML IDs
-        "bsi":  '(df.B11 .+ df.B4 .- df.B8 .- df.B2) ./ (df.B11 .+ df.B4 .+ df.B8 .+ df.B2)',
-        "ndvi": '(df.B8 .- df.B4) ./ (df.B8 .+ df.B4)',
-        "savi": '(df.B8 .- df.B4) ./ (df.B8 .+ df.B4 .+ 0.5) .* 1.5',
-        "mndwi": '(df.B3 .- df.B11) ./ (df.B3 .+ df.B11)',
-        "bai":  '1 ./ ((0.1 .- df.B4).^2 .+ (0.06 .- df.B8).^2)',
-        "awei_sh": 'df.B2 .+ 2.5*df.B3 .- 1.5*(df.B11 .+ df.B12) .- 0.25*df.B8',
-        "awei_nsh": '4*(df.B3 .- df.B11) .- (0.25*df.B8 .+ 2.75*df.B12)',
-        "wi2015": '1.7204 .+ 171*(df.B2 .+ df.B3 .+ df.B4) .- 3*(df.B2 .* df.B3) .- 1.8*(df.B2 .* df.B4) .- 48*(df.B3 .* df.B4) .- 0.8*(df.B8 .* df.B11)',
-        "evi2": '2.5 .* (df.B8 .- df.B4) ./ (df.B8 .+ 2.4*df.B4 .+ 1)',
-        "vari": '(df.B3 .- df.B4) ./ (df.B3 .+ df.B4 .- df.B2)',
-    }
-    expr = target_jl_map.get(target, f"# WARNING: target {target} not defined")
-    return f"""
-using CSV
-using DataFrames
-
-df = CSV.read("{data_path}", DataFrame)
-for col in [:var"system:index", :QA60, :var".geo", :date]
-    if col in propertynames(df)
-        select!(df, Not(col))
-    end
-end
-
-y_raw = {expr}
-valid = isfinite.(y_raw)
-y = Float64.(y_raw[valid])
-X_df = df[valid, :]
-numeric_cols = [n for n in names(X_df) if eltype(X_df[!, n]) <: Number]
-X_df = X_df[!, numeric_cols]
-X_df = "{target}" in names(X_df) ? select(X_df, Not(Symbol("{target}"))) : X_df
-# SymbolicRegression.jl expects X with shape [features, rows] -> transpose.
-X_matrix = permutedims(Matrix{{Float64}}(X_df))
-feature_names = names(X_df)
-"""
-
-
-def _julia_synth_block(target: str, n: int, seed: int) -> str:
-    """Julia inline data generation for physics/Nguyen/other targets."""
-    blocks = {
-        "hubble": f"""
-using Random; rng = Xoshiro({seed})
-d = rand(rng, {n}) .* 999 .+ 1
-y = 70.0 .* d
-X_matrix = reshape(d, 1, {n})
-feature_names = ["d"]
-""",
-        "newton": f"""
-using Random; rng = Xoshiro({seed})
-m1 = rand(rng, {n}) .* (1e30-1e24) .+ 1e24
-m2 = rand(rng, {n}) .* (1e30-1e24) .+ 1e24
-r  = rand(rng, {n}) .* (1e12-1e8) .+ 1e8
-y  = 6.674e-11 .* m1 .* m2 ./ r.^2
-X_matrix = [m1 m2 r]'
-feature_names = ["m1","m2","r"]
-""",
-        "rydberg": f"""
-using Random; rng = Xoshiro({seed})
-n1v = Float64.(rand(rng, 1:4, {n}))
-n2v = n1v .+ Float64.(rand(rng, 1:4, {n}))
-y   = 1.097e7 .* (1 ./ n1v.^2 .- 1 ./ n2v.^2)
-X_matrix = [n1v n2v]'
-feature_names = ["n1","n2"]
-""",
-        "idealgas": f"""
-using Random; rng = Xoshiro({seed})
-P  = rand(rng, {n}) .* (1e6-1e4) .+ 1e4
-nc = rand(rng, {n}) .* 9.9 .+ 0.1
-T  = rand(rng, {n}) .* 800 .+ 200
-y  = nc .* 8.314 .* T ./ P
-X_matrix = [P nc T]'
-feature_names = ["P","n","T"]
-""",
-        "kepler": f"""
-using Random; rng = Xoshiro({seed})
-a = (rand(rng, {n}) .* 49.9 .+ 0.1) .* 1.496e11
-y = 2π .* sqrt.(a.^3 ./ (6.674e-11 * 1.989e30))
-X_matrix = reshape(a, 1, {n})
-feature_names = ["a"]
-""",
-        "bode": f"""
-nv = Float64.(0:8)
-a  = 0.4 .+ 0.3 .* 2 .^ nv
-y = a
-X_matrix = reshape(nv, 1, length(nv))
-feature_names = ["n"]
-""",
-        "schechter": f"""
-using Random; rng = Xoshiro({seed})
-L = randexp(rng, {n}) .* 1e10
-L = clamp.(L, 1e6, 1e13)
-phi = 1.5e-2 .* (L ./ 1e10).^(-1.1) .* exp.(-L ./ 1e10)
-valid = isfinite.(phi) .& (phi .> 0)
-L = L[valid]; phi = phi[valid]
-y = phi
-X_matrix = reshape(L, 1, length(L))
-feature_names = ["L"]
-""",
-        "leavitt": f"""
-using Random; rng = Xoshiro({seed})
-P = rand(rng, {n}) .* 99 .+ 1
-y = -2.81 .* log10.(P) .- 1.43
-X_matrix = reshape(P, 1, {n})
-feature_names = ["P"]
-""",
-        "planck": f"""
-using Random; rng = Xoshiro({seed})
-nu = rand(rng, {n}) .* (3e14-1e11) .+ 1e11
-T  = rand(rng, {n}) .* 29000 .+ 1000
-h=6.626e-34; c=3e8; k=1.381e-23
-arg = clamp.(h .* nu ./ (k .* T), 0, 700)
-B = 2 .* h .* nu.^3 ./ c^2 ./ (expm1.(arg) .+ 1e-300)
-valid = isfinite.(B) .& (B .> 0)
-nu=nu[valid]; T=T[valid]; B=B[valid]
-y = B
-X_matrix = [nu T]'
-feature_names = ["nu","T"]
-""",
-        "expreal": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2
-y = exp.(x) .+ exp.(-x) .+ x.^2
-X_matrix = reshape(x, 1, {n})
-feature_names = ["x"]
-""",
-        # Nguyen
-        "n1": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = x.^3 .+ x.^2 .+ x
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n2": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = x.^4 .+ x.^3 .+ x.^2 .+ x
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n3": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = x.^5 .+ x.^4 .+ x.^3 .+ x.^2 .+ x
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n4": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = x.^6 .+ x.^5 .+ x.^4 .+ x.^3 .+ x.^2 .+ x
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n5": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = sin.(x.^2) .* cos.(x) .- 1
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n6": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1
-y = sin.(x) .+ sin.(x .+ x.^2)
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n7": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2
-y = log.(x .+ 1) .+ log.(x.^2 .+ 1)
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n8": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 4
-y = sqrt.(x)
-X_matrix = reshape(x, 1, {n}); feature_names = ["x"]
-""",
-        "n9": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1; yv = rand(rng, {n}) .* 2 .- 1
-y = sin.(x) .+ sin.(yv.^2)
-X_matrix = [x yv]'; feature_names = ["x","y"]
-""",
-        "n10": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1; yv = rand(rng, {n}) .* 2 .- 1
-y = 2 .* sin.(x) .* cos.(yv)
-X_matrix = [x yv]'; feature_names = ["x","y"]
-""",
-        "n11": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .+ 1; yv = rand(rng, {n}) .+ 1
-y = x.^yv
-X_matrix = [x yv]'; feature_names = ["x","y"]
-""",
-        "n12": f"""
-using Random; rng = Xoshiro({seed})
-x = rand(rng, {n}) .* 2 .- 1; yv = rand(rng, {n}) .* 2 .- 1
-y = x.^4 .- x.^3 .+ yv.^2 ./ 2 .- yv
-X_matrix = [x yv]'; feature_names = ["x","y"]
-""",
-    }
-    return blocks.get(target, f'error("Synthetic block not defined for target: {target}")')
-
-
-def _parse_pysr_results(result_file: str):
-    """Parse PySR results file, return (best_loss, best_formula, hall_of_fame).
-
-    Each line of the result file looks like one of:
-        [ 1] complexity= 1  loss=3.09e-01  x
-        [ 1]  1  loss=3.09e-01  x
-    The parser is regex-based and tolerant to either layout.
-    """
-    import re as _re
-    if not os.path.exists(result_file):
-        return np.inf, "N/A", []
-    line_re = _re.compile(
-        r"^\s*\[\s*\d+\s*\]\s*"          # [  i ]
-        r"(?:complexity\s*=\s*)?(\d+)\s+"  # optional 'complexity=' then int
-        r"loss\s*=\s*(\S+)\s+"             # loss=NUMBER
-        r"(.+?)\s*$"                        # the rest = expression
-    )
-    best_loss, best_formula, hof = np.inf, "N/A", []
-    try:
-        with open(result_file) as f:
-            for line in f:
-                m = line_re.match(line)
-                if not m:
-                    continue
-                try:
-                    cplx    = int(m.group(1))
-                    loss    = float(m.group(2))
-                    formula = m.group(3).strip()
-                except Exception:
-                    continue
-                hof.append({"complexity": cplx, "loss": loss, "formula": formula})
-                if loss < best_loss:
-                    best_loss, best_formula = loss, formula
-    except Exception:
-        pass
-    return best_loss, best_formula, hof
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3114,9 +3084,36 @@ def run_all(targets=TARGETS, n_runs=N_RUNS):
             strategy = INIT_STRATEGIES[run_id]
             print(f"\n--- Run {run_id+1}/{n_runs}  strategy={strategy} ---")
 
+            # ── Precompute denoised y once per (target, run_id) ──────────
+            # Collect all unique denoise_method values requested by any
+            # Dragon config.  Each unique method is computed exactly once
+            # and shared across every Dragon method that requests it.
+            _denoise_cache: dict = {}  # denoise_method → (y_clean, info)
+            _needed_dm = set(
+                cfg.get("denoise_method")
+                for cfg in DRAGON_METHOD_CONFIGS
+                if cfg.get("denoise_method")
+            )
+            if _needed_dm:
+                _X_base, _y_base = load_dataset(target, run_id=run_id,
+                                                strategy=strategy)
+                for _dm in sorted(_needed_dm):
+                    try:
+                        _y_dn, _dn_info = _apply_denoise(_X_base, _y_base, _dm)
+                        _denoise_cache[_dm] = (_y_dn, _dn_info)
+                        print(f"  [denoise/{_dm}/{target}/run{run_id}] "
+                              f"info={_dn_info}")
+                    except Exception as _de:
+                        print(f"  [denoise/{_dm}/{target}/run{run_id}] "
+                              f"FAILED ({_de}); affected methods will use raw y")
+                        _denoise_cache[_dm] = (None, None)
+
             # Run DRAGON method configs sequentially (parallelization added later)
             for cfg in DRAGON_METHOD_CONFIGS:
-                r = dragon_worker(cfg, target, run_id)
+                _dm = cfg.get("denoise_method")
+                _y_pre, _info_pre = _denoise_cache.get(_dm, (None, None)) if _dm else (None, None)
+                r = dragon_worker(cfg, target, run_id,
+                                  _y_predenoised=_y_pre, _denoise_info=_info_pre)
                 results.append(r)
                 print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
                       f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
@@ -3163,7 +3160,7 @@ def _result_to_db_entry(r):
     finite_loss = (float(loss) if loss is not None and np.isfinite(float(loss)) else None)
     wt   = _WINNER_REMAP.get(r.get("winner_type", ""), None)
     rd   = r.get("rat_degree")
-    is_pysr = (r.get("method") == "pysr")
+    is_pysr = r.get("method") in ("pysr", "pysr_noise")
     if is_pysr:
         total_t = PYSR_NITERATIONS
         pop_k   = PYSR_POPULATION_SIZE
@@ -3212,11 +3209,13 @@ def _result_to_db_entry(r):
         "dagSize":    r.get("dag_size"),
         "dagText":    r.get("dag_text"),
         "dagSvg":     r.get("dag_svg"),
+        "dagData":    r.get("dag_data") or [],
         "hallOfFame": r.get("hall_of_fame") or [],
         # ── Statistical visualisations (inline SVG) ─────────────────
         "landscapeSvg": r.get("landscape_svg"),     # Dragon: 3-panel landscape
         "paretoSvg":    r.get("pareto_svg"),        # PySR: Pareto frontier
         "treeSvg":      r.get("tree_svg"),          # PySR: sympy/Graphviz AST
+        "treeData":     r.get("tree_data"),         # PySR: JSON tree for JS renderer
         "channels":      [
             {
                 "tag":  f"ch[{c['idx']}]" + (" *" if c.get('selected') else ""),
@@ -3441,23 +3440,16 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 <tr>
   <th class="fcol" rowspan="2" style="vertical-align:bottom">Formula</th>
   <th class="gh-pysr" colspan="2">PySR</th>
-  <th class="gh-drag" colspan="13">DragonSR</th>
+  <th class="gh-drag" colspan="6">DragonSR</th>
 </tr>
 <tr>
   <th class="gh-pysr">Baseline</th>
-  <th class="gh-pysr">+Noise</th>
+  <th class="gh-pysr">+Noise (GP denoising)</th>
   <th class="gh-drag">All ops ★ (ref)</th>
   <th class="gh-drag">Smart par***</th>
   <th class="gh-drag">Boosted spar***</th>
   <th class="gh-drag">+ConstBrick</th>
-  <th class="gh-drag">All ops OLS</th>
-  <th class="gh-drag">Curriculum*</th>
-  <th class="gh-drag">Curr+palier**</th>
-  <th class="gh-drag">+Noise</th>
-  <th class="gh-drag">No var aug</th>
-  <th class="gh-drag">Dilat+offset</th>
   <th class="gh-drag">No OLS/rat/nest</th>
-  <th class="gh-drag">Parallel</th>
   <th class="gh-drag">Smart par w/ denoise***</th>
 </tr>
 </thead>
@@ -3496,15 +3488,15 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
         <div class="mf"><label>n_const (constants optimised)</label><input id="mnconst" readonly style="opacity:.6"/></div>
         <div class="mf"><label>DAG tree size (nodes)</label><input id="mdag" readonly style="opacity:.6"/></div>
       </div>
-      <div id="mdagviz" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;white-space:pre;overflow-x:auto;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:6px;display:none"></div>
+      <div id="mdagviz" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;white-space:pre;overflow:auto;max-height:520px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:6px;display:none"></div>
     </div>
     <!-- ── Statistical visualisations (per run) ──────────────────────── -->
     <div style="grid-column:1/-1" class="section-divider">
       <div class="sec-label">Search statistics &amp; landscape</div>
       <div id="mlandscape" style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto"></div>
-      <div id="mpareto"    style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto"></div>
-      <div id="mtree"      style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto">
-        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:4px;text-align:left">Best PySR formula — syntactic AST (sympy → Graphviz)</div>
+      <div id="mpareto"    style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow:auto;max-height:480px"></div>
+      <div id="mtree"      style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow:auto;max-height:480px">
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:4px;text-align:left">Best PySR formula — syntactic AST (sympy parse tree)</div>
         <div id="mtree-body"></div>
       </div>
       <div id="mformstats" style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto">
@@ -3543,9 +3535,6 @@ const FORMULAS=[
   {{id:'schechter',name:'Schechter',cat:'physics',tex:'\\\\phi(L)=\\\\phi^*(L/L^*)^\\\\alpha e^{{-L/L^*}}'}},
   {{id:'leavitt',name:'Leavitt',cat:'physics',tex:'M = a\\\\log P + b'}},
   {{id:'planck',name:"Planck's law",cat:'physics',tex:'B(\\\\nu,T)=\\\\frac{{2h\\\\nu^3}}{{c^2}}\\\\frac{{1}}{{e^{{h\\\\nu/kT}}-1}}'}},
-  {{id:'n1',name:'Nguyen 1',cat:'nguyen',tex:'x^3+x^2+x'}},
-  {{id:'n2',name:'Nguyen 2',cat:'nguyen',tex:'x^4+x^3+x^2+x'}},
-  {{id:'n3',name:'Nguyen 3',cat:'nguyen',tex:'x^5+x^4+x^3+x^2+x'}},
   {{id:'n4',name:'Nguyen 4',cat:'nguyen',tex:'x^6+x^5+x^4+x^3+x^2+x'}},
   {{id:'n5',name:'Nguyen 5',cat:'nguyen',tex:'\\\\sin(x^2)\\\\cos(x)-1'}},
   {{id:'n6',name:'Nguyen 6',cat:'nguyen',tex:'\\\\sin(x)+\\\\sin(x+x^2)'}},
@@ -3555,19 +3544,17 @@ const FORMULAS=[
   {{id:'n10',name:'Nguyen 10',cat:'nguyen',tex:'2\\\\sin(x)\\\\cos(y)'}},
   {{id:'n11',name:'Nguyen 11',cat:'nguyen',tex:'x^y'}},
   {{id:'n12',name:'Nguyen 12',cat:'nguyen',tex:'x^4-x^3+y^2/2-y'}},
-  {{id:'ndvi',name:'NDVI',cat:'remote',tex:'(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+R)'}},
-  {{id:'wi2015',name:'WI2015',cat:'remote',tex:'\\\\text{{water index 2015}}'}},
-  {{id:'awei_sh',name:'AWEI_sh',cat:'remote',tex:'4(G-\\\\text{{SWIR1}})-0.25B+2.75\\\\text{{SWIR2}}'}},
-  {{id:'awei_nsh',name:'AWEI_nsh',cat:'remote',tex:'B+2.5G-1.5(\\\\text{{NIR}}+\\\\text{{SWIR1}})-0.25\\\\text{{SWIR2}}'}},
-  {{id:'bai',name:'BAI',cat:'remote',tex:'1/((0.1-R)^2+(0.06-\\\\text{{NIR}})^2)'}},
-  {{id:'bsi',name:'BSI',cat:'remote',tex:'(R+\\\\text{{SWIR1}}-\\\\text{{NIR}}-B)/(R+\\\\text{{SWIR1}}+\\\\text{{NIR}}+B)'}},
-  {{id:'evi2',name:'EVI2',cat:'remote',tex:'2.5(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+2.4R+1)'}},
-  {{id:'mndwi',name:'MNDWI',cat:'remote',tex:'(G-\\\\text{{SWIR1}})/(G+\\\\text{{SWIR1}})'}},
-  {{id:'vari',name:'VARI',cat:'remote',tex:'(G-R)/(G+R-B)'}},
-  {{id:'savi',name:'SAVI',cat:'remote',tex:'1.5(\\\\text{{NIR}}-R)/(\\\\text{{NIR}}+R+0.5)'}},
-  {{id:'expreal',name:'Exp. réelles',cat:'other',tex:'\\\\text{{real exponentiation forms}}'}},
+  {{id:'ndvi',name:'NDVI',cat:'remote',tex:'\\\\frac{{B_8-B_4}}{{B_8+B_4}}'}},
+  {{id:'wi2015',name:'WI2015',cat:'remote',tex:'1.72+171(B_2+B_3+B_4)-3B_2B_3-1.8B_2B_4-48B_3B_4-0.8B_8B_{{11}}'}},
+  {{id:'awei_sh',name:'AWEI_sh',cat:'remote',tex:'B_2+2.5B_3-1.5(B_{{11}}+B_{{12}})-0.25B_8'}},
+  {{id:'bai',name:'BAI',cat:'remote',tex:'\\\\frac{{1}}{{(0.1-B_4)^2+(0.06-B_8)^2}}'}},
+  {{id:'bsi',name:'BSI',cat:'remote',tex:'\\\\frac{{B_{{11}}+B_4-B_8-B_2}}{{B_{{11}}+B_4+B_8+B_2}}'}},
+  {{id:'evi2',name:'EVI2',cat:'remote',tex:'\\\\frac{{2.5(B_8-B_4)}}{{B_8+2.4B_4+1}}'}},
+  {{id:'vari',name:'VARI',cat:'remote',tex:'\\\\frac{{B_3-B_4}}{{B_3+B_4-B_2}}'}},
+  {{id:'savi',name:'SAVI',cat:'remote',tex:'\\\\frac{{1.5(B_8-B_4)}}{{B_8+B_4+0.5}}'}},
+  {{id:'nirv',name:'NIRv',cat:'remote',tex:'B_8\\\\cdot\\\\frac{{B_8-B_4}}{{B_8+B_4}}'}},
 ];
-const METHODS=['pysr','pysr_noise','allops','spar','boosted_spar','allops_const','allops_ols','curr','currpal','noise','novaug','dilaoff','noolsratn','par','spar_denoise'];
+const METHODS=['pysr','pysr_noise','allops','spar','boosted_spar','allops_const','noolsratn','spar_denoise'];
 const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
@@ -3819,21 +3806,148 @@ function _buildFormulaTabs(d, isPysr){{
   activate(activeIdx);
 }}
 
+// ── JS-based DAG renderer (fallback when graphviz 'dot' is unavailable) ──────
+function _renderDagSvg(dagData){{
+  const n=(dagData||[]).length;
+  if(!n) return null;
+  // Build parents list from children
+  const parents=Array.from({{length:n}},()=>[]);
+  dagData.forEach((node,i)=>{{
+    (node.children||[]).forEach(j=>{{ if(j>=0&&j<n) parents[j].push(i); }});
+  }});
+  // Depth = longest path from root (DP on topological order 0..n-1)
+  const depth=new Array(n).fill(0);
+  for(let i=1;i<n;i++){{
+    if(parents[i].length) depth[i]=Math.max(...parents[i].map(p=>depth[p]))+1;
+  }}
+  const maxD=Math.max(...depth);
+  const layers=Array.from({{length:maxD+1}},()=>[]);
+  depth.forEach((d,i)=>layers[d].push(i));
+  // Layout constants
+  const NW=240,NH=54,HGAP=18,VGAP=40,PAD=20;
+  const layerW=layers.map(l=>l.length*(NW+HGAP)-HGAP);
+  const totalW=Math.max(...layerW)+2*PAD;
+  const totalH=(maxD+1)*(NH+VGAP)-VGAP+2*PAD;
+  // Node positions (top-left corner)
+  const pos=new Array(n);
+  layers.forEach((layer,d)=>{{
+    const lw=layer.length*(NW+HGAP)-HGAP;
+    const sx=(totalW-lw)/2;
+    layer.forEach((nid,k)=>{{ pos[nid]={{x:sx+k*(NW+HGAP),y:PAD+d*(NH+VGAP)}}; }});
+  }});
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let p=[`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${{totalW}} ${{totalH}}" width="${{totalW}}" height="${{totalH}}" style="max-width:100%;height:auto;background:transparent">`,
+    `<defs><marker id="dagar" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#777"/></marker></defs>`];
+  // Edges
+  dagData.forEach((node,i)=>{{
+    (node.children||[]).forEach(j=>{{
+      if(j<0||j>=n) return;
+      const x1=pos[i].x+NW/2,y1=pos[i].y+NH;
+      const x2=pos[j].x+NW/2,y2=pos[j].y;
+      const ym=(y1+y2)/2;
+      p.push(`<path d="M${{x1}},${{y1}} C${{x1}},${{ym}} ${{x2}},${{ym}} ${{x2}},${{y2}}" fill="none" stroke="#888" stroke-width="1.5" marker-end="url(#dagar)"/>`);
+    }});
+  }});
+  // Nodes — two-line label: line1=[idx] ClassName, line2=hyperparameters
+  dagData.forEach((node,i)=>{{
+    const {{x,y}}=pos[i];
+    const isRoot=(i===0),isLeaf=!(node.children||[]).length;
+    const fill=isRoot?'#3b6d11':isLeaf?'#185fa5':'#ffa600';
+    const fc=(isRoot||isLeaf)?'#ececec':'#1a1a1a';
+    const fullDesc=`[${{i}}] ${{node.desc||''}}`;
+    const parts=fullDesc.split(' | ');
+    const line1=esc(parts[0].slice(0,34));
+    const line2=parts.length>1?esc(parts.slice(1).join(' | ').slice(0,38)):'';
+    const ty1=y+(line2?NH/2-5:NH/2+4);
+    p.push(
+      `<rect x="${{x}}" y="${{y}}" width="${{NW}}" height="${{NH}}" rx="5" fill="${{fill}}" stroke="#444" stroke-width="1"><title>${{esc(fullDesc)}}</title></rect>`,
+      `<text text-anchor="middle" font-size="10" font-family="monospace" fill="${{fc}}">`,
+      `<tspan x="${{x+NW/2}}" y="${{ty1}}">${{line1}}</tspan>`,
+      line2?`<tspan x="${{x+NW/2}}" dy="13">${{line2}}</tspan>`:'',
+      `</text>`
+    );
+  }});
+  p.push('</svg>');
+  return p.join('');
+}}
+
+function _renderFormulaTree(nodes){{
+  /* Render a sympy AST as an SVG tree.
+     nodes = [{{id, label, kind:"op"|"var"|"const", children:[idx,...]}}]
+     Root = node not referenced as any other node's child (auto-detected). */
+  if(!nodes||!nodes.length) return null;
+  // Auto-detect root (the binarizer appends root last, not at index 0)
+  const _allCh=new Set(nodes.flatMap(nd=>(nd.children||[])));
+  const root=Math.max(0,nodes.findIndex((_,i)=>!_allCh.has(i)));
+  const NW=66,NH=34,HGAP=8,VGAP=38,PAD=18;
+  // Compute subtree pixel widths
+  const w=new Array(nodes.length).fill(NW);
+  function calcW(i){{
+    const ch=nodes[i].children||[];
+    if(!ch.length){{w[i]=NW;return;}}
+    ch.forEach(c=>calcW(c));
+    w[i]=Math.max(NW,ch.reduce((s,c)=>s+w[c],0)+Math.max(0,ch.length-1)*HGAP);
+  }}
+  calcW(root);
+  // Assign center-x and top-y for each node
+  const cx=new Array(nodes.length).fill(0),cy=new Array(nodes.length).fill(0);
+  function layout(i,left,depth){{
+    cy[i]=PAD+depth*(NH+VGAP);
+    const ch=nodes[i].children||[];
+    if(!ch.length){{cx[i]=left+NW/2;return;}}
+    let x=left;
+    ch.forEach(c=>{{layout(c,x,depth+1);x+=w[c]+HGAP;}});
+    cx[i]=(cx[ch[0]]+cx[ch[ch.length-1]])/2;
+  }}
+  layout(root,PAD,0);
+  const totalW=w[root]+2*PAD;
+  const totalH=Math.max(...cy)+NH+PAD;
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const parts=[
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${{totalW}} ${{totalH}}" width="${{totalW}}" height="${{totalH}}" style="max-width:100%;height:auto;background:transparent">`,
+    `<defs><marker id="tarr" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0,0 6,2.5 0,5" fill="#888"/></marker></defs>`
+  ];
+  // Edges (curved bezier)
+  nodes.forEach((nd,i)=>{{
+    (nd.children||[]).forEach(j=>{{
+      const x1=cx[i],y1=cy[i]+NH,x2=cx[j],y2=cy[j],ym=(y1+y2)/2;
+      parts.push(`<path d="M${{x1}},${{y1}} C${{x1}},${{ym}} ${{x2}},${{ym}} ${{x2}},${{y2}}" fill="none" stroke="#999" stroke-width="1.4" marker-end="url(#tarr)"/>`);
+    }});
+  }});
+  // Nodes
+  nodes.forEach((nd,i)=>{{
+    const x=cx[i]-NW/2,y=cy[i];
+    const fill=nd.kind==='op'?'#ffa600':nd.kind==='const'?'#185fa5':'#3b6d11';
+    const fc=nd.kind==='op'?'#1a1a1a':'#ececec';
+    const lbl=esc(String(nd.label||'').slice(0,14));
+    parts.push(
+      `<rect x="${{x}}" y="${{y}}" width="${{NW}}" height="${{NH}}" rx="5" fill="${{fill}}" stroke="#444" stroke-width="1"/>`,
+      `<text x="${{cx[i]}}" y="${{y+NH/2+4}}" text-anchor="middle" font-size="11" font-family="monospace" fill="${{fc}}">${{lbl}}</text>`
+    );
+  }});
+  parts.push('</svg>');
+  return parts.join('');
+}}
+
 function openModal(fid,mid,run){{
   const f=FORMULAS.find(x=>x.id===fid);
   const midx=METHODS.indexOf(mid);
-  const mnames=['PySR baseline','PySR +Noise','All ops ★ (ref)','Smart parallel***','Boosted spar***','+ConstantBrick','All ops OLS','Curriculum*','Curr+palier**','+Noise','No var aug','Dilation+offset','No OLS/rat/nest','Parallel','Smart parallel w/ denoise***'];
+  const _isPysr = mid==='pysr' || mid==='pysr_noise';
+  const mnames=['PySR baseline','PySR +Noise','All ops ★ (ref)','Smart parallel***','Boosted spar***','+ConstantBrick','No OLS/rat/nest','Smart par w/ denoise***'];
   pending={{fid,mid,run}};
   document.getElementById('mtitle').textContent='Log run result';
   document.getElementById('mflabel').value=`${{f.name}}  ·  ${{mnames[midx]}}  ·  Run ${{run+1}}`;
-  if(mid==='pysr'){{
-    document.getElementById('minit').value=`Run ${{run+1}} — PySR baseline (single deterministic config; only the data seed varies between runs for synthetic targets)`;
+  if(_isPysr){{
+    const pysrLbl = mid==='pysr_noise'
+      ? `Run ${{run+1}} — PySR +Noise (GP denoising pre-step, denoise=True)`
+      : `Run ${{run+1}} — PySR baseline (single deterministic config; only the data seed varies between runs for synthetic targets)`;
+    document.getElementById('minit').value=pysrLbl;
   }} else {{
     document.getElementById('minit').value=`R${{run+1}}: ${{MINIT[run]}}`;
   }}
   const k=key(fid,mid,run);const d=DB[k]||{{}};
   // ── Formula tabs (suppress R²/MSE info-line for PySR which uses raw MSE) ──
-  _buildFormulaTabs(d, mid==='pysr');
+  _buildFormulaTabs(d, _isPysr);
   document.getElementById('mrt').value=d.runtime??'';
   // Total iterations (T): for smart-parallel ('spar') show
   // total = sum(streams)  +  per-stream breakdown  +  winner count.
@@ -3862,7 +3976,7 @@ function openModal(fid,mid,run){{
   document.getElementById('mnotes').value=d.notes??'';
   // ── Section: channels (DRAGON) or hall-of-fame (PySR) ──────────────
   const secLbl=document.getElementById('sec-channels-label');
-  if(mid==='pysr'){{
+  if(_isPysr){{
     if(secLbl) secLbl.textContent='PySR hall of fame — Pareto frontier (complexity vs loss)';
     _renderHallOfFame(d.hallOfFame||[]);
   }} else {{
@@ -3879,6 +3993,22 @@ function openModal(fid,mid,run){{
       dviz.innerHTML=d.dagSvg;
       const svgEl=dviz.querySelector('svg');
       if(svgEl){{ svgEl.style.maxWidth='100%'; svgEl.style.height='auto'; }}
+    }} else if(d.dagData&&d.dagData.length){{
+      // JS-based SVG fallback (graphviz 'dot' not in PATH on this machine)
+      const jsSvg=_renderDagSvg(d.dagData);
+      if(jsSvg){{
+        dviz.style.display='block';
+        dviz.style.whiteSpace='normal';
+        dviz.style.textAlign='center';
+        dviz.innerHTML=jsSvg;
+        const svgEl=dviz.querySelector('svg');
+        if(svgEl){{ svgEl.style.maxWidth='100%'; svgEl.style.height='auto'; }}
+      }} else {{
+        dviz.style.display='block';
+        dviz.style.whiteSpace='pre';
+        dviz.style.textAlign='left';
+        dviz.textContent=d.dagText||'';
+      }}
     }} else if(d.dagText){{
       dviz.style.display='block';
       dviz.style.whiteSpace='pre';
@@ -3924,9 +4054,16 @@ function openModal(fid,mid,run){{
   mwrap.style.display='flex';
   document.body.style.overflow='hidden';
   // Dragon: 3-panel landscape; PySR: Pareto + AST tree.
-  _setSvgBlock('mlandscape', mid==='pysr' ? null : (d.landscapeSvg||null), false);
-  _setSvgBlock('mpareto',    mid==='pysr' ? (d.paretoSvg||null) : null,   false);
-  _setSvgBlock('mtree',      mid==='pysr' ? (d.treeSvg||null)   : null,   true);
+  _setSvgBlock('mlandscape', _isPysr ? null : (d.landscapeSvg||null), false);
+  _setSvgBlock('mpareto',    _isPysr ? (d.paretoSvg||null) : null,   false);
+  if(_isPysr){{
+    let _treeSvgContent=d.treeSvg||null;
+    if(!_treeSvgContent&&d.treeData&&d.treeData.length)
+      _treeSvgContent=_renderFormulaTree(d.treeData)||null;
+    _setSvgBlock('mtree',_treeSvgContent,true);
+  }}else{{
+    _setSvgBlock('mtree',null,true);
+  }}
   // Per-formula aggregate stats (boxplot + heatmap), shared across runs/methods.
   _setSvgBlock('mformstats', (typeof FORMULA_STATS_SVG!=='undefined' && FORMULA_STATS_SVG[fid]) || null, true);
   // Force Plotly to re-fit each visible chart now that the modal width is set.
@@ -3989,7 +4126,7 @@ function saveRun(){{
 function showTT(e,fid,mid,run){{
   const k=key(fid,mid,run);const d=DB[k];
   const f=FORMULAS.find(x=>x.id===fid);
-  const mnames=['PySR','PySR +Noise','All ops ★ (ref)','Smart par','Boosted spar','ConstBrick','All ops OLS','Curriculum','Curr+palier','+Noise','No var aug','Dil+off','No OLS','Parallel','Smart par+denoise'];
+  const mnames=['PySR','PySR +Noise','All ops ★ (ref)','Smart par','Boosted spar','ConstBrick','No OLS','Smart par+denoise'];
   const midx=METHODS.indexOf(mid);
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
@@ -4094,6 +4231,108 @@ init();"""
 #  ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
+def run_pysr_only(targets=TARGETS, n_runs=N_RUNS):
+    """Complete missing PySR entries in an existing results.json, then rebuild HTML.
+
+    Entries with formula starting with 'ERROR:' or 'SKIP' are treated as
+    failed and will be re-run (removed from results before re-running).
+    """
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    results_path = os.path.join(OUTPUT_DIR, "results.json")
+    if os.path.exists(results_path):
+        with open(results_path) as f:
+            results = json.load(f)
+        print(f"Loaded {len(results)} existing results from {results_path}")
+    else:
+        results = []
+        print("No existing results.json found — starting from scratch.")
+
+    def _is_failed(r):
+        f = str(r.get("formula", "")).strip()
+        if f in ("", "N/A", "TIMEOUT", "PySR: no result"):
+            return True
+        return f.startswith(("ERROR:", "SKIP", "PySR: no result"))
+
+    # Remove failed PySR entries so they can be re-run
+    results = [r for r in results
+               if r.get("method") not in ("pysr", "pysr_noise") or not _is_failed(r)]
+
+    done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+
+    for target in targets:
+        for run_id in range(n_runs):
+            for add_noise in (False, True):
+                method_id = "pysr_noise" if add_noise else "pysr"
+                if (target, run_id, method_id) in done:
+                    print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
+                    continue
+                print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
+                r = run_pysr(target, run_id, add_noise=add_noise)
+                results.append(r)
+                done.add((target, run_id, method_id))
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2, default=str)
+                build_html(results)
+    return results
+
+
+def run_dragon_only(targets=TARGETS, n_runs=N_RUNS):
+    """Complete missing Dragon entries in an existing results.json, then rebuild HTML.
+
+    Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
+    failed and will be re-run.
+    """
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    results_path = os.path.join(OUTPUT_DIR, "results.json")
+    if os.path.exists(results_path):
+        with open(results_path) as f:
+            results = json.load(f)
+        print(f"Loaded {len(results)} existing results from {results_path}")
+    else:
+        results = []
+        print("No existing results.json found — starting from scratch.")
+
+    dragon_method_ids = {cfg["id"] for cfg in DRAGON_METHOD_CONFIGS}
+
+    def _is_failed(r):
+        f = str(r.get("formula", "")).strip()
+        return f in ("", "N/A") or f.startswith("ERROR:")
+
+    # Remove failed Dragon entries so they can be re-run
+    results = [r for r in results
+               if r.get("method") not in dragon_method_ids or not _is_failed(r)]
+
+    done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+
+    for target in targets:
+        for run_id in range(n_runs):
+            for cfg in DRAGON_METHOD_CONFIGS:
+                method_id = cfg["id"]
+                if (target, run_id, method_id) in done:
+                    print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
+                    continue
+                print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
+                r = dragon_worker(cfg, target, run_id)
+                results.append(r)
+                done.add((target, run_id, method_id))
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2, default=str)
+                build_html(results)
+    return results
+
+
 if __name__ == "__main__":
+    import argparse
     mp.set_start_method("spawn", force=True)
-    run_all()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pysr-only", action="store_true",
+                        help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
+    parser.add_argument("--dragon-only", action="store_true",
+                        help="Skip PySR; only run missing Dragon entries and rebuild HTML")
+    args = parser.parse_args()
+    if args.pysr_only:
+        run_pysr_only()
+    elif args.dragon_only:
+        run_dragon_only()
+    else:
+        run_all()
