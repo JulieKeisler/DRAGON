@@ -17,7 +17,7 @@ TARGETS = [
     # Nguyen benchmarks (synthetic)
     "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
     # Physics (synthetic)
-    "hubble", "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck",
+     "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck", #"hubble",
     # Remote sensing (from data/6000_points.csv)
     "wi2015", "awei_sh", "bai", "ndvi", "savi", "bsi", "evi2", "mndwi", "vari", "nirv",
 ]
@@ -153,7 +153,7 @@ PYSR_JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.dragonenv/julia_en
 # PySR's operators:
 
 PYSR_BINARY_OPERATORS = ["+", "-", "*", "/"]
-PYSR_UNARY_OPERATORS  = ["log", "exp", "sin", "cos"]
+PYSR_UNARY_OPERATORS  = ["log", "exp", "sin", "cos", "sqrt", "abs"] #sqrt and abs where absent in precedent run
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_PATH      = "data/6000_points.csv"   # remote sensing CSV
@@ -3070,10 +3070,23 @@ def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
 #  ORCHESTRATOR
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_all(targets=TARGETS, n_runs=N_RUNS):
+def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = []
     results_path = os.path.join(OUTPUT_DIR, "results.json")
+
+    # ── Resume: reload previously completed results (only when --continue is passed) ──
+    results = []
+    if resume and os.path.exists(results_path):
+        try:
+            with open(results_path) as _f:
+                results = json.load(_f)
+            print(f"[resume] Loaded {len(results)} existing results from {results_path}")
+        except Exception as _e:
+            print(f"[resume] Could not load existing results ({_e}); starting fresh")
+            results = []
+    elif not resume:
+        print("[run_all] Starting fresh (use --continue / -continue to resume).")
+    _done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
 
     for target in targets:
         print(f"\n{'='*70}")
@@ -3110,28 +3123,41 @@ def run_all(targets=TARGETS, n_runs=N_RUNS):
 
             # Run DRAGON method configs sequentially (parallelization added later)
             for cfg in DRAGON_METHOD_CONFIGS:
+                _key = (target, run_id, cfg["id"])
+                if _key in _done:
+                    print(f"  [{cfg['id']}] SKIPPED (already done)")
+                    continue
                 _dm = cfg.get("denoise_method")
                 _y_pre, _info_pre = _denoise_cache.get(_dm, (None, None)) if _dm else (None, None)
                 r = dragon_worker(cfg, target, run_id,
                                   _y_predenoised=_y_pre, _denoise_info=_info_pre)
                 results.append(r)
+                _done.add(_key)
                 print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
                       f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
                 print(f"           formula: {r['formula'][:100]}")
 
             # PySR baseline (sequential)
-            r = run_pysr(target, run_id)
-            results.append(r)
-            print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
-                  f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
-            print(f"           formula: {r['formula'][:100]}")
+            if (target, run_id, "pysr") in _done:
+                print(f"  [pysr] SKIPPED (already done)")
+            else:
+                r = run_pysr(target, run_id)
+                results.append(r)
+                _done.add((target, run_id, "pysr"))
+                print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
+                      f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
+                print(f"           formula: {r['formula'][:100]}")
 
             # PySR +Noise (mirror of Dragon `+Noise` ablation)
-            r = run_pysr(target, run_id, add_noise=True)
-            results.append(r)
-            print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
-                  f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
-            print(f"           formula: {r['formula'][:100]}")
+            if (target, run_id, "pysr_noise") in _done:
+                print(f"  [pysr_noise] SKIPPED (already done)")
+            else:
+                r = run_pysr(target, run_id, add_noise=True)
+                results.append(r)
+                _done.add((target, run_id, "pysr_noise"))
+                print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
+                      f"t={r['time_s']:.0f}s  strategy={r.get('strategy','?')}")
+                print(f"           formula: {r['formula'][:100]}")
 
         # Checkpoint after each target
         with open(results_path, "w") as f:
@@ -4329,10 +4355,12 @@ if __name__ == "__main__":
                         help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
     parser.add_argument("--dragon-only", action="store_true",
                         help="Skip PySR; only run missing Dragon entries and rebuild HTML")
+    parser.add_argument("--continue", "-continue", dest="resume", action="store_true",
+                        help="Resume run_all() from an existing results.json instead of starting fresh")
     args = parser.parse_args()
     if args.pysr_only:
         run_pysr_only()
     elif args.dragon_only:
         run_dragon_only()
     else:
-        run_all()
+        run_all(resume=args.resume)
