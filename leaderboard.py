@@ -61,45 +61,45 @@ SPAR_OP_GROUPS = {
 
 DRAGON_METHOD_CONFIGS = [
 
-    {
-        "id":          "allops",
-        "description": "DragonSR — reference method (all ops, full OLS, var-aug, no noise)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"], 
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     True,
-        "add_noise":   False,
-    },
-    {
-        "id":          "spar",
-        "description": ("DragonSR — smart-parallel: 4 op-subset streams "
-                        "(all / alg / alg+trig / alg+exp,ln) run in parallel "
-                        "via ThreadPoolExecutor; best loss wins."),
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     True,
-        "add_noise":   False,
-        "smart_parallel": True,
-    },
-    {
-        "id":          "boosted_spar",
-        "description": ("DragonSR — boosted smart-parallel: same 4 op-subset "
-                        "streams as 'spar' run concurrently, then their "
-                        "winning predictions ŷ_stream are stacked and "
-                        "meta-combined via sparse-OLS / nested-OLS / "
-                        "poly-rational-OLS (whichever fits best)."),
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "full",
-        "var_aug":     True,
-        "add_noise":   False,
-        "smart_parallel": True,
-        "boosted":        True,
-    },
+    # {
+    #     "id":          "allops",
+    #     "description": "DragonSR — reference method (all ops, full OLS, var-aug, no noise)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"], 
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    # },
+    # {
+    #     "id":          "spar",
+    #     "description": ("DragonSR — smart-parallel: 4 op-subset streams "
+    #                     "(all / alg / alg+trig / alg+exp,ln) run in parallel "
+    #                     "via ThreadPoolExecutor; best loss wins."),
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    #     "smart_parallel": True,
+    # },
+    # {
+    #     "id":          "boosted_spar",
+    #     "description": ("DragonSR — boosted smart-parallel: same 4 op-subset "
+    #                     "streams as 'spar' run concurrently, then their "
+    #                     "winning predictions ŷ_stream are stacked and "
+    #                     "meta-combined via sparse-OLS / nested-OLS / "
+    #                     "poly-rational-OLS (whichever fits best)."),
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "full",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    #     "smart_parallel": True,
+    #     "boosted":        True,
+    # },
     {
         "id":          "spar_denoise",
         "description": ("DragonSR — smart-parallel + stochastic subsampling "
@@ -113,35 +113,38 @@ DRAGON_METHOD_CONFIGS = [
         "parallel_N":  1,
         "loss_mode":   "full",
         "var_aug":     True,
-        "add_noise":   False,
+        "add_noise":   True,
         "smart_parallel":  True,
+        # XGBoost smoother applied to the noisy y BEFORE the stoch_sub in-loop step:
+        # y_noisy → XGB smooth → y_xgb, then stoch_sub subsamples y_xgb each eval.
+        "pre_denoise_method": "xgb",
         # subsample_ratio: fraction of the dataset drawn without replacement
         # at each loss evaluation.  0.5 = 50 % of rows per call.
         "denoise_method":  "stoch_sub",
-        "subsample_ratio": 0.2,
+        "subsample_ratio": 0.1,
     },
-    # ── Ablations of the reference method (allops) ────────────────────────
-    {
-        "id":          "noolsratn",
-        "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "channel",
-        "var_aug":     True,
-        "add_noise":   False,
-    },
-    {
-        "id":          "allops_const",
-        "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
-        "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
-        "curriculum":  True,
-        "parallel_N":  1,
-        "loss_mode":   "channel",
-        "var_aug":     True,
-        "add_noise":   False,
-        "optimize_constants": True,
-    }
+    # # ── Ablations of the reference method (allops) ────────────────────────
+    # {
+    #     "id":          "noolsratn",
+    #     "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "channel",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    # },
+    # {
+    #     "id":          "allops_const",
+    #     "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
+    #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
+    #     "curriculum":  True,
+    #     "parallel_N":  1,
+    #     "loss_mode":   "channel",
+    #     "var_aug":     True,
+    #     "add_noise":   False,
+    #     "optimize_constants": True,
+    # }
 ]
 
 # ── PySR config ───────────────────────────────────────────────────────────────
@@ -1138,13 +1141,54 @@ def _gpr_denoise(X: pd.DataFrame, y: pd.Series, max_samples: int = 500):
     )
 
 
+def _xgb_denoise(X: pd.DataFrame, y: pd.Series,
+                 n_estimators: int = 300, max_depth: int = 5) -> tuple:
+    """Denoise *y* using an XGBoost smoother.
+
+    Fits an XGBRegressor on (X, y_noisy) with mild regularisation and returns
+    ŷ = XGB.predict(X) as the denoised target.  Much faster than GPR (O(n log n)
+    vs O(n³)) and handles high-dimensional tabular data well.
+
+    Returns
+    -------
+    y_clean : pd.Series  — denoised target (same index/name as ``y``)
+    info    : dict       — {"method", "n_estimators", "max_depth", "train_rmse"}
+    """
+    from sklearn.preprocessing import StandardScaler as _SS
+    _scaler_X = _SS()
+    Xs = _scaler_X.fit_transform(X.values.astype(float))
+    yv = y.values.astype(float)
+
+    mdl = xgb.XGBRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_lambda=1.0,   # L2 — prevents overfitting to noise
+        reg_alpha=0.1,    # L1
+        random_state=RANDOM_SEED,
+        verbosity=0,
+    )
+    mdl.fit(Xs, yv)
+    y_hat = mdl.predict(Xs)
+    train_rmse = float(np.sqrt(np.mean((y_hat - yv) ** 2)))
+    return (
+        pd.Series(y_hat, index=y.index, name=y.name),
+        {"method": "xgb", "n_estimators": n_estimators,
+         "max_depth": max_depth, "train_rmse": train_rmse},
+    )
+
+
 def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
     """Dispatch to the requested denoising helper.
 
     Parameters
     ----------
-    method : "knn" → ``_blind_denoise`` (KNN leave-one-out CV)
-             "gpr" → ``_gpr_denoise``   (Gaussian Process Regression)
+    method : "knn"      → ``_blind_denoise``  (KNN leave-one-out CV)
+             "gpr"      → ``_gpr_denoise``    (Gaussian Process Regression)
+             "xgb"      → ``_xgb_denoise``    (XGBoost smoother)
+             "stoch_sub"→ no-op preprocessing (in-loop subsampling)
 
     Returns
     -------
@@ -1154,6 +1198,8 @@ def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
         return _blind_denoise(X, y)
     elif method == "gpr":
         return _gpr_denoise(X, y)
+    elif method == "xgb":
+        return _xgb_denoise(X, y)
     elif method == "stoch_sub":
         # Not a pre-processing step: the actual subsampling happens inside
         # loss_function at each Dragon evaluation.  Return y unchanged so
@@ -1161,7 +1207,7 @@ def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
         return y.copy(), {"method": "stoch_sub", "note": "in-loop subsampling"}
     else:
         raise ValueError(f"Unknown denoise_method: {method!r}. "
-                         f"Supported values: 'knn', 'gpr', 'stoch_sub'.")
+                         f"Supported values: 'knn', 'gpr', 'xgb', 'stoch_sub'.)")
 
 
 def xgboost_feature_selection(X: pd.DataFrame, y: pd.Series, n_top: int = N_TOP_FEATURES):
@@ -2376,7 +2422,8 @@ def _build_random_seed_dags(feature_names, operator_keys, seed=0, n_seeds=200):
 
 def dragon_worker(method_cfg: dict, target: str, run_id: int,
                   *, _y_predenoised=None, _denoise_info=None,
-                  _max_iters: int = None) -> dict:
+                  _max_iters: int = None,
+                  _X_preloaded=None, _y_preloaded=None) -> dict:
     """Entry point for each parallel DRAGON process.
 
     method_cfg : one element of DRAGON_METHOD_CONFIGS
@@ -2406,7 +2453,9 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
                 futs[ex.submit(dragon_worker, sub_cfg, target, run_id,
                                _y_predenoised=_y_predenoised,
                                _denoise_info=_denoise_info,
-                               _max_iters=_stream_budget)] = stream_id
+                               _max_iters=_stream_budget,
+                               _X_preloaded=_X_preloaded,
+                               _y_preloaded=_y_preloaded)] = stream_id
             for f in as_completed(futs):
                 try:
                     stream_results.append(f.result())
@@ -2559,7 +2608,11 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
 
     try:
         # ── Data ─────────────────────────────────────────────────────
-        X_df, y = load_dataset(target, run_id=run_id, strategy=strategy)
+        if _X_preloaded is not None and _y_preloaded is not None:
+            X_df = _X_preloaded
+            y    = _y_preloaded.copy()
+        else:
+            X_df, y = load_dataset(target, run_id=run_id, strategy=strategy)
         seed = RANDOM_SEED + run_id
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -2569,6 +2622,19 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
             noise_rng = np.random.default_rng(seed + 9999)
             y = y + noise_rng.normal(0, NOISE_STD * float(y.std()), len(y))
 
+        # ── Optional: GP pre-denoising on the (possibly noisy) y ─────
+        # Applied AFTER add_noise so GPR smooths the noisy signal.
+        # Intended to be paired with denoise_method="stoch_sub" (in-loop).
+        pre_dm = method_cfg.get("pre_denoise_method")
+        if pre_dm:
+            try:
+                y, _pre_dn_info = _apply_denoise(X_df, y, pre_dm)
+                print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): "
+                      f"{_pre_dn_info}")
+            except Exception as _e:
+                print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}) "
+                      f"FAILED ({_e}); continuing with raw noisy y")
+
         # ── Optional: blind denoising of y ──────────────────────────
         # The preferred path uses a precomputed (y_clean, info) passed in
         # from run_all(), where denoising is done ONCE per (target, run_id)
@@ -2577,7 +2643,12 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
         denoise_info = None
         dm = method_cfg.get("denoise_method")
         if dm:
-            if _y_predenoised is not None:
+            if dm == "stoch_sub":
+                # stoch_sub is purely in-loop (random subsampling inside
+                # loss_function at each evaluation) — y is never preprocessed.
+                # Keeping y as-is preserves any noise added by add_noise=True.
+                denoise_info = {"method": "stoch_sub", "note": "in-loop subsampling"}
+            elif _y_predenoised is not None:
                 # Use the precomputed denoised y (fast path — no recomputation)
                 y = _y_predenoised
                 denoise_info = _denoise_info
@@ -2968,10 +3039,12 @@ def _extract_best_formula_from_log(log_path: str) -> str:
 #  PySR WORKER  — calls Julia subprocess
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
+def run_pysr(target: str, run_id: int, add_noise: bool = False,
+             _X_preloaded=None, _y_clean_preloaded=None,
+             _y_noisy_preloaded=None) -> dict:
     """Run PySR via the PySRRegressor Python API (SymbolicRegression.jl backend).
 
-    add_noise=True → pass denoise=True to PySRRegressor (built-in GP denoising).
+    add_noise=True → pass the pre-built noisy y (same as Dragon) to PySRRegressor.
     Method id is then "pysr_noise".
     """
     from pysr import PySRRegressor
@@ -2987,7 +3060,15 @@ def run_pysr(target: str, run_id: int, add_noise: bool = False) -> dict:
 
     try:
         # ── Load data ────────────────────────────────────────────────────────
-        X_df, y_series = load_dataset(target, run_id)
+        if _X_preloaded is not None and _y_clean_preloaded is not None:
+            X_df = _X_preloaded
+            y_series = (
+                _y_noisy_preloaded
+                if (add_noise and _y_noisy_preloaded is not None)
+                else _y_clean_preloaded
+            )
+        else:
+            X_df, y_series = load_dataset(target, run_id)
         X = X_df.values.astype(np.float64)
         y = y_series.values.ravel().astype(np.float64)
         feature_names = list(X_df.columns)
@@ -3097,6 +3178,15 @@ def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
             strategy = INIT_STRATEGIES[run_id]
             print(f"\n--- Run {run_id+1}/{n_runs}  strategy={strategy} ---")
 
+            # ── Pre-build shared X and y (clean + noisy) once per (target, run_id) ──
+            # Both Dragon and PySR receive the identical arrays → fair comparison.
+            _seed_data = RANDOM_SEED + run_id
+            _X_base, _y_clean = load_dataset(target, run_id=run_id, strategy=strategy)
+            _noise_rng = np.random.default_rng(_seed_data + 9999)
+            _y_noisy   = _y_clean + _noise_rng.normal(
+                0, NOISE_STD * float(_y_clean.std()), len(_y_clean)
+            )
+
             # ── Precompute denoised y once per (target, run_id) ──────────
             # Collect all unique denoise_method values requested by any
             # Dragon config.  Each unique method is computed exactly once
@@ -3108,11 +3198,9 @@ def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
                 if cfg.get("denoise_method")
             )
             if _needed_dm:
-                _X_base, _y_base = load_dataset(target, run_id=run_id,
-                                                strategy=strategy)
                 for _dm in sorted(_needed_dm):
                     try:
-                        _y_dn, _dn_info = _apply_denoise(_X_base, _y_base, _dm)
+                        _y_dn, _dn_info = _apply_denoise(_X_base, _y_clean, _dm)
                         _denoise_cache[_dm] = (_y_dn, _dn_info)
                         print(f"  [denoise/{_dm}/{target}/run{run_id}] "
                               f"info={_dn_info}")
@@ -3130,7 +3218,8 @@ def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
                 _dm = cfg.get("denoise_method")
                 _y_pre, _info_pre = _denoise_cache.get(_dm, (None, None)) if _dm else (None, None)
                 r = dragon_worker(cfg, target, run_id,
-                                  _y_predenoised=_y_pre, _denoise_info=_info_pre)
+                                  _y_predenoised=_y_pre, _denoise_info=_info_pre,
+                                  _X_preloaded=_X_base, _y_preloaded=_y_clean)
                 results.append(r)
                 _done.add(_key)
                 print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
@@ -3141,7 +3230,9 @@ def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
             if (target, run_id, "pysr") in _done:
                 print(f"  [pysr] SKIPPED (already done)")
             else:
-                r = run_pysr(target, run_id)
+                r = run_pysr(target, run_id,
+                             _X_preloaded=_X_base, _y_clean_preloaded=_y_clean,
+                             _y_noisy_preloaded=_y_noisy)
                 results.append(r)
                 _done.add((target, run_id, "pysr"))
                 print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
@@ -3152,7 +3243,9 @@ def run_all(targets=TARGETS, n_runs=N_RUNS, resume=False):
             if (target, run_id, "pysr_noise") in _done:
                 print(f"  [pysr_noise] SKIPPED (already done)")
             else:
-                r = run_pysr(target, run_id, add_noise=True)
+                r = run_pysr(target, run_id, add_noise=True,
+                             _X_preloaded=_X_base, _y_clean_preloaded=_y_clean,
+                             _y_noisy_preloaded=_y_noisy)
                 results.append(r)
                 _done.add((target, run_id, "pysr_noise"))
                 print(f"  [{r['method']}] loss={r['loss']:.6f}  r2={r['r2']:.6f}  "
@@ -4287,13 +4380,22 @@ def run_pysr_only(targets=TARGETS, n_runs=N_RUNS):
 
     for target in targets:
         for run_id in range(n_runs):
+            # Pre-build shared data so both pysr and pysr_noise use the same arrays
+            _seed_data = RANDOM_SEED + run_id
+            _X_base, _y_clean = load_dataset(target, run_id=run_id)
+            _noise_rng = np.random.default_rng(_seed_data + 9999)
+            _y_noisy   = _y_clean + _noise_rng.normal(
+                0, NOISE_STD * float(_y_clean.std()), len(_y_clean)
+            )
             for add_noise in (False, True):
                 method_id = "pysr_noise" if add_noise else "pysr"
                 if (target, run_id, method_id) in done:
                     print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
                     continue
                 print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
-                r = run_pysr(target, run_id, add_noise=add_noise)
+                r = run_pysr(target, run_id, add_noise=add_noise,
+                             _X_preloaded=_X_base, _y_clean_preloaded=_y_clean,
+                             _y_noisy_preloaded=_y_noisy)
                 results.append(r)
                 done.add((target, run_id, method_id))
                 with open(results_path, "w") as f:
