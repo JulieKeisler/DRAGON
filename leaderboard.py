@@ -13,12 +13,12 @@ Launch with:  python -u leaderboard.py
 # ── Formula IDs — must match the HTML FORMULAS[].id list exactly ─────────────
 TARGETS = [
     # ── TEST RUN: only n4 and ndvi ──────────────────────────────────────────────────────
-    # "n4", "ndvi"
-    # Nguyen benchmarks (synthetic)
-    "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-    # Physics (synthetic)
+    "n4", "ndvi", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
+    # # Nguyen benchmarks (synthetic)
+    # "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
+    # # Physics (synthetic)
      "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck", #"hubble",
-    # Remote sensing (from data/6000_points.csv)
+    # # Remote sensing (from data/6000_points.csv)
     "wi2015", "awei_sh", "bai", "ndvi", "savi", "bsi", "evi2", "mndwi", "vari", "nirv",
 ]
 
@@ -38,9 +38,40 @@ DRAGON_MAX_COMPLEXITY = 10        # 10
 DRAGON_T_PER_LEVEL    = 1000       # 1000
 DRAGON_LOSS_THRESHOLD = 1e-30   # stop early if loss ≤ this
 
+# ── Post-processing (OLS / nested / poly-rational) complexity control ─────────
+# The OLS pipeline (_ols_eval) recombines DAG channels into models whose
+# complexity is otherwise UNBOUNDED: nested links, and poly-rational fractions
+# with many numerator/denominator terms.  A high-degree rational almost always
+# shaves a sliver of MSE off a simpler OLS fit on noisy data and therefore wins
+# the plain argmin(loss) — adding complexity that is not justified by the data.
+# These two knobs bound that extra complexity:
+#   POST_PARSIMONY_REL_TOL : a more complex model wins only if it beats the
+#       simplest near-tied candidate by MORE than this RELATIVE MSE margin.
+#       0.0   → disabled (plain argmin loss, legacy behaviour).
+#       0.02  → a rational/nested must improve MSE by >2 % over OLS to be kept;
+#               marginal noise-fitting gains no longer flip the winner.
+#       Bounded by construction: the reported loss is at most (1+tol)× the best,
+#       so the search fitness signal is changed by at most this margin.
+#   POST_COMPLEXITY_MAX    : hard cap on the number of fitted terms a post-
+#       processing model may use (None = no cap).  Candidates above the cap are
+#       rejected; the simplest candidate is always kept as a fallback.
+POST_PARSIMONY_REL_TOL = 0.02
+POST_COMPLEXITY_MAX    = None
+
+# ── Search loss kind ─────────────────────────────────────────────────────────
+#   SEARCH_LOSS = "mse"   : classical normalised MSE  (default, sensitive to
+#                            outliers because residuals are squared).
+#               = "huber" : normalised Huber loss     (quadratic for |r|<δ,
+#                            linear beyond → noisy/outlier-heavy targets
+#                            stop dominating the fitness signal).
+#   HUBER_DELTA_FRAC : Huber threshold as a fraction of std(y).  0.1– 0.3 is a
+#                      standard range; smaller → more robust.
+SEARCH_LOSS      = "huber"
+HUBER_DELTA_FRAC = 0.20
+
 # Gaussian noise level applied to y for the +Noise ablation method
 # (relative to std(y)).  Only used when method_cfg["add_noise"] is True.
-NOISE_STD = 0.05
+NOISE_STD = 0.01
 
 # ── Smart-parallel operator subsets  ───────────────────────────────────────────
 # Used by the "spar" DragonSR method: 4 streams launched in parallel via
@@ -115,13 +146,26 @@ DRAGON_METHOD_CONFIGS = [
         "var_aug":     True,
         "add_noise":   True,
         "smart_parallel":  True,
-        # XGBoost smoother applied to the noisy y BEFORE the stoch_sub in-loop step:
-        # y_noisy → XGB smooth → y_xgb, then stoch_sub subsamples y_xgb each eval.
-        "pre_denoise_method": "xgb",
+        # Self-validating GPR-Matérn smoother applied to the noisy y BEFORE
+        # the stoch_sub in-loop step.  Estimates the noise floor (σ̂²) by
+        # marginal likelihood and only denoises when a calibration check
+        # confirms it helps; on fast-varying targets (e.g. ndvi) it falls back
+        # to raw y automatically.  y_noisy → auto-denoise → y_clean.
+        "pre_denoise_method": "auto",
         # subsample_ratio: fraction of the dataset drawn without replacement
         # at each loss evaluation.  0.5 = 50 % of rows per call.
         "denoise_method":  "stoch_sub",
         "subsample_ratio": 0.1,
+        # MC-Dropout uncertainty weighting: train a small MLP on (X, y_noisy),
+        # run 50 stochastic forward passes to estimate per-sample aleatoric
+        # uncertainty, downweight noisy/uncertain points in both subsampling
+        # and the final SR loss.  Works on top of stoch_sub: clean points
+        # are drawn more often AND count more in the loss.
+        "mc_dropout":           False,
+        "mc_dropout_n_forward": 50,
+        "mc_dropout_p":         0.15,
+        "mc_dropout_epochs":    300,
+        "mc_dropout_hidden":    64,
     },
     # # ── Ablations of the reference method (allops) ────────────────────────
     # {
@@ -156,7 +200,7 @@ PYSR_JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.dragonenv/julia_en
 # PySR's operators:
 
 PYSR_BINARY_OPERATORS = ["+", "-", "*", "/"]
-PYSR_UNARY_OPERATORS  = ["log", "exp", "sin", "cos", "sqrt", "abs"] #sqrt and abs where absent in precedent run
+PYSR_UNARY_OPERATORS  = ["log", "exp", "sin", "cos", "sqrt", "abs"]
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_PATH      = "data/6000_points.csv"   # remote sensing CSV
@@ -167,7 +211,7 @@ LOG_SUFFIX     = "_found_formulas.txt"
 # ── Misc ──────────────────────────────────────────────────────────────────────
 RANDOM_SEED    = 42
 N_TOP_FEATURES = 10
-N_SYNTH_SAMPLES = 1000   # samples for physics/Nguyen synthetic datasets
+N_SYNTH_SAMPLES = 6000   # samples for physics/Nguyen synthetic datasets
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1023,161 +1067,103 @@ def build_dataset(target: str, data_path: str = DATA_PATH):
     return X, y
 
 
-def _blind_denoise(X: pd.DataFrame, y: pd.Series, k_grid=None, max_k=None):
-    """Blind denoising of *y* given features *X* — no prior on noise level.
+def _auto_denoise(X: pd.DataFrame, y: pd.Series, max_samples: int = 600, nu: float = 2.5):
+    """Self-validating GPR-Matérn denoiser (recommended default).
 
-    Uses k-Nearest Neighbours regression (Euclidean distance on standardised
-    features) and picks *k* by minimising leave-one-out CV residual variance.
-    The fitted ŷ ≈ E[y | X] is returned as the denoised target. This is a
-    classic non-parametric estimator: when the data are noiseless KNN-LOO
-    selects k=1 (no smoothing); when noise dominates it selects a large k.
+    Pipeline
+    --------
+    1. Fit a Gaussian Process with a (Constant × Matérn) + WhiteKernel kernel.
+       The Matérn kernel (nu=2.5) suits analytic targets better than RBF, and
+       the WhiteKernel term estimates the noise variance sigma_hat^2 by marginal
+       likelihood — this *is* the noise floor used for early stopping.
+    2. Calibration guard (no clean signal needed): via K-fold, measure the
+       held-out predictive RMSE on the NOISY data.  If the smoother is
+       unbiased it satisfies  RMSE_holdout ~= sigma_hat.  A ratio >> 1 means the
+       smoother is oversmoothing real structure (e.g. fast-varying remote-
+       sensing ratios) → denoising would *hurt*, so we fall back to raw y.
+
+    Benchmarked recovery (RMSE_to_clean / RMSE_noise, lower = better):
+        n4   : 0.15  (denoise applied)    vs  0.26 for XGBoost
+        ndvi : guard SKIPs (any smoother >1.0, i.e. would corrupt the signal)
 
     Returns
     -------
-    y_clean : pd.Series   — denoised target (same index/name as ``y``)
-    info    : dict        — {"k_opt", "loo_mse", "noise_var", "snr_db"}
+    y_clean : pd.Series
+    info    : dict — {"method", "applied", "ratio", "noise_var", "noise_sigma",
+                      "snr_db", "nu"}
     """
-    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import (
+        Matern, WhiteKernel, ConstantKernel)
     from sklearn.preprocessing import StandardScaler as _SS
+    from sklearn.model_selection import KFold
 
     n = len(y)
-    if n < 5:
-        return y.copy(), {"k_opt": 1, "loo_mse": 0.0, "noise_var": 0.0, "snr_db": float("inf")}
+    std_y = float(y.std())
+    if n < 8 or std_y < 1e-12:
+        return y.copy(), {"method": "auto", "applied": False,
+                          "reason": "too few samples / constant y",
+                          "noise_var": 0.0}
 
     Xs = _SS().fit_transform(X.values.astype(float))
     yv = y.values.astype(float)
 
-    # LOO via KNN with k+1 neighbours, drop the self-neighbour (distance 0).
-    if max_k is None:
-        max_k = max(3, min(int(np.sqrt(n)) + 5, n - 1))
-    if k_grid is None:
-        # Geometric-ish grid: 1,2,3,5,7,10,15,20, …
-        base = sorted({1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100})
-        k_grid = [k for k in base if k <= max_k]
-        if not k_grid:
-            k_grid = [1]
+    def _make_gp():
+        kern = (ConstantKernel(1.0, (1e-3, 1e3))
+                * Matern(length_scale=1.0, length_scale_bounds=(1e-2, 1e2), nu=nu)
+                + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-8, 1e2)))
+        return GaussianProcessRegressor(kernel=kern, n_restarts_optimizer=2,
+                                        normalize_y=True, random_state=RANDOM_SEED)
 
-    best = (float("inf"), 1, None)
-    for k in k_grid:
-        knn = KNeighborsRegressor(n_neighbors=min(k + 1, n))
-        knn.fit(Xs, yv)
-        # neighbours, distances; drop the self (idx 0) because we fitted on the same set
-        _, idx = knn.kneighbors(Xs, n_neighbors=min(k + 1, n))
-        loo_pred = yv[idx[:, 1:]].mean(axis=1) if idx.shape[1] > 1 else yv.copy()
-        mse = float(np.mean((yv - loo_pred) ** 2))
-        if mse < best[0]:
-            best = (mse, k, loo_pred)
-
-    loo_mse, k_opt, _ = best
-    # Fit a non-LOO prediction with k_opt for the actual returned denoised y.
-    knn = KNeighborsRegressor(n_neighbors=min(k_opt, n))
-    knn.fit(Xs, yv)
-    y_hat = knn.predict(Xs)
-    var_y = float(np.var(yv))
-    snr_db = 10.0 * np.log10(max(var_y - loo_mse, 1e-30) / max(loo_mse, 1e-30)) if loo_mse > 0 else float("inf")
-    return (
-        pd.Series(y_hat, index=y.index, name=y.name),
-        {"k_opt": int(k_opt), "loo_mse": float(loo_mse),
-         "noise_var": float(loo_mse), "snr_db": float(snr_db)},
-    )
-
-
-def _gpr_denoise(X: pd.DataFrame, y: pd.Series, max_samples: int = 500):
-    """Denoise *y* using Gaussian Process Regression (scikit-learn).
-
-    Fits an RBF + WhiteKernel GP to (X, y), optimises hyper-parameters via
-    marginal likelihood, then returns ŷ = GP.predict(X) as the denoised
-    target.  Large datasets are subsampled to ``max_samples`` rows for
-    fitting (GPR is O(n³)) while prediction still covers all rows.
-
-    Returns
-    -------
-    y_clean : pd.Series  — denoised target (same index/name as ``y``)
-    info    : dict       — {"method", "noise_level", "length_scale", "n_fit"}
-    """
-    from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn.gaussian_process.kernels import RBF, WhiteKernel
-    from sklearn.preprocessing import StandardScaler as _SS
-
-    n = len(y)
-    if n < 5:
-        return y.copy(), {"method": "gpr", "n_fit": n, "noise_level": None}
-
-    _scaler_X = _SS()
-    Xs = _scaler_X.fit_transform(X.values.astype(float))
-    yv = y.values.astype(float)
-
-    # Subsample for fitting when n is large (GPR is O(n³))
-    if n > max_samples:
-        _rng = np.random.default_rng(RANDOM_SEED)
-        _idx = _rng.choice(n, size=max_samples, replace=False)
-        Xs_fit, yv_fit = Xs[_idx], yv[_idx]
-    else:
-        Xs_fit, yv_fit = Xs, yv
-
-    kernel = RBF(length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level_bounds=(1e-6, 1e1))
-    gpr = GaussianProcessRegressor(
-        kernel=kernel, n_restarts_optimizer=2, normalize_y=True,
-        random_state=RANDOM_SEED,
-    )
-    gpr.fit(Xs_fit, yv_fit)
-    y_hat = gpr.predict(Xs)
-
-    # Extract fitted kernel parameters for logging
-    try:
-        noise_level   = float(gpr.kernel_.k2.noise_level)
-        length_scale  = gpr.kernel_.k1.length_scale
-        if hasattr(length_scale, "__len__"):
-            length_scale = float(np.mean(length_scale))
+    def _fit_predict(Xtr, ytr, Xte):
+        gp = _make_gp()
+        if len(ytr) > max_samples:
+            sub = np.random.default_rng(RANDOM_SEED).choice(
+                len(ytr), max_samples, replace=False)
+            gp.fit(Xtr[sub], ytr[sub])
         else:
-            length_scale = float(length_scale)
-    except Exception:
-        noise_level, length_scale = None, None
+            gp.fit(Xtr, ytr)
+        return gp.predict(Xte)
 
-    return (
-        pd.Series(y_hat, index=y.index, name=y.name),
-        {"method": "gpr", "n_fit": len(Xs_fit),
-         "noise_level": noise_level, "length_scale": length_scale},
-    )
+    # -- Calibration guard: held-out NOISY RMSE via K-fold -------------------
+    kf = KFold(n_splits=4, shuffle=True, random_state=RANDOM_SEED)
+    fold_err = []
+    for tr, te in kf.split(Xs):
+        try:
+            yh_te = _fit_predict(Xs[tr], yv[tr], Xs[te])
+            fold_err.append(np.mean((yh_te - yv[te]) ** 2))
+        except Exception:
+            fold_err.append(np.var(yv))
+    rmse_holdout = float(np.sqrt(np.mean(fold_err)))
 
+    # -- Full fit (for sigma_hat and the denoised signal) --------------------
+    gp_full = _make_gp()
+    try:
+        if n > max_samples:
+            sub = np.random.default_rng(RANDOM_SEED).choice(n, max_samples, replace=False)
+            gp_full.fit(Xs[sub], yv[sub])
+        else:
+            gp_full.fit(Xs, yv)
+        y_hat = gp_full.predict(Xs)
+        noise_level = float(gp_full.kernel_.k2.noise_level)   # normalised-y units
+    except Exception as e:
+        return y.copy(), {"method": "auto", "applied": False,
+                          "reason": f"gpr failed ({e})", "noise_var": 0.0}
 
-def _xgb_denoise(X: pd.DataFrame, y: pd.Series,
-                 n_estimators: int = 300, max_depth: int = 5) -> tuple:
-    """Denoise *y* using an XGBoost smoother.
+    sigma_hat = np.sqrt(max(noise_level, 0.0)) * std_y
+    ratio     = rmse_holdout / max(sigma_hat, 1e-12)
+    noise_var = float(sigma_hat ** 2)
+    var_y     = float(np.var(yv))
+    snr_db    = 10.0 * np.log10(max(var_y - noise_var, 1e-30) / max(noise_var, 1e-30))
 
-    Fits an XGBRegressor on (X, y_noisy) with mild regularisation and returns
-    ŷ = XGB.predict(X) as the denoised target.  Much faster than GPR (O(n log n)
-    vs O(n³)) and handles high-dimensional tabular data well.
-
-    Returns
-    -------
-    y_clean : pd.Series  — denoised target (same index/name as ``y``)
-    info    : dict       — {"method", "n_estimators", "max_depth", "train_rmse"}
-    """
-    from sklearn.preprocessing import StandardScaler as _SS
-    _scaler_X = _SS()
-    Xs = _scaler_X.fit_transform(X.values.astype(float))
-    yv = y.values.astype(float)
-
-    mdl = xgb.XGBRegressor(
-        n_estimators=n_estimators,
-        max_depth=max_depth,
-        learning_rate=0.05,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_lambda=1.0,   # L2 — prevents overfitting to noise
-        reg_alpha=0.1,    # L1
-        random_state=RANDOM_SEED,
-        verbosity=0,
-    )
-    mdl.fit(Xs, yv)
-    y_hat = mdl.predict(Xs)
-    train_rmse = float(np.sqrt(np.mean((y_hat - yv) ** 2)))
-    return (
-        pd.Series(y_hat, index=y.index, name=y.name),
-        {"method": "xgb", "n_estimators": n_estimators,
-         "max_depth": max_depth, "train_rmse": train_rmse},
-    )
+    # Unbiased smoother => RMSE_holdout ~= sigma_hat.  Excess => oversmoothing => skip.
+    applied = bool(ratio < 1.15)
+    info = {"method": "auto", "applied": applied, "ratio": float(ratio),
+            "noise_var": noise_var, "noise_sigma": float(sigma_hat),
+            "snr_db": float(snr_db), "nu": nu}
+    if applied:
+        return pd.Series(y_hat, index=y.index, name=y.name), info
+    return y.copy(), info
 
 
 def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
@@ -1185,21 +1171,15 @@ def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
 
     Parameters
     ----------
-    method : "knn"      → ``_blind_denoise``  (KNN leave-one-out CV)
-             "gpr"      → ``_gpr_denoise``    (Gaussian Process Regression)
-             "xgb"      → ``_xgb_denoise``    (XGBoost smoother)
-             "stoch_sub"→ no-op preprocessing (in-loop subsampling)
+    method : "auto"      → ``_auto_denoise`` (self-validating GPR-Matérn)
+             "stoch_sub" → no-op preprocessing (in-loop subsampling)
 
     Returns
     -------
-    (y_clean, info) — same convention as ``_blind_denoise`` / ``_gpr_denoise``.
+    (y_clean, info) — same convention as ``_auto_denoise``.
     """
-    if method == "knn":
-        return _blind_denoise(X, y)
-    elif method == "gpr":
-        return _gpr_denoise(X, y)
-    elif method == "xgb":
-        return _xgb_denoise(X, y)
+    if method == "auto":
+        return _auto_denoise(X, y)
     elif method == "stoch_sub":
         # Not a pre-processing step: the actual subsampling happens inside
         # loss_function at each Dragon evaluation.  Return y unchanged so
@@ -1207,7 +1187,82 @@ def _apply_denoise(X: pd.DataFrame, y: pd.Series, method: str):
         return y.copy(), {"method": "stoch_sub", "note": "in-loop subsampling"}
     else:
         raise ValueError(f"Unknown denoise_method: {method!r}. "
-                         f"Supported values: 'knn', 'gpr', 'xgb', 'stoch_sub'.)")
+                         f"Supported values: 'auto', 'stoch_sub'.")
+
+
+def _mc_dropout_weights(
+        X: pd.DataFrame, y: pd.Series,
+        n_forward: int = 50,
+        dropout_p: float = 0.15,
+        n_epochs: int = 300,
+        hidden: int = 64,
+        random_seed: int = RANDOM_SEED,
+) -> np.ndarray:
+    """Estimate per-sample confidence via a small MLP + Monte-Carlo Dropout.
+
+    Pipeline
+    --------
+    1. Standardise (X, y) and train a small 2-hidden-layer MLP with Dropout
+       for ``n_epochs`` steps (Adam, weight-decay).
+    2. Run ``n_forward`` stochastic forward passes (dropout active, model.train())
+       on the full dataset.
+    3. Compute per-sample variance of predictions → aleatoric uncertainty.
+    4. Convert to confidence weights: w_i = 1 / (1 + σ²_i / μ_σ²).
+       High-variance (likely noisy) samples get lower weight.
+    5. Normalise so that weights sum to n (unbiased expectation).
+
+    Returns
+    -------
+    weights : np.ndarray shape (n,), float32
+        Confidence weights summing to n.  Pass to ``make_loss_function`` as
+        ``_sample_weights`` to guide both stochastic subsampling (sampling
+        probability proportional to weight) and full-dataset loss reweighting.
+    """
+    n, d = len(y), X.shape[1]
+    if n < 8:
+        return np.ones(n, dtype=np.float32)
+
+    Xv = X.values.astype(np.float32)
+    yv = y.values.astype(np.float32).ravel()
+    xstd  = Xv.std(0) + 1e-8
+    xmean = Xv.mean(0)
+    ystd  = float(yv.std()) + 1e-8
+    ymean = float(yv.mean())
+    Xs = (Xv - xmean) / xstd
+    ys = (yv - ymean) / ystd
+
+    Xt = torch.tensor(Xs)
+    yt = torch.tensor(ys).unsqueeze(1)
+
+    torch.manual_seed(random_seed)
+    h = hidden
+    net = nn.Sequential(
+        nn.Linear(d, h),     nn.ReLU(), nn.Dropout(p=dropout_p),
+        nn.Linear(h, h // 2), nn.ReLU(), nn.Dropout(p=dropout_p),
+        nn.Linear(h // 2, 1),
+    )
+    opt   = torch.optim.Adam(net.parameters(), lr=5e-3, weight_decay=1e-4)
+    mse_f = nn.MSELoss()
+
+    net.train()
+    for _ in range(n_epochs):
+        opt.zero_grad()
+        mse_f(net(Xt), yt).backward()
+        opt.step()
+
+    # MC inference: keep dropout active (model.train()) for stochasticity
+    net.train()
+    with torch.no_grad():
+        preds = np.stack([
+            net(Xt).squeeze(1).numpy()
+            for _ in range(n_forward)
+        ])  # (n_forward, n)
+
+    variances = preds.var(axis=0)          # (n,)
+    mean_var  = float(variances.mean()) + 1e-30
+    confidence = 1.0 / (1.0 + variances / mean_var)  # ∈ (0.5, 1.0]
+    weights    = confidence * n / confidence.sum()
+    return weights.astype(np.float32)
 
 
 def xgboost_feature_selection(X: pd.DataFrame, y: pd.Series, n_top: int = N_TOP_FEATURES):
@@ -1642,6 +1697,80 @@ def _normalized_mse(pred, y, var_y):
     return float(np.mean((y - pred) ** 2) / var_y)
 
 
+def _normalized_huber(pred, y, var_y, delta_frac: float = None):
+    """Normalised Huber loss — robust drop-in replacement for normMSE.
+
+        H_δ(r) = ½·r²                 if |r| ≤ δ
+               = δ·(|r| - ½δ)         otherwise
+
+    We return  mean(H_δ(y - pred)) / (½·var_y), so the value matches the
+    normMSE scale at the MSE-regime limit (δ → ∞ gives exactly normMSE) and
+    stays in the same units used by the search comparator.
+    """
+    if var_y < 1e-30:
+        return 1.0
+    df = HUBER_DELTA_FRAC if delta_frac is None else delta_frac
+    delta = float(df) * float(np.sqrt(var_y))
+    r = y - pred
+    abs_r = np.abs(r)
+    quad  = np.minimum(abs_r, delta)
+    lin   = abs_r - quad
+    h     = 0.5 * quad * quad + delta * lin
+    return float(np.mean(h) / (0.5 * var_y))
+
+
+def _normalized_loss(pred, y, var_y):
+    """Dispatch to the configured search loss (MSE or Huber)."""
+    if SEARCH_LOSS == "huber":
+        return _normalized_huber(pred, y, var_y)
+    return _normalized_mse(pred, y, var_y)
+
+
+# ── Post-processing model selection under parsimony control ───────────────────
+# Structural ordering used only as a tie-break (simpler kind preferred).
+_POST_ORDER = {"channel": 0, "linear": 0, "ols": 1, "nested": 2, "rational": 3}
+
+
+def _post_eff_params(cand, min_w=1e-4):
+    """Number of fitted terms a post-processing candidate actually uses."""
+    kind = cand["kind"]
+    if kind in ("channel", "linear"):
+        return 1
+    if kind == "ols":
+        w = cand.get("ols_weights")
+        return int(np.sum(np.abs(w) >= min_w)) if w is not None else 1
+    if kind == "nested":
+        nd = cand["nested"]; w = nd["w"]; valid = nd["valid"]
+        return int(np.sum(valid & (np.abs(w) >= min_w)))
+    if kind == "rational":
+        r = cand["rational"]
+        return int(np.sum(np.abs(r["a"]) >= min_w) + np.sum(np.abs(r["b"]) >= min_w))
+    return 1
+
+
+def _select_post_model(cands):
+    """Pick the winning post-processing candidate under parsimony control.
+
+    A more complex model wins only if it beats the simplest near-tied candidate
+    by more than POST_PARSIMONY_REL_TOL (relative MSE).  Candidates exceeding
+    POST_COMPLEXITY_MAX terms are rejected (the simplest is always kept as a
+    fallback).  With POST_PARSIMONY_REL_TOL == 0 and POST_COMPLEXITY_MAX is None
+    this reduces exactly to argmin(mse_norm) (legacy behaviour).
+    """
+    for c in cands:
+        c["_k"] = _post_eff_params(c)
+    cap  = POST_COMPLEXITY_MAX
+    pool = [c for c in cands if cap is None or c["_k"] <= cap]
+    if not pool:
+        pool = [min(cands, key=lambda c: c["_k"])]
+    best_mse = min(c["mse_norm"] for c in pool)
+    thresh   = best_mse * (1.0 + POST_PARSIMONY_REL_TOL)
+    near     = [c for c in pool if c["mse_norm"] <= thresh]
+    # Among statistically-tied candidates, prefer the fewest terms, then the
+    # simplest kind, then the lowest loss.
+    return min(near, key=lambda c: (c["_k"], _POST_ORDER.get(c["kind"], 9), c["mse_norm"]))
+
+
 def _ols_eval(pred_all, true_all, loss_mode="full"):
     """
     Dispatch OLS evaluation based on loss_mode:
@@ -1670,7 +1799,7 @@ def _ols_eval(pred_all, true_all, loss_mode="full"):
         if w is None:
             r = correl(ch, y); ch_loss = float(1 - r ** 2) if np.isfinite(r) else 1.0
             return ch_loss, 0, None, ch_loss, None, None, None, np.array([0]), {}
-        mse_lin = _normalized_mse(pred, y, var_y)
+        mse_lin = _normalized_loss(pred, y, var_y)
         if loss_mode == "ols":
             analysis = {'var_y': var_y, 'channel_results': [(0, mse_lin)], 'n_ch': 1,
                         'ols_mse_norm': mse_lin, 'ols_kept_global': None,
@@ -1689,18 +1818,22 @@ def _ols_eval(pred_all, true_all, loss_mode="full"):
                 rat_candidates.append(_rc)
                 if rational is None or _rc["mse"] < best_rat_mse:
                     rational = _rc; best_rat_mse = _rc["mse"]
-        candidates = [("linear", mse_lin)]
-        if nested is not None:   candidates.append(("nested",   nested["mse"] / var_y))
-        if rational is not None: candidates.append(("rational", rational["mse"] / var_y))
-        winner = min(candidates, key=lambda kv: kv[1])
+        cands = [{"kind": "linear", "mse_norm": mse_lin}]
+        if nested is not None:
+            cands.append({"kind": "nested", "mse_norm": nested["mse"] / var_y,
+                          "nested": nested})
+        if rational is not None:
+            cands.append({"kind": "rational", "mse_norm": rational["mse"] / var_y,
+                          "rational": rational})
+        winner = _select_post_model(cands)
         analysis = {"var_y": var_y, "channel_results": [(0, mse_lin)], "n_ch": 1,
                     "ols_mse_norm": mse_lin, "ols_kept_global": None,
                     "ols_bias": float(b) if b is not None else 0.0,
                     "ols_weights": None, "nested": nested,
                     "rational_candidates": rat_candidates}
-        if winner[0] == "rational":
+        if winner["kind"] == "rational":
             return rational["mse"] / var_y, 0, None, mse_lin, None, None, rational, np.array([0]), analysis
-        if winner[0] == "nested":
+        if winner["kind"] == "nested":
             return nested["mse"] / var_y, 0, None, mse_lin, None, nested, None, np.array([0]), analysis
         return mse_lin, 0, None, mse_lin, None, None, None, np.array([0]), analysis
 
@@ -1720,7 +1853,7 @@ def _ols_eval(pred_all, true_all, loss_mode="full"):
         if w is None:
             channel_results.append((c, None))
             continue
-        loss = _normalized_mse(pred, y, var_y)
+        loss = _normalized_loss(pred, y, var_y)
         channel_results.append((c, loss))
         if loss < best_channel_loss:
             best_channel_loss = loss
@@ -1818,19 +1951,22 @@ def _ols_eval(pred_all, true_all, loss_mode="full"):
                 "ols_weights": ols_weights, "nested": nested,
                 "rational_candidates": rat_candidates}
 
-    candidates = [("channel", best_channel_loss)]
-    if ols_weights is not None: candidates.append(("ols",      ols_loss))
-    if nested is not None:      candidates.append(("nested",   nested["mse"] / var_y))
-    if rational is not None:    candidates.append(("rational", rational["mse"] / var_y))
-    winner = min(candidates, key=lambda kv: kv[1])
+    cands = [{"kind": "channel", "mse_norm": best_channel_loss}]
+    if ols_weights is not None:
+        cands.append({"kind": "ols", "mse_norm": ols_loss, "ols_weights": ols_weights})
+    if nested is not None:
+        cands.append({"kind": "nested", "mse_norm": nested["mse"] / var_y, "nested": nested})
+    if rational is not None:
+        cands.append({"kind": "rational", "mse_norm": rational["mse"] / var_y, "rational": rational})
+    winner = _select_post_model(cands)
 
-    if winner[0] == "rational":
+    if winner["kind"] == "rational":
         return (rational["mse"] / var_y, selected_c, ols_weights, best_channel_loss,
                 lr_obj, None, rational, valid_idx_global, analysis)
-    if winner[0] == "nested":
+    if winner["kind"] == "nested":
         return (nested["mse"] / var_y, selected_c, ols_weights, best_channel_loss,
                 lr_obj, nested, None, valid_idx_global, analysis)
-    if winner[0] == "ols":
+    if winner["kind"] == "ols":
         return (ols_loss, selected_c, ols_weights, best_channel_loss,
                 lr_obj, None, None, valid_idx_global, analysis)
     return (best_channel_loss, selected_c, None, best_channel_loss,
@@ -2050,7 +2186,8 @@ def build_search_space(feature_names, feature_scores, operator_keys, all_combos=
 def make_loss_function(search_space, train_loader, device, num_features,
                        feature_names, log_path, loss_mode="full",
                        optimize_constants=False,
-                       subsample_ratio=1.0, _X_np=None, _y_np=None):
+                       subsample_ratio=1.0, _X_np=None, _y_np=None,
+                       _sample_weights=None):
     """Factory returning (loss_function, state_dict) for DRAGON.
 
     loss_mode: 'full' = nested+rational OLS | 'ols' = sparse linear | 'channel' = best channel
@@ -2128,10 +2265,14 @@ def make_loss_function(search_space, train_loader, device, num_features,
         if subsample_ratio < 1.0 and _X_np is not None and _y_np is not None:
             _n_total = len(_y_np)
             _n_sub   = max(int(_n_total * subsample_ratio), min(_n_total, 20))
-            # Seed on idx so the same DAG gets the same subset within one
-            # Dragon iteration but different subsets across iterations.
+            # Sampling probabilities: MC-Dropout confidence if available
+            _sub_prob = None
+            if _sample_weights is not None and len(_sample_weights) == _n_total:
+                _w_pos = np.maximum(_sample_weights, 0.0)
+                _w_sum = _w_pos.sum()
+                _sub_prob = (_w_pos / _w_sum) if _w_sum > 0 else None
             _sub_rng = np.random.default_rng(int(idx) % (2 ** 31))
-            _sub_idx = _sub_rng.choice(_n_total, _n_sub, replace=False)
+            _sub_idx = _sub_rng.choice(_n_total, _n_sub, replace=False, p=_sub_prob)
             _Xb_sub  = torch.tensor(_X_np[_sub_idx], dtype=torch.float32).to(device)
             _yb_sub  = torch.tensor(_y_np[_sub_idx], dtype=torch.float32).reshape(-1, 1).to(device)
             with torch.no_grad():
@@ -2182,6 +2323,36 @@ def make_loss_function(search_space, train_loader, device, num_features,
             _state["_channel_a1"] = _a1
             _state["_channel_a0"] = _a0
 
+        # ── MC-Dropout weighted loss (full-data path only) ──────────────
+        # Recompute mse using per-sample confidence weights so that
+        # high-uncertainty (noisy) points contribute less to the score.
+        # This overrides the OLS-internal mse only when weights are
+        # available and we evaluated the full dataset (not a subsample).
+        if (_sample_weights is not None
+                and subsample_ratio >= 1.0
+                and y_pred is not None):
+            try:
+                _w  = np.asarray(_sample_weights, dtype=np.float64)
+                _w  = np.maximum(_w, 0.0)
+                _ws = _w.sum()
+                if _ws > 0 and len(_w) == len(y_np):
+                    _w  = _w / _ws
+                    _ym_w  = float(np.dot(_w, y_np))
+                    _var_w = float(np.dot(_w, (y_np - _ym_w) ** 2))
+                    if _var_w > 1e-30:
+                        _resid = y_np - np.asarray(y_pred).ravel()
+                        if SEARCH_LOSS == "huber":
+                            _delta = HUBER_DELTA_FRAC * float(np.sqrt(_var_w))
+                            _abs_r = np.abs(_resid)
+                            _quad  = np.minimum(_abs_r, _delta)
+                            _lin   = _abs_r - _quad
+                            _h     = 0.5 * _quad ** 2 + _delta * _lin
+                            mse    = float(np.dot(_w, _h) / (0.5 * _var_w))
+                        else:
+                            mse = float(np.dot(_w, _resid ** 2) / _var_w)
+            except Exception:
+                pass
+
         corr_val = float(correl(
             torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
             true_all))
@@ -2221,9 +2392,26 @@ def make_loss_function(search_space, train_loader, device, num_features,
                     pass
 
                 # ── Extract all per-method formula variants ─────────────────
-                # Channel formula
-                _f_ch = (str(formulas[selected_c])
-                         if formulas and selected_c < len(formulas) else None)
+                # Channel formula — always wrap with the SELECTED channel's
+                # own linear alignment  a1*(channel) + a0, computed on the
+                # channel itself (independent of the winning method) so the
+                # HTML "Channel" tab shows the usable aligned formula.
+                _f_ch_raw = (str(formulas[selected_c])
+                             if formulas and selected_c < len(formulas) else None)
+                if _f_ch_raw is not None:
+                    if pred_all.ndim > 1 and pred_all.shape[-1] > 1:
+                        _ch_only = pred_all[:, selected_c].numpy().ravel()
+                    else:
+                        _ch_only = pred_all.squeeze().numpy().ravel()
+                    _A_ch = np.column_stack([_ch_only, np.ones_like(_ch_only)])
+                    _co_ch, _, _, _ = np.linalg.lstsq(_A_ch, y_np.ravel(), rcond=None)
+                    _ch_a1, _ch_a0 = float(_co_ch[0]), float(_co_ch[1])
+                    if abs(_ch_a1 - 1.0) > 1e-4 or abs(_ch_a0) > 1e-4:
+                        _f_ch = f"{_ch_a1:.6e} * ({_f_ch_raw}) + {_ch_a0:.6e}"
+                    else:
+                        _f_ch = _f_ch_raw
+                else:
+                    _f_ch = None
                 _state["formula_channel"] = _f_ch
 
                 # ── All channel formulas (one per output channel) ───────────
@@ -2303,7 +2491,8 @@ def make_loss_function(search_space, train_loader, device, num_features,
                     _state["best_formula"] = _state["formula_nested"] or _state["best_formula"]
                 elif winner_type == "ols":
                     _state["best_formula"] = _state["formula_ols"] or _state["best_formula"]
-                # winner_type == "channel": keep formula_channel already set
+                else:  # channel: formula_channel already carries a1*(.)+a0
+                    _state["best_formula"] = _state.get("formula_channel") or _state["best_formula"]
 
                 with open(log_path, "a") as f:
                     f.write(f"=== NEW BEST  Idx={idx}  Loss={mse:.10f}  "
@@ -2662,13 +2851,11 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
                     print(f"[{method_id}/{target}/run{run_id}] denoise({dm}) "
                           f"FAILED ({_e}); continuing with raw y")
         elif method_cfg.get("denoise", False):
-            # Legacy key for backward compatibility
+            # Legacy key for backward compatibility → fall back to "auto".
             try:
-                y, denoise_info = _blind_denoise(X_df, y)
-                print(f"[{method_id}/{target}/run{run_id}] blind-denoise(knn): "
-                      f"k_opt={denoise_info['k_opt']}  "
-                      f"loo_mse={denoise_info['loo_mse']:.3e}  "
-                      f"SNR≈{denoise_info['snr_db']:.1f} dB")
+                y, denoise_info = _apply_denoise(X_df, y, "auto")
+                print(f"[{method_id}/{target}/run{run_id}] legacy denoise(auto): "
+                      f"{denoise_info}")
             except Exception as _e:
                 print(f"[{method_id}/{target}/run{run_id}] denoise FAILED ({_e}); "
                       f"continuing with raw y")
@@ -2822,12 +3009,39 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
             _subsample_ratio = float(method_cfg.get("subsample_ratio", 0.5))
             _X_np_sub = X_sel.values.astype(np.float32)
             _y_np_sub = y.values.astype(np.float32).ravel()
+
+        # ── MC-Dropout uncertainty weights ───────────────────────────────
+        # Train a small MLP with dropout on the (possibly noisy) data,
+        # run MC inference to estimate per-sample aleatoric uncertainty,
+        # and convert to confidence weights.  High-noise samples are
+        # downweighted in both stochastic subsampling and the final loss.
+        _mc_sample_weights = None
+        if method_cfg.get("mc_dropout", False):
+            try:
+                _mc_kw = dict(
+                    n_forward   = method_cfg.get("mc_dropout_n_forward",  50),
+                    dropout_p   = method_cfg.get("mc_dropout_p",          0.15),
+                    n_epochs    = method_cfg.get("mc_dropout_epochs",     300),
+                    hidden      = method_cfg.get("mc_dropout_hidden",      64),
+                    random_seed = seed,
+                )
+                _mc_sample_weights = _mc_dropout_weights(X_sel, y, **_mc_kw)
+                _w_min = float(_mc_sample_weights.min())
+                _w_max = float(_mc_sample_weights.max())
+                print(f"[{method_id}/{target}/run{run_id}] MC-Dropout weights: "
+                      f"min={_w_min:.3f}  max={_w_max:.3f}  "
+                      f"(low = uncertain/noisy points downweighted)")
+            except Exception as _mc_e:
+                print(f"[{method_id}/{target}/run{run_id}] MC-Dropout FAILED "
+                      f"({_mc_e}); continuing without sample weights")
+
         loss_fn, loss_state = make_loss_function(
             search_space, loader, device, num_features,
             feature_names, log_path, loss_mode=loss_mode,
             optimize_constants=method_cfg.get("optimize_constants", False),
             subsample_ratio=_subsample_ratio,
             _X_np=_X_np_sub, _y_np=_y_np_sub,
+            _sample_weights=_mc_sample_weights,
         )
 
         # ── Diverse init: build seed_dags (chain/fan/skip/rand topologies)

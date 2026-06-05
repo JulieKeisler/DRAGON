@@ -1,0 +1,163 @@
+# main.py
+from __future__ import annotations
+
+import os
+import json
+import multiprocessing as mp
+
+import numpy as np
+
+from Config import (
+    Experiment as _CfgExp,
+    Paths as _CfgPaths,
+    DRAGON_METHODS as DRAGON_METHOD_CONFIGS,
+)
+from Data import DatasetLoader
+from Dragon import dragon_worker
+from denoise import apply_denoise as _apply_denoise
+from html_builder import build_html
+
+_dataset_loader = DatasetLoader()
+
+
+def _get_run_pysr():
+    from pysr_runner import run_pysr
+    return run_pysr
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  ORCHESTRATOR
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_all(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS, resume=False):
+    """Run Dragon-only, then PySR-only, avoiding duplicate code paths."""
+    os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
+    results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
+    if not resume and os.path.exists(results_path):
+        try:
+            os.remove(results_path)
+            print(f"[run_all] Removed existing results.json for a fresh run: {results_path}")
+        except Exception as _e:
+            print(f"[run_all] Could not remove existing results.json ({_e}); continuing anyway")
+    elif resume:
+        print("[run_all] Resuming from existing results.json")
+
+    run_dragon_only(targets, n_runs)
+    return run_pysr_only(targets, n_runs)
+
+
+def run_pysr_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
+    """Complete missing PySR entries in an existing results.json, then rebuild HTML.
+
+    Entries with formula starting with 'ERROR:' or 'SKIP' are treated as
+    failed and will be re-run (removed from results before re-running).
+    """
+    os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
+    results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
+    if os.path.exists(results_path):
+        with open(results_path) as f:
+            results = json.load(f)
+        print(f"Loaded {len(results)} existing results from {results_path}")
+    else:
+        results = []
+        print("No existing results.json found — starting from scratch.")
+
+    def _is_failed(r):
+        fo = str(r.get("formula", "")).strip()
+        if fo in ("", "N/A", "TIMEOUT", "PySR: no result"):
+            return True
+        return fo.startswith(("ERROR:", "SKIP", "PySR: no result"))
+
+    # Remove failed PySR entries so they can be re-run
+    results = [r for r in results
+               if r.get("method") not in ("pysr", "pysr_noise") or not _is_failed(r)]
+
+    done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+
+    for target in targets:
+        for run_id in range(n_runs):
+            _seed_data = _CfgExp.RANDOM_SEED + run_id
+            _X_base, _y_clean = _dataset_loader.load(target, run_id=run_id)
+            _noise_rng = np.random.default_rng(_seed_data + 9999)
+            _y_noisy   = _y_clean + _noise_rng.normal(
+                0, _CfgExp.NOISE_STD * float(_y_clean.std()), len(_y_clean)
+            )
+            for add_noise in (False, True):
+                method_id = "pysr_noise" if add_noise else "pysr"
+                if (target, run_id, method_id) in done:
+                    print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
+                    continue
+                print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
+                r = _get_run_pysr()(target, run_id, add_noise=add_noise,
+                                     _X_preloaded=_X_base, _y_clean_preloaded=_y_clean,
+                                     _y_noisy_preloaded=_y_noisy)
+                results.append(r)
+                done.add((target, run_id, method_id))
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2, default=str)
+                build_html(results)
+    return results
+
+
+def run_dragon_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
+    """Complete missing Dragon entries in an existing results.json, then rebuild HTML.
+
+    Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
+    failed and will be re-run.
+    """
+    os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
+    results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
+    if os.path.exists(results_path):
+        with open(results_path) as f:
+            results = json.load(f)
+        print(f"Loaded {len(results)} existing results from {results_path}")
+    else:
+        results = []
+        print("No existing results.json found — starting from scratch.")
+
+    dragon_method_ids = {cfg["id"] for cfg in DRAGON_METHOD_CONFIGS}
+
+    def _is_failed(r):
+        fo = str(r.get("formula", "")).strip()
+        return fo in ("", "N/A") or fo.startswith("ERROR:")
+
+    # Remove failed Dragon entries so they can be re-run
+    results = [r for r in results
+               if r.get("method") not in dragon_method_ids or not _is_failed(r)]
+
+    done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+
+    for target in targets:
+        for run_id in range(n_runs):
+            for cfg in DRAGON_METHOD_CONFIGS:
+                method_id = cfg["id"]
+                if (target, run_id, method_id) in done:
+                    print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
+                    continue
+                print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
+                r = dragon_worker(cfg, target, run_id)
+                results.append(r)
+                done.add((target, run_id, method_id))
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2, default=str)
+                build_html(results)
+    return results
+
+
+if __name__ == "__main__":
+    import argparse
+    mp.set_start_method("spawn", force=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pysr-only", action="store_true",
+                        help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
+    parser.add_argument("--dragon-only", action="store_true",
+                        help="Skip PySR; only run missing Dragon entries and rebuild HTML")
+    parser.add_argument("--continue", "-continue", dest="resume", action="store_true",
+                        help="Resume run_all() from an existing results.json instead of starting fresh")
+    args = parser.parse_args()
+    if args.pysr_only:
+        run_pysr_only()
+    elif args.dragon_only:
+        run_dragon_only()
+    else:
+        run_all(resume=args.resume)
