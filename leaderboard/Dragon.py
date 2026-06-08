@@ -265,12 +265,14 @@ class DragonEvaluator:
         X_np: np.ndarray = None,
         y_np: np.ndarray = None,
         sample_weights: np.ndarray = None,
+        use_ols: bool = True,
     ):
         self.loss_mode = loss_mode
         self.subsample_ratio = subsample_ratio
         self.X_np = X_np
         self.y_np = y_np
         self.sample_weights = sample_weights
+        self.use_ols = bool(use_ols)
         self._ols = OLSPostProcessor()
 
     def forward(self, model, train_loader, idx, device=None):
@@ -299,7 +301,8 @@ class DragonEvaluator:
         return torch.cat(all_pred), torch.cat(all_true)
 
     def evaluate(self, pred_all, true_all):
-        return self._ols.evaluate(pred_all, true_all, self.loss_mode)
+        effective_loss_mode = self.loss_mode if self.use_ols else "channel"
+        return self._ols.evaluate(pred_all, true_all, effective_loss_mode)
 
     def resolve_prediction(self, pred_all, true_all, selected_c,
                            ols_weights, nested, rational):
@@ -388,6 +391,7 @@ class DragonSearcher:
         X_np:               np.ndarray = None,
         y_np:               np.ndarray = None,
         sample_weights:     np.ndarray = None,
+        use_ols:            bool       = True,
     ):
         self.search_space       = search_space
         self.train_loader       = train_loader
@@ -401,6 +405,7 @@ class DragonSearcher:
         self.X_np               = X_np
         self.y_np               = y_np
         self.sample_weights     = sample_weights
+        self.use_ols            = bool(use_ols)
 
         self._evaluator = DragonEvaluator(
             loss_mode=loss_mode,
@@ -408,6 +413,7 @@ class DragonSearcher:
             X_np=X_np,
             y_np=y_np,
             sample_weights=sample_weights,
+            use_ols=use_ols,
         )
         self._ols = self._evaluator._ols
         self.state = {
@@ -497,6 +503,9 @@ class DragonSearcher:
                                 else np.asarray(y_pred, dtype=np.float64))
             s["best_pred_np"] = yp_np.ravel()
             s["best_y_np"]    = np.asarray(y_np, dtype=np.float64).ravel()
+            s["best_pred_all_np"] = (pred_all.detach().cpu().numpy()
+                                      if isinstance(pred_all, torch.Tensor)
+                                      else np.asarray(pred_all, dtype=np.float64))
         except Exception:
             pass
         try:
@@ -504,6 +513,7 @@ class DragonSearcher:
             nodes    = model.dag.operations
             formulas = graph_to_all_formulas(adj, self.feature_names, nodes)
             s["best_formula"] = str(formulas[selected_c]) if formulas else "N/A"
+            s["best_formulas"] = [str(f) for f in formulas] if formulas else []
 
             ops_str, const_str, dag_size, dag_text, dag_svg, dag_data = DAGInspector.summarize(adj, nodes)
             s.update(ops_used=ops_str, has_const=const_str, dag_size=dag_size,
@@ -600,6 +610,26 @@ class DragonSearcher:
             s["best_formula"] = s["formula_ols"] or s["best_formula"]
         else:
             s["best_formula"] = s.get("formula_channel") or s["best_formula"]
+
+    def finalize_ols_postprocessing(self):
+        if self.use_ols or self.state.get("best_pred_all_np") is None:
+            return
+        try:
+            P = np.asarray(self.state["best_pred_all_np"], dtype=np.float32)
+            y = np.asarray(self.state["best_y_np"], dtype=np.float32).reshape(-1, 1)
+            P_t = torch.tensor(P, dtype=torch.float32)
+            y_t = torch.tensor(y, dtype=torch.float32)
+            (_, selected_c, _, _, _lr, nested, rational, valid_idx_global, analysis) = \
+                self._ols.evaluate(P_t, y_t, "full")
+            formulas = self.state.get("best_formulas", [])
+            self.state["formula_ols"] = self._ols_formula(formulas, analysis)
+            self.state["formula_nested"] = (
+                self._ols.format_nested(analysis["nested"], formulas)
+                if analysis.get("nested") and formulas else None)
+            self.state["formula_polyrat"] = self._polyrat_formulas(formulas, valid_idx_global, analysis)
+            self._update_losses(self.state, analysis, selected_c)
+        except Exception:
+            pass
 
 
 
@@ -839,7 +869,9 @@ def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, 
         search_space, loader, device, X_sel.shape[1], feature_names, log_path,
         loss_mode=method_cfg.get("loss_mode", "full"),
         optimize_constants=method_cfg.get("optimize_constants", False),
-        subsample_ratio=subsample_ratio, X_np=X_np, y_np=y_np, sample_weights=sample_weights,
+        subsample_ratio=subsample_ratio, X_np=X_np, y_np=y_np,
+        sample_weights=sample_weights,
+        use_ols=method_cfg.get("use_ols", True),
     )
 
     seed_models = None
@@ -1012,6 +1044,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
 
         best_loss = _run_search(method_cfg, search_space, dag, searcher,
                                 save_dir, seed_models, _max_iters)
+        searcher.finalize_ols_postprocessing()
 
         best_formula = loss_state.get("best_formula", "N/A")
         if best_formula == "N/A":

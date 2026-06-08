@@ -112,6 +112,7 @@ DRAGON_METHODS = [
         "curriculum":         True,
         "parallel_n":         1,
         "loss_mode":          "full",
+        "use_ols":            True,
         "var_aug":            True,
         "add_noise":          True,
         "smart_parallel":     True,

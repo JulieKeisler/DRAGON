@@ -34,36 +34,45 @@ def _plotly_to_html(fig) -> str:
     )
 
 
+def _matplotlib_to_svg(fig) -> str:
+    """Render a Matplotlib figure as an inline SVG string."""
+    svg = _fig_to_svg(fig)
+    return f"<div style='max-width:100%;overflow:auto'>{svg}</div>"
+
+
 def _make_dragon_landscape_svg(comp_csv_path: str):
-    """Return Plotly HTML snippet (3-panel: scatter+best, histogram, convergence).
+    """Return Plotly or Matplotlib HTML snippet (3-panel: scatter+best, histogram, convergence).
 
     Returns None on failure.
     """
+    if not os.path.exists(comp_csv_path):
+        return None
+
+    df = pd.read_csv(comp_csv_path)
+    if "Loss" not in df.columns:
+        return None
+
+    df["Loss"] = df["Loss"].replace([np.inf, -np.inf], np.nan)
+    df["BestSoFar"] = df["Loss"].expanding().min()
+    finite = df["Loss"].dropna()
+    if finite.empty:
+        return None
+    best = float(finite.min())
+
+    elapsed = None
+    if "TimeStamp" in df.columns:
+        try:
+            ts = pd.to_datetime(df["TimeStamp"], errors="coerce")
+            if ts.notna().any():
+                elapsed = (ts - ts.iloc[0]).dt.total_seconds() / 60.0
+        except Exception:
+            elapsed = None
+    x_conv = elapsed if elapsed is not None else df["Idx"]
+    x_conv_label = "Wall-clock time (min)" if elapsed is not None else "Iteration index"
+
     try:
-        if not os.path.exists(comp_csv_path):
-            return None
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
-        df = pd.read_csv(comp_csv_path)
-        if "Loss" not in df.columns:
-            return None
-        df["Loss"]      = df["Loss"].replace([np.inf, -np.inf], np.nan)
-        df["BestSoFar"] = df["Loss"].expanding().min()
-        finite = df["Loss"].dropna()
-        if finite.empty:
-            return None
-        best = float(finite.min())
-
-        elapsed = None
-        if "TimeStamp" in df.columns:
-            try:
-                ts = pd.to_datetime(df["TimeStamp"], errors="coerce")
-                if ts.notna().any():
-                    elapsed = (ts - ts.iloc[0]).dt.total_seconds() / 60.0
-            except Exception:
-                elapsed = None
-        x_conv       = elapsed if elapsed is not None else df["Idx"]
-        x_conv_label = "Wall-clock time (min)" if elapsed is not None else "Iteration index"
 
         fig = make_subplots(
             rows=1, cols=3,
@@ -122,7 +131,41 @@ def _make_dragon_landscape_svg(comp_csv_path: str):
         )
         return _plotly_to_html(fig)
     except Exception:
-        return None
+        try:
+            import matplotlib.pyplot as plt
+
+            fig, axes = plt.subplots(1, 3, figsize=(15, 4), constrained_layout=True)
+            fig.patch.set_facecolor('white')
+
+            axes[0].scatter(df["Idx"], df["Loss"], s=16, c="#185fa5", alpha=0.4)
+            axes[0].plot(df["Idx"], df["BestSoFar"], color="#a32d2d", linewidth=1.8)
+            axes[0].set_yscale('log')
+            axes[0].set_xlabel('Iteration')
+            axes[0].set_ylabel('Loss (1−|corr|)')
+            axes[0].set_title('Loss landscape (all evaluations)')
+            axes[0].grid(True, which='both', linestyle='--', alpha=0.25)
+
+            axes[1].hist(finite, bins=60, color="#3b6d11", alpha=0.8)
+            axes[1].axvline(best, color="#a32d2d", linestyle='--')
+            axes[1].set_xlabel('Loss')
+            axes[1].set_ylabel('Count')
+            axes[1].set_title('Loss distribution')
+            axes[1].grid(True, linestyle='--', alpha=0.25)
+            axes[1].text(0.95, 0.95, f'min = {best:.3e}', transform=axes[1].transAxes,
+                         ha='right', va='top', fontsize=9,
+                         bbox=dict(facecolor='white', alpha=0.8, edgecolor='none'))
+
+            axes[2].plot(x_conv, df["BestSoFar"], color="#a32d2d", linewidth=1.8)
+            axes[2].set_yscale('log')
+            axes[2].set_xlabel(x_conv_label)
+            axes[2].set_ylabel('Best loss')
+            axes[2].set_title(f'Convergence ({x_conv_label.split(" ")[0].lower()})')
+            axes[2].grid(True, which='both', linestyle='--', alpha=0.25)
+
+            fig.suptitle(f"DragonSR search landscape — {len(df)} evaluations · best = {best:.3e}", fontsize=13)
+            return _matplotlib_to_svg(fig)
+        except Exception:
+            return None
 
 
 def _compute_pysr_scores(hof: list) -> list:
