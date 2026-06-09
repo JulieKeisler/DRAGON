@@ -1,12 +1,17 @@
 # preprocessing.py
 from __future__ import annotations
 
+import os
 import numpy as np
 import pandas as pd
+import torch
 from itertools import combinations
 
 from Config import Experiment, Loss
-from Features import VarAugmentor, XGBoostSelector
+from dataprocessing.Features import VarAugmentor, XGBoostSelector
+from dataprocessing.Data import DatasetLoader
+
+_dataset_loader = DatasetLoader()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -183,3 +188,50 @@ class PreprocessingPipeline:
         info["n_selected_features"] = len(feature_names)
 
         return X, y, info
+
+# ── Helper: data preparation ──────────────────────────────────────────────────
+
+def _prepare_data(method_cfg, target, run_id, strategy, *,
+                  _y_predenoised, _denoise_info,
+                  _X_preprocessed=None, _y_preprocessed=None,
+                  _feature_names_preloaded=None, _feat_scores_preloaded=None,
+                  _X_preloaded=None, _y_preloaded=None):
+    method_id = method_cfg["id"]
+    seed = Experiment.RANDOM_SEED + run_id
+    np.random.seed(seed); torch.manual_seed(seed)
+
+    if (_X_preprocessed is not None and _y_preprocessed is not None
+            and _feature_names_preloaded is not None
+            and _feat_scores_preloaded is not None):
+        return (_X_preprocessed,
+                _y_preprocessed.copy(),
+                _feature_names_preloaded,
+                _feat_scores_preloaded,
+                seed)
+
+    if _X_preloaded is not None and _y_preloaded is not None:
+        X_df = _X_preloaded; y = _y_preloaded.copy()
+    else:
+        X_df, y = _dataset_loader.load(target, run_id=run_id, strategy=strategy)
+
+    if _y_predenoised is not None:
+        y = _y_predenoised
+
+    pre_dm = method_cfg.get("pre_denoise_method")
+    pre_denoise = bool(pre_dm and _y_predenoised is None)
+    pipeline = PreprocessingPipeline(
+        add_noise=method_cfg.get("add_noise", False),
+        pre_denoise=pre_denoise,
+        var_aug=method_cfg.get("var_aug", True),
+        run_id=run_id,
+    )
+    X_sel, y, info = pipeline.transform(X_df, y)
+    if pre_denoise and "gpr_denoise" in info:
+        print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): {info['gpr_denoise']}")
+
+    if method_cfg.get("denoise_method") == "stoch_sub":
+        pass  # handled in _setup_searcher
+
+    feature_names = info["feature_names"]
+    feat_scores = info["feat_scores"]
+    return X_sel, y, feature_names, feat_scores, seed

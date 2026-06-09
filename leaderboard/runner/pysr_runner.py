@@ -8,8 +8,8 @@ import traceback
 import numpy as np
 
 from Config import PySR as _CfgPySR, Paths as _CfgPaths, Experiment as _CfgExp
-from Data import DatasetLoader
-from stats import (
+from dataprocessing.Data import DatasetLoader
+from helpers.stats import (
     _compute_pysr_scores,
     _make_pysr_pareto_svg,
     _make_pysr_tree_svg,

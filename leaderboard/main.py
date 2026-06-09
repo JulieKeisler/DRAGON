@@ -12,16 +12,16 @@ from Config import (
     Paths as _CfgPaths,
     DRAGON_METHODS as DRAGON_METHOD_CONFIGS,
 )
-from Data import DatasetLoader
-from Dragon import dragon_worker
-from denoise import apply_denoise as _apply_denoise
-from html_builder import build_html
+from dataprocessing.Data import DatasetLoader
+from runner.Dragon import dragon_worker
+from dataprocessing.denoise import apply_denoise as _apply_denoise
+from helpers.html_builder import build_html
 
 _dataset_loader = DatasetLoader()
 
 
 def _get_run_pysr():
-    from pysr_runner import run_pysr
+    from DRAGON.leaderboard.runner.pysr_runner import run_pysr
     return run_pysr
 
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
                         help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
     parser.add_argument("--dragon-only", action="store_true",
                         help="Skip PySR; only run missing Dragon entries and rebuild HTML")
-    parser.add_argument("--continue", "-continue", dest="resume", action="store_true",
+    parser.add_argument("--continue", dest="resume", action="store_true",
                         help="Resume run_all() from an existing results.json instead of starting fresh")
     args = parser.parse_args()
     if args.pysr_only:

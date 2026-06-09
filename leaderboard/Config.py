@@ -91,7 +91,7 @@ class PySR:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class MCDropout:
-    ENABLED   = True
+    ENABLED   = False
     N_FORWARD = 50
     DROPOUT_P = 0.15
     N_EPOCHS  = 300
@@ -114,9 +114,9 @@ DRAGON_METHODS = [
         "loss_mode":          "full",
         "use_ols":            True,
         "var_aug":            True,
-        "add_noise":          True,
+        "add_noise":          False,
         "smart_parallel":     True,
-        "pre_denoise_method": "auto",
+        "pre_denoise_method": None, #"auto",
         "denoise_method":     "stoch_sub",
         "subsample_ratio":    0.1,
         "mc_dropout":         MCDropout.ENABLED,

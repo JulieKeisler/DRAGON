@@ -8,7 +8,7 @@ import pandas as pd
 from pathlib import Path
 
 from Config import Dragon as _CfgDragon, PySR as _CfgPySR
-from stats import _make_formula_stats_svg
+from helpers.stats import _make_formula_stats_svg
 
 
 # ══════════════════════════════════════════════════════════════════════════════

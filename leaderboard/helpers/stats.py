@@ -168,6 +168,26 @@ def _make_dragon_landscape_svg(comp_csv_path: str):
             return None
 
 
+
+def _collect_landscape(save_dir):
+    actual_T = None; loss_history = []; landscape_svg = None
+    comp_csv = os.path.join(save_dir, "computation_file.csv")
+    if not os.path.exists(comp_csv):
+        return actual_T, loss_history, landscape_svg
+    try:
+        df = pd.read_csv(comp_csv); actual_T = len(df)
+        if "Loss" in df.columns:
+            losses  = df["Loss"].replace([np.inf, -np.inf], np.nan).dropna().values
+            idx_pts = np.linspace(0, len(losses) - 1, min(len(losses), 80), dtype=int)
+            loss_history = [[int(i), float(losses[i])] for i in idx_pts]
+    except Exception:
+        pass
+    try:
+        landscape_svg = _make_dragon_landscape_svg(comp_csv)
+    except Exception:
+        pass
+    return actual_T, loss_history, landscape_svg
+
 def _compute_pysr_scores(hof: list) -> list:
     """Add a 'score' field (parsimony score) to each HoF entry. Mutates and returns the list."""
     if not hof:
