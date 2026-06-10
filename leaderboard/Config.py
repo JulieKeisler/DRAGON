@@ -2,12 +2,16 @@
 Definition of all config parameters
 """
 
+import os
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PATHS
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Paths:
-    DATA_CSV    = "data/6000_points.csv"
+    DATA_CSV    = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "data", "6000_points.csv")
+    )
     OUTPUT_DIR  = "leaderboard_runs"
     HTML_OUTPUT = "dragonfsr_leaderboard_v2.html"
     LOG_SUFFIX  = "_found_formulas.txt"
@@ -20,11 +24,11 @@ class Paths:
 class Experiment:
     TARGETS = [
         "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12",
-        "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck", "hubble",
+        "newton", "rydberg", "idealgas", "kepler", "schechter", "bode", "leavitt", "planck", #"hubble",
         "wi2015", "awei_sh", "bai", "ndvi", "savi", "bsi", "evi2", "mndwi", "vari", "nirv",
     ]
-    N_RUNS           = 2
-    INIT_STRATEGIES  = ["random", "diverse", "xgboost", "warmstart", "adversarial"]
+    N_RUNS           = 2 # todo: increase back to 5 when all strategies are defined
+    INIT_STRATEGIES  = ["random", "diverse", "xgboost", "warmstart", "adversarial"] #todo: define other startegies ("xgboost", "warmstart", "adversarial")
     RANDOM_SEED      = 42
     N_TOP_FEATURES   = 10
     N_SYNTH_SAMPLES  = 6000
@@ -32,7 +36,7 @@ class Experiment:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  LOSS
+#  ALIGNMENT LOSS
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Loss:
@@ -87,7 +91,7 @@ class PySR:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  MC-DROPOUT  (plug-in activable par méthode)
+#  MC-DROPOUT
 # ══════════════════════════════════════════════════════════════════════════════
 
 class MCDropout:
@@ -160,7 +164,7 @@ DRAGON_METHODS = [
     #     "smart_parallel": True,
     #     "boosted":        True,
     # },
-     # {
+    #  {
     #     "id":          "noolsratn",
     #     "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
