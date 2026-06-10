@@ -191,8 +191,8 @@ class PreprocessingPipeline:
 
 # ── Helper: data preparation ──────────────────────────────────────────────────
 
-def _prepare_data(method_cfg, target, run_id, strategy, *,
-                  _y_predenoised, _denoise_info,
+def _prepare_data(method_cfg, target, run_id, *,
+                  _y_predenoised,
                   _X_preprocessed=None, _y_preprocessed=None,
                   _feature_names_preloaded=None, _feat_scores_preloaded=None,
                   _X_preloaded=None, _y_preloaded=None):
@@ -212,7 +212,7 @@ def _prepare_data(method_cfg, target, run_id, strategy, *,
     if _X_preloaded is not None and _y_preloaded is not None:
         X_df = _X_preloaded; y = _y_preloaded.copy()
     else:
-        X_df, y = _dataset_loader.load(target, run_id=run_id, strategy=strategy)
+        X_df, y = _dataset_loader.load(target, run_id=run_id)
 
     if _y_predenoised is not None:
         y = _y_predenoised
