@@ -19,7 +19,7 @@ _dataset_loader = DatasetLoader() #todo: check if it's better to onstantiate glo
 
 
 def _get_run_pysr():
-    from DRAGON.leaderboard.runner.pysr_runner import run_pysr
+    from runner.pysr_runner import run_pysr
     return run_pysr
 
 
