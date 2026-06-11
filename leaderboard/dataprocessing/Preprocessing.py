@@ -11,7 +11,6 @@ from Config import Experiment, Loss
 from dataprocessing.Features import VarAugmentor, XGBoostSelector
 from dataprocessing.Data import DatasetLoader
 
-_dataset_loader = DatasetLoader()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -159,7 +158,7 @@ class LinGAMDenoiser:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PreprocessingPipeline:
-    """Orchestrates: noise injection → GPR denoise → var augmentation → XGBoost selection.
+    """Orchestrates: noise injection → denoise → var augmentation → XGBoost selection.
 
     Each step is optional and controlled by the method config. The pipeline returns
     a search-ready (X, y) pair plus preprocessing metadata.
@@ -168,17 +167,13 @@ class PreprocessingPipeline:
     def __init__(
         self,
         add_noise:          bool = False,
-        pre_denoise:        bool = False,
+        denoiser:           str | None = None,
         var_aug:            bool = True,
-        use_lingam_denoiser: bool = False,
-        is_synth_target:    bool = False,
         run_id:             int  = 0,
     ):
         self.add_noise       = add_noise
-        self.pre_denoise     = pre_denoise
+        self.denoiser        = denoiser
         self.var_aug         = var_aug
-        self.use_lingam_denoiser = use_lingam_denoiser
-        self.is_synth_target = is_synth_target
         self.run_id          = run_id
 
         self._noise_injector = NoiseInjector()
@@ -197,13 +192,13 @@ class PreprocessingPipeline:
             y = self._noise_injector.transform(y, run_id=self.run_id)
             info["noise_injected"] = True
 
-        if self.pre_denoise:
+        if self.denoiser == "gpr":
             y, dn_info = self._gpr_denoiser.transform(X, y)
             info["gpr_denoise"] = dn_info
 
-        if self.use_lingam_denoiser:
-                y, dn_info = self._lingam_denoiser.transform(X, y)
-                info["lingam_denoise"] = dn_info
+        if self.denoiser == "lingam":
+            y, dn_info = self._lingam_denoiser.transform(X, y)
+            info["lingam_denoise"] = dn_info
         
         if self.var_aug:
             X = self._var_augmentor.transform(X, y)
@@ -219,49 +214,26 @@ class PreprocessingPipeline:
 
 # ── Helper: data preparation ──────────────────────────────────────────────────
 
-def _prepare_data(method_cfg, target, run_id, *,
-                  _y_predenoised,
-                  _X_preprocessed=None, _y_preprocessed=None,
-                  _feature_names_preloaded=None, _feat_scores_preloaded=None,
-                  _X_preloaded=None, _y_preloaded=None):
+def _prepare_data(method_cfg, target, run_id):
+
     method_id = method_cfg["id"]
-    seed = Experiment.RANDOM_SEED + run_id
-    np.random.seed(seed); torch.manual_seed(seed)
+    X_df, y = DatasetLoader().load(target, run_id=run_id)
+    denoiser = method_cfg.get("denoiser")
 
-    if (_X_preprocessed is not None and _y_preprocessed is not None
-            and _feature_names_preloaded is not None
-            and _feat_scores_preloaded is not None):
-        return (_X_preprocessed,
-                _y_preprocessed.copy(),
-                _feature_names_preloaded,
-                _feat_scores_preloaded,
-                seed)
-
-    if _X_preloaded is not None and _y_preloaded is not None:
-        X_df = _X_preloaded; y = _y_preloaded.copy()
-    else:
-        X_df, y = _dataset_loader.load(target, run_id=run_id)
-
-    if _y_predenoised is not None:
-        y = _y_predenoised
-
-    pre_dm = method_cfg.get("pre_denoise_method")
-    pre_denoise = bool(pre_dm and _y_predenoised is None)
     pipeline = PreprocessingPipeline(
         add_noise=method_cfg.get("add_noise", False),
-        pre_denoise=pre_denoise,
+        denoiser=denoiser,
         var_aug=method_cfg.get("var_aug", True),
-        use_lingam_denoiser=method_cfg.get("use_lingam_denoiser", False),
         run_id=run_id,
     )
-    X_sel, y, info = pipeline.transform(X_df, y)
-    if pre_denoise and "gpr_denoise" in info:
-        print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): {info['gpr_denoise']}")
-    if "lingam_denoise" in info:
-            print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): {info['lingam_denoise']}")
-    if method_cfg.get("denoise_method") == "stoch_sub":
-        pass  # handled in _setup_searcher
 
+    X_sel, y, info = pipeline.transform(X_df, y)
+
+    if "gpr_denoise" in info:
+        print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['gpr_denoise']}")
+    if "lingam_denoise" in info:
+        print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['lingam_denoise']}")
+  
     feature_names = info["feature_names"]
     feat_scores = info["feat_scores"]
-    return X_sel, y, feature_names, feat_scores, seed
+    return X_sel, y, feature_names, feat_scores

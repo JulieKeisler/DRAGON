@@ -103,6 +103,15 @@ class MCDropout:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  SAMPLING
+# ══════════════════════════════════════════════════════════════════════════════
+
+class Sampling:
+    ENABLED = True
+    SUBSAMPLING_RATIO = 0.1
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  METHOD REGISTRY
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -115,15 +124,12 @@ DRAGON_METHODS = [
         "operators":          _ALL_OPS,
         "curriculum":         True,
         "parallel_n":         1,
-        "loss_mode":          "full",
-        "use_ols":            True,
+        "loss_mode":          "full", # "ols" | "channel"
         "var_aug":            True,
         "add_noise":          True,
         "smart_parallel":     True,
-        "use_lingam_denoiser": True,
-        "pre_denoise_method": None, #"auto",
-        "denoise_method":     "stoch_sub",
-        "subsample_ratio":    0.1,
+        "denoiser":           "lingam", # "gpr" or "lingam" or None
+        "sampling":           Sampling.ENABLED,
         "mc_dropout":         MCDropout.ENABLED,
     },
     # {

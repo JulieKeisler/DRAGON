@@ -133,7 +133,7 @@ class NguyenGenerator:
     def _n4(self):
         x = self.rng.uniform(-1, 1, self.n)
         return pd.DataFrame({"x": x}), pd.Series(x**6 + x**5 + x**4 + x**3 + x**2 + x, name="y")
-    #1.2329*x**6 + 547.139*x**5 + 1892*x**4 + 2.1*x**3 + 9182*x**2 + 1298*x +12.38
+    #todo: 1.2329*x**6 + 547.139*x**5 + 1892*x**4 + 2.1*x**3 + 9182*x**2 + 1298*x +12.38
 
     def _n5(self):
         x = self.rng.uniform(-1, 1, self.n)
@@ -231,7 +231,6 @@ class DatasetLoader:
         self,
         target:   str,
         run_id:   int = 0,
-        strategy: str = "xgboost",
     ) -> tuple[pd.DataFrame, pd.Series]:
         seed = Experiment.RANDOM_SEED + run_id
         n    = Experiment.N_SYNTH_SAMPLES

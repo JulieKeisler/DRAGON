@@ -8,7 +8,12 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import time
 import traceback
-from Config import Experiment as _CfgExp, Dragon as _CfgDragon, Paths as _CfgPaths
+from Config import (
+    Experiment as _CfgExp,
+    Dragon as _CfgDragon,
+    Paths as _CfgPaths,
+    Sampling as _CfgSampling,
+)
 from dataprocessing.Features import CombinationBuilder
 from dataprocessing.Preprocessing import _prepare_data
 from runner.Ols import OLSPostProcessor, correl
@@ -210,14 +215,12 @@ class DragonEvaluator:
         X_np: np.ndarray = None,
         y_np: np.ndarray = None,
         sample_weights: np.ndarray = None,
-        use_ols: bool = True,
     ):
         self.loss_mode = loss_mode
         self.subsample_ratio = subsample_ratio
         self.X_np = X_np
         self.y_np = y_np
         self.sample_weights = sample_weights
-        self.use_ols = bool(use_ols)
         self._ols = OLSPostProcessor()
 
     def forward(self, model, train_loader, idx, device=None):
@@ -246,8 +249,7 @@ class DragonEvaluator:
         return torch.cat(all_pred), torch.cat(all_true)
 
     def evaluate(self, pred_all, true_all):
-        effective_loss_mode = self.loss_mode if self.use_ols else "channel"
-        return self._ols.evaluate(pred_all, true_all, effective_loss_mode)
+        return self._ols.evaluate(pred_all, true_all, self.loss_mode)
 
     def resolve_prediction(self, pred_all, true_all, selected_c,
                            ols_weights, nested, rational):
@@ -336,7 +338,6 @@ class DragonSearcher:
         X_np:               np.ndarray = None,
         y_np:               np.ndarray = None,
         sample_weights:     np.ndarray = None,
-        use_ols:            bool       = True,
     ):
         self.search_space       = search_space
         self.train_loader       = train_loader
@@ -350,7 +351,6 @@ class DragonSearcher:
         self.X_np               = X_np
         self.y_np               = y_np
         self.sample_weights     = sample_weights
-        self.use_ols            = bool(use_ols)
 
         self._evaluator = DragonEvaluator(
             loss_mode=loss_mode,
@@ -358,7 +358,6 @@ class DragonSearcher:
             X_np=X_np,
             y_np=y_np,
             sample_weights=sample_weights,
-            use_ols=use_ols,
         )
         self._ols = self._evaluator._ols
         self.state = {
@@ -557,7 +556,7 @@ class DragonSearcher:
             s["best_formula"] = s.get("formula_channel") or s["best_formula"]
 
     def finalize_ols_postprocessing(self):
-        if self.use_ols or self.state.get("best_pred_all_np") is None:
+        if self.loss_mode != "channel" or self.state.get("best_pred_all_np") is None:
             return
         try:
             P = np.asarray(self.state["best_pred_all_np"], dtype=np.float32)
@@ -580,13 +579,9 @@ class DragonSearcher:
 
 
 
-def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None,
-                      _y_predenoised=None,
-                      _X_preloaded=None, _y_preloaded=None):
-    X_sel, y, feature_names, feat_scores, seed = _prepare_data(
-        method_cfg, target, run_id,
-        _y_predenoised=_y_predenoised,
-        _X_preloaded=_X_preloaded, _y_preloaded=_y_preloaded)
+def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
+    
+    X_sel, y, feature_names, feat_scores = _prepare_data(method_cfg, target, run_id)
 
     if method_cfg.get("smart_parallel"):
         return _run_smart_parallel(
@@ -729,8 +724,8 @@ def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, 
         feature_names, feat_scores, method_cfg["operators"]).build(all_combos)
 
     subsample_ratio = 1.0; X_np = None; y_np = None
-    if method_cfg.get("denoise_method") == "stoch_sub":
-        subsample_ratio = float(method_cfg.get("subsample_ratio", 0.5))
+    if method_cfg.get("sampling", False):
+        subsample_ratio = float(_CfgSampling.SUBSAMPLING_RATIO)
         X_np = X_sel.values.astype(np.float32)
         y_np = y.values.astype(np.float32).ravel()
 
@@ -748,7 +743,6 @@ def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, 
         optimize_constants=method_cfg.get("optimize_constants", False),
         subsample_ratio=subsample_ratio, X_np=X_np, y_np=y_np,
         sample_weights=sample_weights,
-        use_ols=method_cfg.get("use_ols", True),
     )
 
     return searcher, dag, search_space

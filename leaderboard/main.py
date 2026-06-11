@@ -14,6 +14,7 @@ from Config import (
 from dataprocessing.Data import DatasetLoader
 from runner.Dragon import run_dragon_method
 from helpers.html_builder import build_html
+from pathlib import Path
 
 _dataset_loader = DatasetLoader() #todo: check if it's better to onstantiate globally or inside each run function for runtime
 
@@ -103,15 +104,15 @@ def run_dragon_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
     Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
     failed and will be re-run.
     """
-    os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
-    results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
-    if os.path.exists(results_path):
-        with open(results_path) as f:
-            results = json.load(f)
-        print(f"Loaded {len(results)} existing results from {results_path}")
-    else:
-        results = []
-        print("No existing results.json found — starting from scratch.")
+
+    results_path = Path(_CfgPaths.OUTPUT_DIR, "results.json")
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    results = json.loads(results_path.read_text()) if results_path.exists() else []
+    print(
+        f"Loaded {len(results)} existing results from {results_path}"
+        if results_path.exists()
+        else "No existing results.json found — starting from scratch."
+    )
 
     dragon_method_ids = {cfg["id"] for cfg in DRAGON_METHOD_CONFIGS}
 
