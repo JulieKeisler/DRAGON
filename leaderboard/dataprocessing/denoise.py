@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 
 from Config import Experiment as _CfgExp
+from Config import MCDropout
 
 
 
@@ -28,17 +29,17 @@ class MCDropoutWeighter:
 
     def __init__(
         self,
-        n_forward:   int   = 50,
-        dropout_p:   float = 0.15,
-        n_epochs:    int   = 300,
-        hidden:      int   = 64,
-        random_seed: int   = None,
+        n_forward:   int   = MCDropout.N_FORWARD,
+        dropout_p:   float = MCDropout.DROPOUT_P,
+        n_epochs:    int   = MCDropout.N_EPOCHS,
+        hidden:      int   = MCDropout.HIDDEN,
+        random_seed: int   = _CfgExp.RANDOM_SEED,
     ):
         self.n_forward   = n_forward
         self.dropout_p   = dropout_p
         self.n_epochs    = n_epochs
         self.hidden      = hidden
-        self.random_seed = random_seed if random_seed is not None else _CfgExp.RANDOM_SEED
+        self.random_seed = random_seed
 
     def compute_weights(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """Return per-sample confidence weights (shape: (n,), dtype: float32)."""

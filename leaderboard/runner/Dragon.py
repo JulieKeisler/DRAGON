@@ -13,7 +13,7 @@ from dataprocessing.Features import CombinationBuilder
 from dataprocessing.Preprocessing import _prepare_data
 from runner.Ols import OLSPostProcessor, correl
 from helpers.stats import DAGInspector, _collect_landscape
-from dataprocessing.denoise import apply_denoise, MCDropoutWeighter
+from dataprocessing.Denoise import MCDropoutWeighter
 
 
 # local helper path
@@ -108,6 +108,9 @@ class RegressionDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+
+
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -576,13 +579,35 @@ class DragonSearcher:
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  WORKER  — entry point for each parallel process
-# ══════════════════════════════════════════════════════════════════════════════
 
+def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None,
+                      _y_predenoised=None,
+                      _X_preloaded=None, _y_preloaded=None):
+    X_sel, y, feature_names, feat_scores, seed = _prepare_data(
+        method_cfg, target, run_id,
+        _y_predenoised=_y_predenoised,
+        _X_preloaded=_X_preloaded, _y_preloaded=_y_preloaded)
+
+    if method_cfg.get("smart_parallel"):
+        return _run_smart_parallel(
+            method_cfg, target, run_id,
+            _max_iters=_max_iters,
+            _X_preprocessed=X_sel, _y_preprocessed=y,
+            _feature_names_preloaded=feature_names,
+            _feat_scores_preloaded=feat_scores)
+
+    return dragon_worker(
+        method_cfg, target, run_id,
+        _X_preprocessed=X_sel, _y_preprocessed=y,
+        _feature_names_preloaded=feature_names,
+        _feat_scores_preloaded=feat_scores)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PARALLEL PROCESS
+# ══════════════════════════════════════════════════════════════════════════════
 # ── Helper: smart-parallel dispatcher ────────────────────────────────────────
 
-def _run_smart_parallel(method_cfg, target, run_id, *, strategy,
+def _run_smart_parallel(method_cfg, target, run_id, *,
                         _max_iters,
                         _X_preprocessed=None, _y_preprocessed=None,
                         _feature_names_preloaded=None, _feat_scores_preloaded=None) -> dict:
@@ -712,12 +737,7 @@ def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, 
     sample_weights = None
     if method_cfg.get("mc_dropout", False):
         try:
-            kw = dict(n_forward=method_cfg.get("mc_dropout_n_forward", 50),
-                      dropout_p=method_cfg.get("mc_dropout_p", 0.15),
-                      n_epochs=method_cfg.get("mc_dropout_epochs", 300),
-                      hidden=method_cfg.get("mc_dropout_hidden", 64),
-                      random_seed=seed)
-            sample_weights = MCDropoutWeighter(**kw).compute_weights(X_sel, y)
+            sample_weights = MCDropoutWeighter(random_seed=seed).compute_weights(X_sel, y)
             print(f"[{method_id}] MC-Dropout: min={sample_weights.min():.3f} max={sample_weights.max():.3f}")
         except Exception as e:
             print(f"[{method_id}] MC-Dropout FAILED ({e})")
@@ -731,9 +751,7 @@ def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, 
         use_ols=method_cfg.get("use_ols", True),
     )
 
-    seed_models = None
-    strategy = _CfgExp.INIT_STRATEGIES[method_cfg.get("_run_id", 0)] if "_run_id" in method_cfg else None
-    return searcher, dag, search_space, seed_models
+    return searcher, dag, search_space
 
 
 # ── Helper: search execution ──────────────────────────────────────────────────
@@ -808,11 +826,9 @@ def _collect_landscape(save_dir):
 # ── Main worker ───────────────────────────────────────────────────────────────
 
 def dragon_worker(method_cfg: dict, target: str, run_id: int,
-                  *, _y_predenoised=None, _denoise_info=None,
-                  _max_iters: int = None,
+                  *, _max_iters: int = None,
                   _X_preprocessed=None, _y_preprocessed=None,
-                  _feature_names_preloaded=None, _feat_scores_preloaded=None,
-                  _X_preloaded=None, _y_preloaded=None) -> dict:
+                  _feature_names_preloaded=None, _feat_scores_preloaded=None) -> dict:
     """Entry point for each parallel DRAGON process.
 
     method_cfg : one element of DRAGON_METHODS
@@ -822,33 +838,30 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
     strategy = _CfgExp.INIT_STRATEGIES[run_id]
     t_start = time.time(); best_loss = np.inf; best_formula = "N/A"; loss_state = {}
 
+    if (_X_preprocessed is None or _y_preprocessed is None
+            or _feature_names_preloaded is None or _feat_scores_preloaded is None):
+        raise ValueError("dragon_worker requires preprocessed data from run_dragon_method")
+
+    X_sel = _X_preprocessed #todo: verify if really needed for better lecture
+    y = _y_preprocessed.copy()
+    feature_names = _feature_names_preloaded #todo: verify if really needed for better lecture
+    feat_scores = _feat_scores_preloaded #todo: verify if really needed for better lecture
+    seed = _CfgExp.RANDOM_SEED + run_id
+
     try:
-        X_sel, y, feature_names, feat_scores, seed = _prepare_data(
-            method_cfg, target, run_id, strategy,
-            _y_predenoised=_y_predenoised, _denoise_info=_denoise_info,
-            _X_preprocessed=_X_preprocessed, _y_preprocessed=_y_preprocessed,
-            _feature_names_preloaded=_feature_names_preloaded,
-            _feat_scores_preloaded=_feat_scores_preloaded,
-            _X_preloaded=_X_preloaded, _y_preloaded=_y_preloaded)
-
-        if method_cfg.get("smart_parallel") and not method_cfg.get("_in_smart_stream"):
-            return _run_smart_parallel(
-                method_cfg, target, run_id, strategy=strategy,
-                _max_iters=_max_iters,
-                _X_preprocessed=X_sel, _y_preprocessed=y,
-                _feature_names_preloaded=feature_names,
-                _feat_scores_preloaded=feat_scores)
-
-        run_dir  = (os.path.join(_CfgPaths.OUTPUT_DIR, target, method_id,
-                                 f"run_{run_id}", f"stream_{method_cfg['_stream_id']}")
-                    if method_cfg.get("_in_smart_stream")
-                    else os.path.join(_CfgPaths.OUTPUT_DIR, target, method_id, f"run_{run_id}"))
+        run_dir = os.path.join(
+            _CfgPaths.OUTPUT_DIR,
+            target,
+            method_id,
+            f"run_{run_id}",
+            *( [f"stream_{method_cfg['_stream_id']}"] if method_cfg.get("_in_smart_stream") else []),
+        )
         os.makedirs(run_dir, exist_ok=True)
         log_path = os.path.join(run_dir, f"{target}_{method_id}{_CfgPaths.LOG_SUFFIX}")
         save_dir = os.path.join(run_dir, "save")
         device   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        searcher, dag, search_space, _ = _setup_searcher(
+        searcher, dag, search_space = _setup_searcher(
             method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device)
         loss_state = searcher.state
 

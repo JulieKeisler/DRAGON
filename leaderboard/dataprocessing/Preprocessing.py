@@ -135,6 +135,27 @@ class GPRDenoiser:
         return StandardScaler().fit_transform(X)
 
 
+class LinGAMDenoiser:
+    """LinearGAM denoiser: fit y~X then predict on X."""
+
+    def transform(self, X: pd.DataFrame, y: pd.Series) -> tuple[pd.Series, dict]:
+        try:
+            from pygam import LinearGAM
+        except Exception as e:
+            return y.copy(), {"applied": False, "reason": f"pygam import failed: {e}"}
+
+        std_y = float(y.std())
+        if len(y) < 8 or std_y < 1e-12:
+            return y.copy(), {"applied": False, "reason": "too few samples / constant y"}
+
+        try:
+            model = LinearGAM().fit(X.values.astype(float), y.values.astype(float))
+            y_hat = model.predict(X.values.astype(float))
+            return pd.Series(y_hat, index=y.index, name=y.name), {"applied": True, "model": "LinearGAM"}
+        except Exception as e:
+            return y.copy(), {"applied": False, "reason": f"LinearGAM failed: {e}"}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PreprocessingPipeline:
@@ -149,17 +170,20 @@ class PreprocessingPipeline:
         add_noise:          bool = False,
         pre_denoise:        bool = False,
         var_aug:            bool = True,
+        use_lingam_denoiser: bool = False,
         is_synth_target:    bool = False,
         run_id:             int  = 0,
     ):
         self.add_noise       = add_noise
         self.pre_denoise     = pre_denoise
         self.var_aug         = var_aug
+        self.use_lingam_denoiser = use_lingam_denoiser
         self.is_synth_target = is_synth_target
         self.run_id          = run_id
 
         self._noise_injector = NoiseInjector()
         self._gpr_denoiser   = GPRDenoiser()
+        self._lingam_denoiser = LinGAMDenoiser()
         self._var_augmentor  = VarAugmentor()
         self._selector       = XGBoostSelector(n_top=Experiment.N_TOP_FEATURES)
 
@@ -177,6 +201,10 @@ class PreprocessingPipeline:
             y, dn_info = self._gpr_denoiser.transform(X, y)
             info["gpr_denoise"] = dn_info
 
+        if self.use_lingam_denoiser:
+                y, dn_info = self._lingam_denoiser.transform(X, y)
+                info["lingam_denoise"] = dn_info
+        
         if self.var_aug:
             X = self._var_augmentor.transform(X, y)
             info["var_aug_features"] = X.shape[1]
@@ -223,12 +251,14 @@ def _prepare_data(method_cfg, target, run_id, *,
         add_noise=method_cfg.get("add_noise", False),
         pre_denoise=pre_denoise,
         var_aug=method_cfg.get("var_aug", True),
+        use_lingam_denoiser=method_cfg.get("use_lingam_denoiser", False),
         run_id=run_id,
     )
     X_sel, y, info = pipeline.transform(X_df, y)
     if pre_denoise and "gpr_denoise" in info:
         print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): {info['gpr_denoise']}")
-
+    if "lingam_denoise" in info:
+            print(f"[{method_id}/{target}/run{run_id}] pre_denoise({pre_dm}): {info['lingam_denoise']}")
     if method_cfg.get("denoise_method") == "stoch_sub":
         pass  # handled in _setup_searcher
 

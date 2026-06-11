@@ -132,7 +132,8 @@ class NguyenGenerator:
 
     def _n4(self):
         x = self.rng.uniform(-1, 1, self.n)
-        return pd.DataFrame({"x": x}), pd.Series(1.2329*x**6 + 547.139*x**5 + 1892*x**4 + 2.1*x**3 + 9182*x**2 + 1298*x +12.38, name="y")
+        return pd.DataFrame({"x": x}), pd.Series(x**6 + x**5 + x**4 + x**3 + x**2 + x, name="y")
+    #1.2329*x**6 + 547.139*x**5 + 1892*x**4 + 2.1*x**3 + 9182*x**2 + 1298*x +12.38
 
     def _n5(self):
         x = self.rng.uniform(-1, 1, self.n)

@@ -1,4 +1,3 @@
-# main.py
 from __future__ import annotations
 
 import os
@@ -13,11 +12,10 @@ from Config import (
     DRAGON_METHODS as DRAGON_METHOD_CONFIGS,
 )
 from dataprocessing.Data import DatasetLoader
-from runner.Dragon import dragon_worker
-from dataprocessing.denoise import apply_denoise as _apply_denoise
+from runner.Dragon import run_dragon_method
 from helpers.html_builder import build_html
 
-_dataset_loader = DatasetLoader()
+_dataset_loader = DatasetLoader() #todo: check if it's better to onstantiate globally or inside each run function for runtime
 
 
 def _get_run_pysr():
@@ -135,7 +133,7 @@ def run_dragon_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
                     print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
                     continue
                 print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
-                r = dragon_worker(cfg, target, run_id)
+                r = run_dragon_method(cfg, target, run_id)
                 results.append(r)
                 done.add((target, run_id, method_id))
                 with open(results_path, "w") as f:

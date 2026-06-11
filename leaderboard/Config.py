@@ -32,7 +32,7 @@ class Experiment:
     RANDOM_SEED      = 42
     N_TOP_FEATURES   = 10
     N_SYNTH_SAMPLES  = 6000
-    NOISE_STD        = 0.01
+    NOISE_STD        = 0.05
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -118,8 +118,9 @@ DRAGON_METHODS = [
         "loss_mode":          "full",
         "use_ols":            True,
         "var_aug":            True,
-        "add_noise":          False,
+        "add_noise":          True,
         "smart_parallel":     True,
+        "use_lingam_denoiser": True,
         "pre_denoise_method": None, #"auto",
         "denoise_method":     "stoch_sub",
         "subsample_ratio":    0.1,
