@@ -15,22 +15,24 @@ from Config import (
     Sampling as _CfgSampling,
 )
 from dataprocessing.Features import CombinationBuilder
-from dataprocessing.Preprocessing import _prepare_data
+from dataprocessing.Preprocessing import PreprocessingPipeline
 from runner.Ols import OLSPostProcessor, correl
 from helpers.stats import DAGInspector, _collect_landscape
 from dataprocessing.Denoise import MCDropoutWeighter
+from pathlib import Path
+
 
 
 # local helper path
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(os.path.abspath(os.path.dirname(os.path.abspath(__file__))))))
 
 # leaderboard path
-leaderboard_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-sys.path.insert(0, leaderboard_root)
+leaderboard_root = Path(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
+sys.path.insert(0, str(leaderboard_root))
 
 # DRAGON root path (for lib.dragon)
-dragon_root = os.path.abspath(os.path.join(leaderboard_root, ".."))
-sys.path.insert(0, dragon_root)
+dragon_root = Path(os.path.abspath(os.path.join(leaderboard_root, "..")))
+sys.path.insert(0, str(dragon_root))
 import lib.dragon
 sys.modules['dragon'] = sys.modules['lib.dragon']
 
@@ -580,8 +582,8 @@ class DragonSearcher:
 
 
 def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
-    
-    X_sel, y, feature_names, feat_scores = _prepare_data(method_cfg, target, run_id)
+
+    X_sel, y, feature_names, feat_scores = PreprocessingPipeline.prepare_data(method_cfg, target, run_id)
 
     if method_cfg.get("smart_parallel"):
         return _run_smart_parallel(
@@ -832,14 +834,15 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
     strategy = _CfgExp.INIT_STRATEGIES[run_id]
     t_start = time.time(); best_loss = np.inf; best_formula = "N/A"; loss_state = {}
 
-    if (_X_preprocessed is None or _y_preprocessed is None
-            or _feature_names_preloaded is None or _feat_scores_preloaded is None):
-        raise ValueError("dragon_worker requires preprocessed data from run_dragon_method")
+    #todo: verify if really needed for better lecture
+    # if (_X_preprocessed is None or _y_preprocessed is None
+    #         or _feature_names_preloaded is None or _feat_scores_preloaded is None):
+    #     raise ValueError("dragon_worker requires preprocessed data from run_dragon_method")
 
-    X_sel = _X_preprocessed #todo: verify if really needed for better lecture
+    X_sel = _X_preprocessed
     y = _y_preprocessed.copy()
-    feature_names = _feature_names_preloaded #todo: verify if really needed for better lecture
-    feat_scores = _feat_scores_preloaded #todo: verify if really needed for better lecture
+    feature_names = _feature_names_preloaded
+    feat_scores = _feat_scores_preloaded
     seed = _CfgExp.RANDOM_SEED + run_id
 
     try:

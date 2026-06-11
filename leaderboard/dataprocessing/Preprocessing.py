@@ -158,7 +158,7 @@ class LinGAMDenoiser:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PreprocessingPipeline:
-    """Orchestrates: noise injection → denoise → var augmentation → XGBoost selection.
+    """Orchestrates: noise injection → denoise (GPR | LinearGAM) → var augmentation → XGBoost selection.
 
     Each step is optional and controlled by the method config. The pipeline returns
     a search-ready (X, y) pair plus preprocessing metadata.
@@ -212,28 +212,26 @@ class PreprocessingPipeline:
 
         return X, y, info
 
-# ── Helper: data preparation ──────────────────────────────────────────────────
+    @classmethod
+    def prepare_data(cls, method_cfg, target, run_id):
+        method_id = method_cfg["id"]
+        X_df, y = DatasetLoader().load(target, run_id=run_id)
+        denoiser = method_cfg.get("denoiser")
 
-def _prepare_data(method_cfg, target, run_id):
+        pipeline = cls(
+            add_noise=method_cfg.get("add_noise", False),
+            denoiser=denoiser,
+            var_aug=method_cfg.get("var_aug", True),
+            run_id=run_id,
+        )
 
-    method_id = method_cfg["id"]
-    X_df, y = DatasetLoader().load(target, run_id=run_id)
-    denoiser = method_cfg.get("denoiser")
+        X_sel, y, info = pipeline.transform(X_df, y)
 
-    pipeline = PreprocessingPipeline(
-        add_noise=method_cfg.get("add_noise", False),
-        denoiser=denoiser,
-        var_aug=method_cfg.get("var_aug", True),
-        run_id=run_id,
-    )
+        if "gpr_denoise" in info:
+            print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['gpr_denoise']}")
+        if "lingam_denoise" in info:
+            print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['lingam_denoise']}")
 
-    X_sel, y, info = pipeline.transform(X_df, y)
-
-    if "gpr_denoise" in info:
-        print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['gpr_denoise']}")
-    if "lingam_denoise" in info:
-        print(f"[{method_id}/{target}/run{run_id}] denoiser({denoiser}): {info['lingam_denoise']}")
-  
-    feature_names = info["feature_names"]
-    feat_scores = info["feat_scores"]
-    return X_sel, y, feature_names, feat_scores
+        feature_names = info["feature_names"]
+        feat_scores = info["feat_scores"]
+        return X_sel, y, feature_names, feat_scores
