@@ -54,8 +54,6 @@ class GPRDenoiser:
         self.seed        = seed
 
     def transform(self, X: pd.DataFrame, y: pd.Series) -> tuple[pd.Series, dict]:
-        from sklearn.gaussian_process import GaussianProcessRegressor
-        from sklearn.gaussian_process.kernels import Matern, WhiteKernel, ConstantKernel
         from sklearn.model_selection import KFold
 
         std_y = float(y.std())

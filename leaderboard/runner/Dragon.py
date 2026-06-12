@@ -68,9 +68,7 @@ def _thread_safe_timed_evaluation(x, idx, max_duration, evaluation):
 _dragon_sa.timed_evaluation = _thread_safe_timed_evaluation
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  INIT STRATEGIES
-# ══════════════════════════════════════════════════════════════════════════════
+
 
 
 
@@ -115,6 +113,23 @@ class RegressionDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+
+
+class SamplingContext:
+    def __init__(self, subsample_ratio: float = 1.0, X_np=None, y_np=None):
+        self.subsample_ratio = subsample_ratio
+        self.X_np = X_np
+        self.y_np = y_np
+
+    @classmethod
+    def get_sampling(cls, method_cfg: dict, X_sel: pd.DataFrame, y: pd.Series):
+        if not method_cfg.get("sampling", False):
+            return cls()
+        return cls(
+            subsample_ratio=float(_CfgSampling.SUBSAMPLING_RATIO),
+            X_np=X_sel.values.astype(np.float32),
+            y_np=y.values.astype(np.float32).ravel(),
+        )
 
 
 
@@ -485,7 +500,7 @@ class DragonSearcher:
         except Exception as e:
             print(f"  >> Could not extract formula: {e}")
 
-    # ── Formula helpers ───────────────────────────────────────────────────────
+    # ── Formula helpers ─────────────────────────────────────────────────────── #todo: do we keep them in the searcher or move them to a separate helper class ?
 
     def _channel_formula(self, formulas, selected_c, pred_all, y_np) -> str | None:
         raw = str(formulas[selected_c]) if formulas and selected_c < len(formulas) else None
@@ -602,7 +617,6 @@ def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
 # ══════════════════════════════════════════════════════════════════════════════
 #  PARALLEL PROCESS
 # ══════════════════════════════════════════════════════════════════════════════
-# ── Helper: smart-parallel dispatcher ────────────────────────────────────────
 
 def _run_smart_parallel(method_cfg, target, run_id, *,
                         _max_iters,
@@ -717,33 +731,22 @@ def _run_smart_parallel(method_cfg, target, run_id, *,
 # ── Helper: searcher setup ────────────────────────────────────────────────────
 
 def _setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device):
-    from torch.utils.data import DataLoader as _DL
-    method_id = method_cfg["id"]
+    from torch.utils.data import DataLoader
+    method_id = method_cfg["id"] #todo: pass method_id explicitly to not have redondance
 
-    loader = _DL(RegressionDataset(X_sel, y.to_frame()), batch_size=32, shuffle=True)
+    loader = DataLoader(RegressionDataset(X_sel, y), batch_size=32, shuffle=True) #todo: y.to_frame() was legacy
     all_combos = CombinationBuilder().build(feature_names, feat_scores)
-    search_space, dag = SearchSpaceBuilder(
-        feature_names, feat_scores, method_cfg["operators"]).build(all_combos)
-
-    subsample_ratio = 1.0; X_np = None; y_np = None
-    if method_cfg.get("sampling", False):
-        subsample_ratio = float(_CfgSampling.SUBSAMPLING_RATIO)
-        X_np = X_sel.values.astype(np.float32)
-        y_np = y.values.astype(np.float32).ravel()
-
-    sample_weights = None
-    if method_cfg.get("mc_dropout", False):
-        try:
-            sample_weights = MCDropoutWeighter(random_seed=seed).compute_weights(X_sel, y)
-            print(f"[{method_id}] MC-Dropout: min={sample_weights.min():.3f} max={sample_weights.max():.3f}")
-        except Exception as e:
-            print(f"[{method_id}] MC-Dropout FAILED ({e})")
+    search_space, dag = SearchSpaceBuilder(feature_names, feat_scores, method_cfg["operators"]).build(all_combos)
+    sampling = SamplingContext.get_sampling(method_cfg, X_sel, y)
+    sample_weights = MCDropoutWeighter.get_sample_weights(method_cfg, X_sel, y, seed, method_id)
 
     searcher = DragonSearcher(
         search_space, loader, device, X_sel.shape[1], feature_names, log_path,
         loss_mode=method_cfg.get("loss_mode", "full"),
         optimize_constants=method_cfg.get("optimize_constants", False),
-        subsample_ratio=subsample_ratio, X_np=X_np, y_np=y_np,
+        subsample_ratio=sampling.subsample_ratio,
+        X_np=sampling.X_np,
+        y_np=sampling.y_np,
         sample_weights=sample_weights,
     )
 
@@ -830,7 +833,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
     method_cfg : one element of DRAGON_METHODS
     run_id     : 0..N_RUNS-1, also indexes Experiment.INIT_STRATEGIES
     """
-    method_id = method_cfg["id"]
+    method_id = method_cfg["id"] #todo: see if it's not redondant with the prepare_data call
     strategy = _CfgExp.INIT_STRATEGIES[run_id]
     t_start = time.time(); best_loss = np.inf; best_formula = "N/A"; loss_state = {}
 
@@ -862,10 +865,8 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
             method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device)
         loss_state = searcher.state
 
-        seed_models = None
-        if strategy == "diverse":
-            seed_models = _build_random_seed_dags(
-                feature_names, method_cfg["operators"], seed=run_id)
+        seed_models = _build_random_seed_dags(
+            feature_names, method_cfg["operators"], strategy=strategy, seed=run_id)
 
         best_loss = _run_search(method_cfg, search_space, dag, searcher,
                                 save_dir, seed_models, _max_iters)

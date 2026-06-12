@@ -41,6 +41,27 @@ class MCDropoutWeighter:
         self.hidden      = hidden
         self.random_seed = random_seed
 
+    @classmethod
+    def get_sample_weights(
+        cls,
+        method_cfg: dict,
+        X: pd.DataFrame,
+        y: pd.Series,
+        seed: int,
+        method_id: str | None = None,
+    ) -> np.ndarray | None:
+        if not method_cfg.get("mc_dropout", False):
+            return None
+        try:
+            sample_weights = cls(random_seed=seed).compute_weights(X, y)
+            if method_id is not None:
+                print(f"[{method_id}] MC-Dropout: min={sample_weights.min():.3f} max={sample_weights.max():.3f}")
+            return sample_weights
+        except Exception as e:
+            if method_id is not None:
+                print(f"[{method_id}] MC-Dropout FAILED ({e})")
+            return None
+
     def compute_weights(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """Return per-sample confidence weights (shape: (n,), dtype: float32)."""
         n, d = len(y), X.shape[1]

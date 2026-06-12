@@ -14,8 +14,10 @@ from dragon.search_space.bricks.symbolic_regression import (
 )
 
 
-def _build_random_seed_dags(feature_names, operator_keys, seed=0, n_seeds=200):
-    """Build a population of seed DAGs for the 'random' init strategy."""
+def _build_random_seed_dags(feature_names, operator_keys, strategy=None, seed=0, n_seeds=200):
+    """Build a population of seed DAGs for the 'diverse' init strategy."""
+    if strategy != "diverse":
+        return None
     rng = random.Random(seed)
     if not feature_names:
         return None
