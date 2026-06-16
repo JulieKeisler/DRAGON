@@ -9,12 +9,11 @@ import os
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Paths:
-    DATA_CSV    = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "data", "6000_points.csv")
-    )
-    OUTPUT_DIR  = "leaderboard_runs"
-    HTML_OUTPUT = "dragonfsr_leaderboard_v2.html"
-    LOG_SUFFIX  = "_found_formulas.txt"
+    REMOTE_DATA_CSV   = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "6000_points.csv"))
+    EXTERNAL_DATA_CSV = ""  # if non-empty, load target directly from this CSV instead of the built-in remote-sensing loader
+    OUTPUT_DIR        = "leaderboard_runs"
+    HTML_OUTPUT       = "dragonfsr_leaderboard_v2.html"
+    LOG_SUFFIX        = "_found_formulas.txt"
 
 
 # ══════════════════════════════════════════════════════════════════════════════

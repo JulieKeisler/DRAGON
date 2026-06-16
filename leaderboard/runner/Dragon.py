@@ -444,7 +444,9 @@ class DragonSearcher:
 
 def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
 
-    X_sel, y, feature_names, feat_scores = PreprocessingPipeline.prepare_data(method_cfg, target, run_id)
+    X_sel, y, feature_names, feat_scores = PreprocessingPipeline.prepare_data(
+        method_cfg, target, run_id
+    )
 
     if method_cfg.get("parallel_mode") == "smart" or method_cfg.get("smart_parallel"):
         return _run_smart_parallel(

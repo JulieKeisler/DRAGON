@@ -198,7 +198,7 @@ class RemoteSensingLoader:
         "nirv":    lambda df: df["B8"] * ((df["B8"] - df["B4"]) / (df["B8"] + df["B4"])),
     }
 
-    def __init__(self, data_path: str = Paths.DATA_CSV):
+    def __init__(self, data_path: str = Paths.REMOTE_DATA_CSV):
         self.data_path = data_path
 
     def load(self, target: str) -> tuple[pd.DataFrame, pd.Series]:
@@ -217,6 +217,32 @@ class RemoteSensingLoader:
         return X, y
 
 
+class DataPathLoader:
+    """Loads (X, y) directly from a user CSV path using target as y column."""
+
+    def __init__(self, data_path: str):
+        self.data_path = data_path
+
+    def load(self, target: str) -> tuple[pd.DataFrame, pd.Series]:
+        df = pd.read_csv(self.data_path)
+
+        if target not in df.columns:
+            raise ValueError(
+                f"Unknown target column in data_path CSV: {target!r}. "
+                f"Available columns: {list(df.columns)}"
+            )
+
+        df[target] = pd.to_numeric(df[target], errors="coerce")
+        df = df.dropna(subset=[target])
+        df = df[np.isfinite(df[target])]
+
+        y = df[target].copy()
+        X = df.drop(columns=[target]).select_dtypes(include=[np.number])
+        if X.shape[1] == 0:
+            raise ValueError("No numeric feature columns found after removing target column")
+        return X, y
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  DATASET LOADER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -224,8 +250,9 @@ class RemoteSensingLoader:
 class DatasetLoader:
     """Single entry point — routes any target to the right generator/loader."""
 
-    def __init__(self, data_path: str = Paths.DATA_CSV):
-        self._remote = RemoteSensingLoader(data_path)
+    def __init__(self):
+        self._remote = RemoteSensingLoader(Paths.REMOTE_DATA_CSV)
+        self._path_loader = DataPathLoader(Paths.EXTERNAL_DATA_CSV) if Paths.EXTERNAL_DATA_CSV else None
 
     def load(
         self,
@@ -239,5 +266,8 @@ class DatasetLoader:
             if target.startswith("n") and target[1:].isdigit():
                 return NguyenGenerator(n, seed).generate(target)
             return PhysicsGenerator(n, seed).generate(target)
+
+        if self._path_loader is not None:
+            return self._path_loader.load(target)
 
         return self._remote.load(target)

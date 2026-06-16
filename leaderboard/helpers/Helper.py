@@ -1,5 +1,7 @@
 from __future__ import annotations
 import os
+import ast
+import re
 import numpy as np
 
 
@@ -74,3 +76,109 @@ def _build_result(target, method_cfg, run_id, strategy, best_loss, best_formula,
         result["_best_pred_np"] = loss_state.get("best_pred_np")
         result["_best_y_np"]    = loss_state.get("best_y_np")
     return result
+
+
+def _parse_text_value(raw: str):
+    txt = raw.strip()
+    low = txt.lower()
+    if low == "none":
+        return None
+    if low in ("true", "false"):
+        return low == "true"
+    if txt.startswith("[") or txt.startswith("{") or txt.startswith("("):
+        return ast.literal_eval(txt)
+    if "," in txt:
+        return [p.strip() for p in txt.split(",") if p.strip()]
+    try:
+        return int(txt)
+    except ValueError:
+        pass
+    try:
+        return float(txt)
+    except ValueError:
+        pass
+    if (txt.startswith('"') and txt.endswith('"')) or (txt.startswith("'") and txt.endswith("'")):
+        return txt[1:-1]
+    return txt
+
+
+def apply_text_config(config_file_path: str) -> None:
+    """Apply runtime overrides from a plain text config file.
+
+    Supported keys:
+    - Flat key (preferred): TARGETS = n4,n5,n6
+    - Class attribute:      Experiment.TARGETS = n4,n5,n6
+    - Method registry:      DRAGON_METHODS[0].loss_mode = full
+    - Method field (default method): loss_mode = full
+    """
+
+    # Local import keeps Helper generic and avoids import-order coupling.
+    from Config import Experiment, Dragon, Paths, Loss, OLS, PySR, MCDropout, Sampling, DRAGON_METHODS
+
+    config_classes = [Experiment, Dragon, Paths, Loss, OLS, PySR, MCDropout, Sampling]
+    flat_key_priority = [Experiment, Dragon, PySR, Paths, Loss, OLS, MCDropout, Sampling]
+
+    def _set_class_attr(cls, attr_name: str, value, line_no: int, key_label: str):
+        if not hasattr(cls, attr_name):
+            raise ValueError(f"Unknown config attribute at line {line_no}: {key_label}")
+        if attr_name in ("TARGETS", "INIT_STRATEGIES") and isinstance(value, str):
+            value = [value]
+        setattr(cls, attr_name, value)
+
+    def _set_default_method_field(field: str, value, line_no: int):
+        if not DRAGON_METHODS:
+            raise ValueError(f"No DRAGON_METHODS defined (line {line_no})")
+        DRAGON_METHODS[0][field] = value
+
+    with open(config_file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    for line_no, line in enumerate(lines, start=1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if "=" not in s:
+            raise ValueError(f"Invalid config line {line_no}: missing '='")
+
+        key, raw_val = s.split("=", 1)
+        key = key.strip()
+        value = _parse_text_value(raw_val)
+
+        m = re.match(r"^DRAGON_METHODS\[(\d+)\]\.([A-Za-z_]\w*)$", key)
+        if m:
+            idx = int(m.group(1))
+            field = m.group(2)
+            if idx < 0 or idx >= len(DRAGON_METHODS):
+                raise IndexError(f"Invalid DRAGON_METHODS index at line {line_no}: {idx}")
+            DRAGON_METHODS[idx][field] = value
+            continue
+
+        m = re.match(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$", key)
+        if m:
+            class_name, attr_name = m.group(1), m.group(2)
+            cls = globals().get(class_name)
+            if cls is None:
+                cls = {
+                    "Experiment": Experiment,
+                    "Dragon": Dragon,
+                    "Paths": Paths,
+                    "Loss": Loss,
+                    "OLS": OLS,
+                    "PySR": PySR,
+                    "MCDropout": MCDropout,
+                    "Sampling": Sampling,
+                }.get(class_name)
+            if cls is None:
+                raise ValueError(f"Unknown config class at line {line_no}: {class_name}")
+            _set_class_attr(cls, attr_name, value, line_no, key)
+            continue
+
+        candidates = [cls for cls in flat_key_priority if hasattr(cls, key)]
+        if len(candidates) == 1:
+            _set_class_attr(candidates[0], key, value, line_no, key)
+            continue
+        if len(candidates) > 1:
+            _set_class_attr(candidates[0], key, value, line_no, key)
+            continue
+
+        _set_default_method_field(key, value, line_no)

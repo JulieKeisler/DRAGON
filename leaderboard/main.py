@@ -14,9 +14,8 @@ from Config import (
 from dataprocessing.Data import DatasetLoader
 from runner.Dragon import run_dragon_method
 from helpers.html_builder import build_html
+from helpers.Helper import apply_text_config
 from pathlib import Path
-
-_dataset_loader = DatasetLoader() #todo: check if it's better to onstantiate globally or inside each run function for runtime
 
 
 def _get_run_pysr():
@@ -28,8 +27,12 @@ def _get_run_pysr():
 #  ORCHESTRATOR
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_all(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS, resume=False):
+def run_all(targets=None, n_runs=None, resume=False):
     """Run Dragon-only, then PySR-only, avoiding duplicate code paths."""
+    if targets is None:
+        targets = _CfgExp.TARGETS
+    if n_runs is None:
+        n_runs = _CfgExp.N_RUNS
     os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
     results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
     if not resume and os.path.exists(results_path):
@@ -45,12 +48,16 @@ def run_all(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS, resume=False):
     return run_pysr_only(targets, n_runs)
 
 
-def run_pysr_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
+def run_pysr_only(targets=None, n_runs=None):
     """Complete missing PySR entries in an existing results.json, then rebuild HTML.
 
     Entries with formula starting with 'ERROR:' or 'SKIP' are treated as
     failed and will be re-run (removed from results before re-running).
     """
+    if targets is None:
+        targets = _CfgExp.TARGETS
+    if n_runs is None:
+        n_runs = _CfgExp.N_RUNS
     os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
     results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
     if os.path.exists(results_path):
@@ -72,11 +79,12 @@ def run_pysr_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
                if r.get("method") not in ("pysr", "pysr_noise") or not _is_failed(r)]
 
     done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+    loader = DatasetLoader()
 
     for target in targets:
         for run_id in range(n_runs):
             _seed_data = _CfgExp.RANDOM_SEED + run_id
-            _X_base, _y_clean = _dataset_loader.load(target, run_id=run_id)
+            _X_base, _y_clean = loader.load(target, run_id=run_id)
             _noise_rng = np.random.default_rng(_seed_data + 9999)
             _y_noisy   = _y_clean + _noise_rng.normal(
                 0, _CfgExp.NOISE_STD * float(_y_clean.std()), len(_y_clean)
@@ -98,12 +106,16 @@ def run_pysr_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
     return results
 
 
-def run_dragon_only(targets=_CfgExp.TARGETS, n_runs=_CfgExp.N_RUNS):
+def run_dragon_only(targets=None, n_runs=None):
     """Complete missing Dragon entries in an existing results.json, then rebuild HTML.
 
     Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
     failed and will be re-run.
     """
+    if targets is None:
+        targets = _CfgExp.TARGETS
+    if n_runs is None:
+        n_runs = _CfgExp.N_RUNS
 
     results_path = Path(_CfgPaths.OUTPUT_DIR, "results.json")
     results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +159,12 @@ if __name__ == "__main__":
     import argparse
     mp.set_start_method("spawn", force=True)
     parser = argparse.ArgumentParser()
+    parser.add_argument("--run_dragonsr", action="store_true",
+                        help="Run DragonSR only (portable CLI mode)")
+    parser.add_argument("--data_path", type=str, default=None,
+                        help="Path to a CSV dataset used directly for all non-synthetic targets")
+    parser.add_argument("--config_file_path", type=str, default=None,
+                        help="Path to a text config file overriding values in Config.py")
     parser.add_argument("--pysr-only", action="store_true",
                         help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
     parser.add_argument("--dragon-only", action="store_true",
@@ -154,9 +172,16 @@ if __name__ == "__main__":
     parser.add_argument("--continue", dest="resume", action="store_true",
                         help="Resume run_all() from an existing results.json instead of starting fresh")
     args = parser.parse_args()
-    if args.pysr_only:
-        run_pysr_only()
-    elif args.dragon_only:
+
+    if args.config_file_path:
+        apply_text_config(args.config_file_path)
+
+    if args.data_path:
+        _CfgPaths.EXTERNAL_DATA_CSV = args.data_path
+
+    if args.run_dragonsr or args.dragon_only:
         run_dragon_only()
+    elif args.pysr_only:
+        run_pysr_only()
     else:
         run_all(resume=args.resume)
