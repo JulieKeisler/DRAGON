@@ -106,7 +106,7 @@ def run_pysr_only(targets=None, n_runs=None):
     return results
 
 
-def run_dragon_only(targets=None, n_runs=None):
+def run_dragon_only(targets=None, n_runs=None, build_html_full=True):
     """Complete missing Dragon entries in an existing results.json, then rebuild HTML.
 
     Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
@@ -137,6 +137,7 @@ def run_dragon_only(targets=None, n_runs=None):
                if r.get("method") not in dragon_method_ids or not _is_failed(r)]
 
     done = {(r["target"], int(r["run_id"]), r["method"]) for r in results}
+    new_results = []
 
     for target in targets:
         for run_id in range(n_runs):
@@ -148,11 +149,18 @@ def run_dragon_only(targets=None, n_runs=None):
                 print(f"  [RUN]  {target}/run_{run_id}/{method_id}")
                 r = run_dragon_method(cfg, target, run_id)
                 results.append(r)
+                new_results.append(r)
                 done.add((target, run_id, method_id))
                 with open(results_path, "w") as f:
                     json.dump(results, f, indent=2, default=str)
-                build_html(results)
-    return results
+                if build_html_full:
+                    build_html(results)
+                else:
+                    build_html(new_results, full_leaderboard=False)
+    if not build_html_full and not new_results and results:
+        print("[run_dragon_only] no new Dragon results were generated; rendering full leaderboard instead.")
+        build_html(results, full_leaderboard=True)
+    return results if build_html_full else (new_results if new_results else results)
 
 
 if __name__ == "__main__":
@@ -169,6 +177,8 @@ if __name__ == "__main__":
                         help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
     parser.add_argument("--dragon-only", action="store_true",
                         help="Skip PySR; only run missing Dragon entries and rebuild HTML")
+    parser.add_argument("--leaderboard", action="store_true",
+                        help="Build the full leaderboard HTML from existing results; can be combined with --dragon-only, --pysr-only, or --continue")
     parser.add_argument("--continue", dest="resume", action="store_true",
                         help="Resume run_all() from an existing results.json instead of starting fresh")
     args = parser.parse_args()
@@ -179,7 +189,24 @@ if __name__ == "__main__":
     if args.data_path:
         _CfgPaths.EXTERNAL_DATA_CSV = args.data_path
 
-    if args.run_dragonsr or args.dragon_only:
+    if args.leaderboard:
+        if args.dragon_only:
+            run_dragon_only()
+        elif args.pysr_only:
+            run_pysr_only()
+        else:
+            results_path = Path(_CfgPaths.OUTPUT_DIR, "results.json")
+            if results_path.exists():
+                with open(results_path) as f:
+                    results = json.load(f)
+                print(f"Generating full leaderboard HTML from {len(results)} existing results")
+            else:
+                results = []
+                print("Generating full leaderboard HTML from an empty results set")
+            build_html(results)
+    elif args.run_dragonsr:
+        run_dragon_only(build_html_full=False)
+    elif args.dragon_only:
         run_dragon_only()
     elif args.pysr_only:
         run_pysr_only()

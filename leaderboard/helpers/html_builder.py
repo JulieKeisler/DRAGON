@@ -113,7 +113,7 @@ def _result_to_db_entry(r):
     }
 
 
-def build_html(results, notebook_path="dragonfsr_leaderboard_v2.html"):
+def build_html(results, notebook_path="dragonfsr_leaderboard_v2.html", full_leaderboard=True):
     """
     1. Inject PRELOADED_DB into the VS Code notebook template (if it exists).
     2. Write leaderboard_standalone.html using the dragonfsr_leaderboard_v2 design.
@@ -159,10 +159,10 @@ def build_html(results, notebook_path="dragonfsr_leaderboard_v2.html"):
         print(f"✓ Template updated ({len(db)} cells): {tmpl}")
 
     # ── Write standalone HTML ────────────────────────────────────────────────
-    _build_standalone_html(db, db_json, formula_stats_json)
+    _build_standalone_html(db, db_json, formula_stats_json, full_leaderboard)
 
 
-def _build_standalone_html(db: dict, db_json: str, formula_stats_json: str = "{}") -> None:
+def _build_standalone_html(db: dict, db_json: str, formula_stats_json: str = "{}", full_leaderboard: bool = True) -> None:
     """
     Write leaderboard_standalone.html using the exact dragonfsr_leaderboard_v2
     design from the attachment.  PRELOADED_DB is injected as a JS constant;
@@ -273,25 +273,54 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
     # ── HTML body (verbatim from attachment) ─────────────────────────────────
     BODY = """\
 <div class="root">
-<div class="title">Symbolic Regression Leaderboard</div>
-<div class="subtitle">PySR vs DragonSR — 5 runs × formula × method · metric: 1−R² (lower is better) · v0.2</div>
+"""
+    if full_leaderboard:
+        formula_defs_js = r"""
+const FORMULAS=[
+  {id:'hubble',name:'Hubble',cat:'physics',tex:'v = H_0 \\cdot d'},
+  {id:'newton',name:'Newton gravity',cat:'physics',tex:'F = G m_1 m_2 / r^2'},
+  {id:'rydberg',name:'Rydberg',cat:'physics',tex:'1/\\lambda = R(1/n_1^2 - 1/n_2^2)'},
+  {id:'idealgas',name:'Ideal Gas',cat:'physics',tex:'PV = nRT'},
+  {id:'kepler',name:"Kepler 3rd",cat:'physics',tex:'T^2 = (4\pi^2/GM)\,a^3'},
+  {id:'bode',name:"Bode's law",cat:'physics',tex:'a_n = 0.4 + 0.3 \cdot 2^n'},
+  {id:'schechter',name:'Schechter',cat:'physics',tex:'\phi(L)=\phi^*(L/L^*)^\alpha e^{{-L/L^*}}'},
+  {id:'leavitt',name:'Leavitt',cat:'physics',tex:'M = a\log P + b'},
+  {id:'planck',name:"Planck's law",cat:'physics',tex:'B(\nu,T)=\frac{{2h\nu^3}}{{c^2}}\frac{{1}}{{e^{{h\nu/kT}}-1}}'},
+  {id:'n4',name:'Nguyen 4',cat:'nguyen',tex:'x^6+x^5+x^4+x^3+x^2+x'},
+  {id:'n5',name:'Nguyen 5',cat:'nguyen',tex:'\sin(x^2)\cos(x)-1'},
+  {id:'n6',name:'Nguyen 6',cat:'nguyen',tex:'\sin(x)+\sin(x+x^2)'},
+  {id:'n7',name:'Nguyen 7',cat:'nguyen',tex:'\ln(x+1)+\ln(x^2+1)'},
+  {id:'n8',name:'Nguyen 8',cat:'nguyen',tex:'\sqrt{{x}}'},
+  {id:'n9',name:'Nguyen 9',cat:'nguyen',tex:'\sin(x)+\sin(y^2)'},
+  {id:'n10',name:'Nguyen 10',cat:'nguyen',tex:'2\sin(x)\cos(y)'},
+  {id:'n11',name:'Nguyen 11',cat:'nguyen',tex:'x^y'},
+  {id:'n12',name:'Nguyen 12',cat:'nguyen',tex:'x^4-x^3+y^2/2-y'},
+  {id:'ndvi',name:'NDVI',cat:'remote',tex:'\frac{{B_8-B_4}}{{B_8+B_4}}'},
+  {id:'wi2015',name:'WI2015',cat:'remote',tex:'1.72+171(B_2+B_3+B_4)-3B_2B_3-1.8B_2B_4-48B_3B_4-0.8B_8B_{{11}}'},
+  {id:'awei_sh',name:'AWEI_sh',cat:'remote',tex:'B_2+2.5B_3-1.5(B_{{11}}+B_{{12}})-0.25B_8'},
+  {id:'bai',name:'BAI',cat:'remote',tex:'\frac{{1}}{{(0.1-B_4)^2+(0.06-B_8)^2}}'},
+  {id:'bsi',name:'BSI',cat:'remote',tex:'\frac{{B_{{11}}+B_4-B_8-B_2}}{{B_{{11}}+B_4+B_8+B_2}}'},
+  {id:'evi2',name:'EVI2',cat:'remote',tex:'\frac{{2.5(B_8-B_4)}}{{B_8+2.4B_4+1}}'},
+  {id:'vari',name:'VARI',cat:'remote',tex:'\frac{{B_3-B_4}}{{B_3+B_4-B_2}}'},
+  {id:'savi',name:'SAVI',cat:'remote',tex:'\frac{{1.5(B_8-B_4)}}{{B_8+B_4+0.5}}'},
+  {id:'nirv',name:'NIRv',cat:'remote',tex:'B_8\cdot\frac{{B_8-B_4}}{{B_8+B_4}}'},
+];
+"""
+    else:
+        targets=[]
+        seen=set()
+        for key in db.keys():
+            tid = str(key.split('__', 1)[0]).strip()
+            if not tid or tid in seen:
+                continue
+            seen.add(tid)
+            targets.append(tid)
+        entries = ','.join(
+            f"{{id:{json.dumps(t)},name:{json.dumps(t)},cat:'other',tex:''}}" for t in targets
+        )
+        formula_defs_js = f"const FORMULAS=[{entries}];"
 
-<div class="statbar" id="statbar">
-  <div class="sc"><div class="v" id="s-runs">0</div><div class="l">Runs logged</div></div>
-  <div class="sc"><div class="v" id="s-best">—</div><div class="l">Best 1−R²</div></div>
-  <div class="sc"><div class="v" id="s-fills">0/32</div><div class="l">Formulas hit</div></div>
-  <div class="sc"><div class="v" id="s-polyrat">0</div><div class="l">Poly-rat wins</div></div>
-  <div class="sc"><div class="v" id="s-rt">—</div><div class="l">Avg runtime</div></div>
-</div>
-
-<div class="tabs" id="tabs">
-  <div class="tab active" data-cat="all">All</div>
-  <div class="tab" data-cat="physics">Physics</div>
-  <div class="tab" data-cat="nguyen">Nguyen 1–12</div>
-  <div class="tab" data-cat="remote">Remote sensing</div>
-  <div class="tab" data-cat="other">Other</div>
-</div>
-
+    BODY += """\
 <div class="legend">
   <span><span class="ld" style="background:#3b6d11"></span>exact (1−R²&lt;1e-6)</span>
   <span><span class="ld" style="background:#185fa5"></span>great (&lt;1e-3)</span>
@@ -306,23 +335,7 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
 
 <div class="scroll">
 <table id="tbl">
-<thead>
-<tr>
-  <th class="fcol" rowspan="2" style="vertical-align:bottom">Formula</th>
-  <th class="gh-pysr" colspan="2">PySR</th>
-  <th class="gh-drag" colspan="6">DragonSR</th>
-</tr>
-<tr>
-  <th class="gh-pysr">Baseline</th>
-  <th class="gh-pysr">+Noise (GP denoising)</th>
-  <th class="gh-drag">All ops ★ (ref)</th>
-  <th class="gh-drag">Smart par***</th>
-  <th class="gh-drag">Boosted spar***</th>
-  <th class="gh-drag">+ConstBrick</th>
-  <th class="gh-drag">No OLS/rat/nest</th>
-  <th class="gh-drag">Smart par w/ denoise***</th>
-</tr>
-</thead>
+<thead id="thead"></thead>
 <tbody id="tbody"></tbody>
 </table>
 </div>
@@ -360,7 +373,6 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
       </div>
       <div id="mdagviz" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;white-space:pre;overflow:auto;max-height:520px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:6px;display:none"></div>
     </div>
-    <!-- ── Statistical visualisations (per run) ──────────────────────── -->
     <div style="grid-column:1/-1" class="section-divider">
       <div class="sec-label">Search statistics &amp; landscape</div>
       <div id="mlandscape" style="margin-top:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:8px;display:none;text-align:center;overflow-x:auto"></div>
@@ -381,53 +393,66 @@ tbody tr:hover td.fcol{background:var(--color-background-secondary)}
   </div>
 </div>
 </div>
+"""
 
-<div class="fn">
-  <p>* Curriculum: 3 op-phases (algebraic → +ln/exp → +sin/cos), progressive complexity 1→11, warm-start population carries over.</p>
-  <p>** Curriculum + palier: curriculum with plateau-based difficulty/lr scheduling between phases.</p>
-  <p>*** Intelligent parallelization: adaptive island worker allocation based on partial solutions.</p>
-  <p>Init strategies (DragonSR only) — R1: random uniform · R2: diverse population (seed DAGs) · R3: XGBoost feature select · R4: warm-start (PySR) · R5: adversarial init. <em>PySR baseline uses one fixed configuration; columns 1..N are repeated runs differing only by data seed for synthetic targets.</em></p>
-  <p>Metric: 1−R² = normMSE = MSE/Var(y). Winner: best of {best-channel, sparse OLS, nested OLS, poly-rational OLS}.</p>
-</div>
-</div>"""
-
-    # ── JavaScript (attachment verbatim, with PRELOADED_DB injection) ─────────
     JS = f"""\
 const PRELOADED_DB={db_json};
 const FORMULA_STATS_SVG={formula_stats_json};
-const FORMULAS=[
-  {{id:'hubble',name:'Hubble',cat:'physics',tex:'v = H_0 \\\\cdot d'}},
-  {{id:'newton',name:'Newton gravity',cat:'physics',tex:'F = G m_1 m_2 / r^2'}},
-  {{id:'rydberg',name:'Rydberg',cat:'physics',tex:'1/\\\\lambda = R(1/n_1^2 - 1/n_2^2)'}},
-  {{id:'idealgas',name:'Ideal Gas',cat:'physics',tex:'PV = nRT'}},
-  {{id:'kepler',name:"Kepler 3rd",cat:'physics',tex:'T^2 = (4\\\\pi^2/GM)\\\\,a^3'}},
-  {{id:'bode',name:"Bode's law",cat:'physics',tex:'a_n = 0.4 + 0.3 \\\\cdot 2^n'}},
-  {{id:'schechter',name:'Schechter',cat:'physics',tex:'\\\\phi(L)=\\\\phi^*(L/L^*)^\\\\alpha e^{{-L/L^*}}'}},
-  {{id:'leavitt',name:'Leavitt',cat:'physics',tex:'M = a\\\\log P + b'}},
-  {{id:'planck',name:"Planck's law",cat:'physics',tex:'B(\\\\nu,T)=\\\\frac{{2h\\\\nu^3}}{{c^2}}\\\\frac{{1}}{{e^{{h\\\\nu/kT}}-1}}'}},
-  {{id:'n4',name:'Nguyen 4',cat:'nguyen',tex:'x^6+x^5+x^4+x^3+x^2+x'}},
-  {{id:'n5',name:'Nguyen 5',cat:'nguyen',tex:'\\\\sin(x^2)\\\\cos(x)-1'}},
-  {{id:'n6',name:'Nguyen 6',cat:'nguyen',tex:'\\\\sin(x)+\\\\sin(x+x^2)'}},
-  {{id:'n7',name:'Nguyen 7',cat:'nguyen',tex:'\\\\ln(x+1)+\\\\ln(x^2+1)'}},
-  {{id:'n8',name:'Nguyen 8',cat:'nguyen',tex:'\\\\sqrt{{x}}'}},
-  {{id:'n9',name:'Nguyen 9',cat:'nguyen',tex:'\\\\sin(x)+\\\\sin(y^2)'}},
-  {{id:'n10',name:'Nguyen 10',cat:'nguyen',tex:'2\\\\sin(x)\\\\cos(y)'}},
-  {{id:'n11',name:'Nguyen 11',cat:'nguyen',tex:'x^y'}},
-  {{id:'n12',name:'Nguyen 12',cat:'nguyen',tex:'x^4-x^3+y^2/2-y'}},
-  {{id:'ndvi',name:'NDVI',cat:'remote',tex:'\\\\frac{{B_8-B_4}}{{B_8+B_4}}'}},
-  {{id:'wi2015',name:'WI2015',cat:'remote',tex:'1.72+171(B_2+B_3+B_4)-3B_2B_3-1.8B_2B_4-48B_3B_4-0.8B_8B_{{11}}'}},
-  {{id:'awei_sh',name:'AWEI_sh',cat:'remote',tex:'B_2+2.5B_3-1.5(B_{{11}}+B_{{12}})-0.25B_8'}},
-  {{id:'bai',name:'BAI',cat:'remote',tex:'\\\\frac{{1}}{{(0.1-B_4)^2+(0.06-B_8)^2}}'}},
-  {{id:'bsi',name:'BSI',cat:'remote',tex:'\\\\frac{{B_{{11}}+B_4-B_8-B_2}}{{B_{{11}}+B_4+B_8+B_2}}'}},
-  {{id:'evi2',name:'EVI2',cat:'remote',tex:'\\\\frac{{2.5(B_8-B_4)}}{{B_8+2.4B_4+1}}'}},
-  {{id:'vari',name:'VARI',cat:'remote',tex:'\\\\frac{{B_3-B_4}}{{B_3+B_4-B_2}}'}},
-  {{id:'savi',name:'SAVI',cat:'remote',tex:'\\\\frac{{1.5(B_8-B_4)}}{{B_8+B_4+0.5}}'}},
-  {{id:'nirv',name:'NIRv',cat:'remote',tex:'B_8\\\\cdot\\\\frac{{B_8-B_4}}{{B_8+B_4}}'}},
-];
+{formula_defs_js}
 const METHODS=['pysr','pysr_noise','allops','spar','boosted_spar','allops_const','noolsratn','spar_denoise'];
 const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
+const METHOD_LABELS={{pysr:'Baseline',pysr_noise:'+Noise (GP denoising)',allops:'All ops ★ (ref)',spar:'Smart par***',boosted_spar:'Boosted spar***',allops_const:'+ConstBrick',noolsratn:'No OLS/rat/nest',spar_denoise:'Smart par w/ denoise***'}};
+
+let FULL_LEADERBOARD={json.dumps(full_leaderboard)};
+
+function visibleMethods(){{
+  return METHODS.filter(m=>FULL_LEADERBOARD||Object.keys(DB).some(k=>k.split('__')[1]===m));
+}}
+
+function hasDbEntry(fid){{
+  if(FULL_LEADERBOARD) return true;
+  return Object.keys(DB).some(k=>k.startsWith(`${{fid}}__`));
+}}
+
+function buildHeader(){{
+  const methods=visibleMethods();
+  const thead=document.getElementById('thead');
+  thead.innerHTML='';
+  const pyMethods=methods.filter(m=>m.startsWith('pysr'));
+  const dragMethods=methods.filter(m=>!m.startsWith('pysr'));
+  const topRow=document.createElement('tr');
+  const fcol=document.createElement('th');
+  fcol.className='fcol';
+  fcol.rowSpan=2;
+  fcol.style='vertical-align:bottom';
+  fcol.textContent='Formula';
+  topRow.appendChild(fcol);
+  if(pyMethods.length){{
+    const th=document.createElement('th');
+    th.className='gh-pysr';
+    th.colSpan=pyMethods.length;
+    th.textContent='PySR';
+    topRow.appendChild(th);
+  }}
+  if(dragMethods.length){{
+    const th=document.createElement('th');
+    th.className='gh-drag';
+    th.colSpan=dragMethods.length;
+    th.textContent='DragonSR';
+    topRow.appendChild(th);
+  }}
+  thead.appendChild(topRow);
+  const secondRow=document.createElement('tr');
+  methods.forEach(m=>{{
+    const th=document.createElement('th');
+    th.className=m.startsWith('pysr')?'gh-pysr':'gh-drag';
+    th.textContent=METHOD_LABELS[m]||m;
+    secondRow.appendChild(th);
+  }});
+  thead.appendChild(secondRow);
+}}
 
 let DB={{}};
 let activeCat='all';
@@ -505,20 +530,22 @@ function renderCell(fid,mid){{
 }}
 
 function buildTable(){{
+  buildHeader();
   const tbody=document.getElementById('tbody');
   tbody.innerHTML='';
+  const methods=visibleMethods();
   const cats=['physics','nguyen','remote','other'];
   const cnames={{physics:'Physics laws',nguyen:'Nguyen benchmark (1–12)',remote:'Remote sensing indices',other:'Other'}};
   cats.forEach(cat=>{{
-    const rows=FORMULAS.filter(f=>f.cat===cat&&(activeCat==='all'||activeCat===cat));
+    const rows=FORMULAS.filter(f=>f.cat===cat&&(activeCat==='all'||activeCat===cat)&&hasDbEntry(f.id));
     if(!rows.length) return;
     const sr=document.createElement('tr');sr.className='secrow';
-    sr.innerHTML=`<td class="fcol">${{cnames[cat]}}</td>${{METHODS.map(()=>'<td></td>').join('')}}`;
+    sr.innerHTML=`<td class="fcol">${{cnames[cat]}}</td>${{methods.map(()=>'<td></td>').join('')}}`;
     tbody.appendChild(sr);
     rows.forEach(f=>{{
       const tr=document.createElement('tr');
-      let cells=`<td class="fcol"><div>${{f.name}}</div><div class="ftex">$${{f.tex}}$</div></td>`;
-      METHODS.forEach(m=>{{cells+=`<td id="cell_${{f.id}}_${{m}}">${{renderCell(f.id,m)}}</td>`;}});
+      let cells=`<td class="fcol"><div>${{f.name}}</div>${{FULL_LEADERBOARD && f.tex?`<div class="ftex">$${{f.tex}}$</div>`:''}}</td>`;
+      methods.forEach(m=>{{cells+=`<td id="cell_${{f.id}}_${{m}}">${{renderCell(f.id,m)}}</td>`;}});
       tr.innerHTML=cells;tbody.appendChild(tr);
     }});
   }});
@@ -1049,11 +1076,14 @@ function showTT(e,fid,mid,run){{
 }}
 function hideTT(){{document.getElementById('ttbox').style.display='none';}}
 
-document.getElementById('tabs').addEventListener('click',e=>{{
-  const t=e.target.closest('.tab');if(!t)return;
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');activeCat=t.dataset.cat;buildTable();
-}});
+const tabsElement=document.getElementById('tabs');
+if(tabsElement){{
+  tabsElement.addEventListener('click',e=>{{
+    const t=e.target.closest('.tab');if(!t)return;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');activeCat=t.dataset.cat;buildTable();
+  }});
+}}
 
 async function init(){{
   // Merge PRELOADED_DB (from Python run) with any manual additions stored in VS Code notebook
