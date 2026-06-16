@@ -24,12 +24,6 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
     method_id = method_cfg["id"] #todo: see if it's not redondant with the prepare_data call
     strategy = _CfgExp.INIT_STRATEGIES[run_id]
     t_start = time.time(); best_loss = np.inf; best_formula = "N/A"; loss_state = {}
-
-    #todo: verify if really needed for better lecture
-    # if (_X_preprocessed is None or _y_preprocessed is None
-    #         or _feature_names_preloaded is None or _feat_scores_preloaded is None):
-    #     raise ValueError("dragon_worker requires preprocessed data from run_dragon_method")
-
     X_sel = _X_preprocessed
     y = _y_preprocessed.copy()
     feature_names = _feature_names_preloaded

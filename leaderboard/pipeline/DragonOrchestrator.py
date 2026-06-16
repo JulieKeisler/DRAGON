@@ -165,11 +165,6 @@ class DragonOrchestrator:
 
 		_iter_cap = _max_iters if _max_iters is not None else _CfgDragon.N_ITERATIONS
 
-		if not method_cfg.get("curriculum", False):
-			sa = _make_sa(_iter_cap, clean=True)
-			sa.run()
-			return sa.min_loss
-
 		global_best = np.inf
 		total_iters = 0
 		budget_mode = method_cfg.get("budget_mode", "default")

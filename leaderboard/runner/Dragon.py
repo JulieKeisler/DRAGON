@@ -95,26 +95,115 @@ class RegressionDataset(Dataset):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  LOSS & WEIGHTING
+#  SEARCH LOOP  (callable loss function + live state)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class DragonEvaluator:
-    """Manage OLS evaluation, loss mode, and optional sample-weighted subsampling."""
+class DragonSearcher:
+    """Callable loss function for Dragon's Mutant_UCB, with live result tracking.
+
+    The instance is passed directly as the loss function to Mutant_UCB.
+    After the search, all results are in `searcher.state`.
+
+    Usage
+    -----
+    searcher = DragonSearcher(search_space, train_loader, ...)
+    algo     = Mutant_UCB(..., loss_func=searcher)
+    algo.run()
+    print(searcher.state["best_formula"])
+
+    Parameters
+    ----------
+    search_space       : ArrayVar returned by SearchSpaceBuilder.build()
+    train_loader       : DataLoader for full-dataset evaluation
+    device             : torch device
+    num_features       : number of input features
+    feature_names      : list of feature name strings
+    log_path           : path to append OLS analysis log
+    loss_mode          : 'full', 'ols', or 'channel'
+    optimize_constants : if True, run 100-epoch Adam on ConstantBrick
+    subsample_ratio    : fraction of dataset to use per evaluation (< 1 = stochastic)
+    X_np, y_np         : numpy arrays for stochastic subsampling path
+    sample_weights     : per-sample MC-Dropout confidence weights
+    """
 
     def __init__(
         self,
-        loss_mode: str = "full",
-        subsample_ratio: float = 1.0,
-        X_np: np.ndarray = None,
-        y_np: np.ndarray = None,
-        sample_weights: np.ndarray = None,
+        search_space,
+        train_loader,
+        device,
+        num_features:       int,
+        feature_names:      list[str],
+        log_path:           str,
+        loss_mode:          str        = "full",
+        optimize_constants: bool       = False,
+        subsample_ratio:    float      = 1.0,
+        X_np:               np.ndarray = None,
+        y_np:               np.ndarray = None,
+        sample_weights:     np.ndarray = None,
     ):
-        self.loss_mode = loss_mode
-        self.subsample_ratio = subsample_ratio
-        self.X_np = X_np
-        self.y_np = y_np
-        self.sample_weights = sample_weights
+        self.search_space       = search_space
+        self.train_loader       = train_loader
+        self.device             = device
+        self.num_features       = num_features
+        self.feature_names      = feature_names
+        self.log_path           = log_path
+        self.loss_mode          = loss_mode
+        self.optimize_constants = optimize_constants
+        self.subsample_ratio    = subsample_ratio
+        self.X_np               = X_np
+        self.y_np               = y_np
+        self.sample_weights     = sample_weights
+
         self._ols = OLSPostProcessor()
+        self.state = {
+            "best_loss":       np.inf,
+            "winner_type":     "channel",
+            "corr_value":      0.0,
+            "alignment_loss":  1.0,
+            "rat_degree":      None,
+            "best_formula":    "N/A",
+            "formula_channel": None,
+            "formula_ols":     None,
+            "formula_nested":  None,
+            "formula_polyrat": {},
+            "loss_channel":    None,
+            "loss_ols":        None,
+            "loss_nested":     None,
+            "loss_polyrat":    {},
+        }
+
+    def __call__(self, args, idx, *kwargs):
+        labels    = [e.label for e in self.search_space]
+        args_dict = ({labels[0]: args} if isinstance(args, AdjMatrix)
+                     else dict(zip(labels, args)))
+        model     = MetaArchi(args_dict, input_shape=(self.num_features,)).to(self.device)
+
+        self._maybe_optimize_constants(model)
+        model.eval()
+
+        pred_all, true_all = self.forward(model, self.train_loader, idx, self.device)
+        (mse, selected_c, ols_weights, alignment_loss,
+         _lr, nested, rational, valid_idx_global, analysis) = self.evaluate(
+            pred_all, true_all)
+
+        y_np, y_pred, winner_type, rat_degree = self.resolve_prediction(
+            pred_all, true_all, selected_c, ols_weights, nested, rational)
+
+        mse      = self.apply_weighted_loss(mse, y_np, y_pred)
+        corr_val = float(correl(
+            torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
+            true_all))
+
+        if mse < self.state["best_loss"]:
+            self._update_state(mse, winner_type, corr_val, alignment_loss, rat_degree,
+                               y_pred, y_np, selected_c, ols_weights, nested, rational,
+                               valid_idx_global, analysis, pred_all, model, idx)
+
+        print(f"Idx={idx}, Loss = {mse:.10f}")
+        model.set_prediction_to_save("prediction", pd.DataFrame({"pred": y_pred, "true": y_np}))
+        return float(mse), model
+
+    # ── Evaluation core (ex-DragonEvaluator) ─────────────────────────────────
 
     def forward(self, model, train_loader, idx, device=None):
         if device is None:
@@ -183,123 +272,6 @@ class DragonEvaluator:
             return float(np.dot(w, r ** 2) / vw)
         except Exception:
             return mse
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SEARCH LOOP  (callable loss function + live state)
-# ══════════════════════════════════════════════════════════════════════════════
-
-class DragonSearcher:
-    """Callable loss function for Dragon's Mutant_UCB, with live result tracking.
-
-    The instance is passed directly as the loss function to Mutant_UCB.
-    After the search, all results are in `searcher.state`.
-
-    Usage
-    -----
-    searcher = DragonSearcher(search_space, train_loader, ...)
-    algo     = Mutant_UCB(..., loss_func=searcher)
-    algo.run()
-    print(searcher.state["best_formula"])
-
-    Parameters
-    ----------
-    search_space       : ArrayVar returned by SearchSpaceBuilder.build()
-    train_loader       : DataLoader for full-dataset evaluation
-    device             : torch device
-    num_features       : number of input features
-    feature_names      : list of feature name strings
-    log_path           : path to append OLS analysis log
-    loss_mode          : 'full', 'ols', or 'channel'
-    optimize_constants : if True, run 100-epoch Adam on ConstantBrick
-    subsample_ratio    : fraction of dataset to use per evaluation (< 1 = stochastic)
-    X_np, y_np         : numpy arrays for stochastic subsampling path
-    sample_weights     : per-sample MC-Dropout confidence weights
-    """
-
-    def __init__(
-        self,
-        search_space,
-        train_loader,
-        device,
-        num_features:       int,
-        feature_names:      list[str],
-        log_path:           str,
-        loss_mode:          str        = "full",
-        optimize_constants: bool       = False,
-        subsample_ratio:    float      = 1.0,
-        X_np:               np.ndarray = None,
-        y_np:               np.ndarray = None,
-        sample_weights:     np.ndarray = None,
-    ):
-        self.search_space       = search_space
-        self.train_loader       = train_loader
-        self.device             = device
-        self.num_features       = num_features
-        self.feature_names      = feature_names
-        self.log_path           = log_path
-        self.loss_mode          = loss_mode
-        self.optimize_constants = optimize_constants
-        self.subsample_ratio    = subsample_ratio
-        self.X_np               = X_np
-        self.y_np               = y_np
-        self.sample_weights     = sample_weights
-
-        self._evaluator = DragonEvaluator(
-            loss_mode=loss_mode,
-            subsample_ratio=subsample_ratio,
-            X_np=X_np,
-            y_np=y_np,
-            sample_weights=sample_weights,
-        )
-        self._ols = self._evaluator._ols
-        self.state = {
-            "best_loss":       np.inf,
-            "winner_type":     "channel",
-            "corr_value":      0.0,
-            "alignment_loss":  1.0,
-            "rat_degree":      None,
-            "best_formula":    "N/A",
-            "formula_channel": None,
-            "formula_ols":     None,
-            "formula_nested":  None,
-            "formula_polyrat": {},
-            "loss_channel":    None,
-            "loss_ols":        None,
-            "loss_nested":     None,
-            "loss_polyrat":    {},
-        }
-
-    def __call__(self, args, idx, *kwargs):
-        labels    = [e.label for e in self.search_space]
-        args_dict = ({labels[0]: args} if isinstance(args, AdjMatrix)
-                     else dict(zip(labels, args)))
-        model     = MetaArchi(args_dict, input_shape=(self.num_features,)).to(self.device)
-
-        self._maybe_optimize_constants(model)
-        model.eval()
-
-        pred_all, true_all = self._evaluator.forward(model, self.train_loader, idx, self.device)
-        (mse, selected_c, ols_weights, alignment_loss,
-         _lr, nested, rational, valid_idx_global, analysis) = self._evaluator.evaluate(
-            pred_all, true_all)
-
-        y_np, y_pred, winner_type, rat_degree = self._evaluator.resolve_prediction(
-            pred_all, true_all, selected_c, ols_weights, nested, rational)
-
-        mse      = self._evaluator.apply_weighted_loss(mse, y_np, y_pred)
-        corr_val = float(correl(
-            torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
-            true_all))
-
-        if mse < self.state["best_loss"]:
-            self._update_state(mse, winner_type, corr_val, alignment_loss, rat_degree,
-                               y_pred, y_np, selected_c, ols_weights, nested, rational,
-                               valid_idx_global, analysis, pred_all, model, idx)
-
-        print(f"Idx={idx}, Loss = {mse:.10f}")
-        model.set_prediction_to_save("prediction", pd.DataFrame({"pred": y_pred, "true": y_np}))
-        return float(mse), model
 
     def _maybe_optimize_constants(self, model):
         if not self.optimize_constants:
@@ -470,13 +442,11 @@ class DragonSearcher:
 
 
 
-
-
 def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
 
     X_sel, y, feature_names, feat_scores = PreprocessingPipeline.prepare_data(method_cfg, target, run_id)
 
-    if method_cfg.get("smart_parallel"):
+    if method_cfg.get("parallel_mode") == "smart" or method_cfg.get("smart_parallel"):
         return _run_smart_parallel(
             method_cfg, target, run_id,
             _max_iters=_max_iters,
@@ -489,10 +459,3 @@ def run_dragon_method(method_cfg, target, run_id, *, _max_iters=None):
         _X_preprocessed=X_sel, _y_preprocessed=y,
         _feature_names_preloaded=feature_names,
         _feat_scores_preloaded=feat_scores)
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PARALLEL PROCESS
-# ══════════════════════════════════════════════════════════════════════════════
-
-
-
