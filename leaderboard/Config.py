@@ -32,7 +32,7 @@ class Experiment:
     RANDOM_SEED      = 42
     N_TOP_FEATURES   = 10
     N_SYNTH_SAMPLES  = 6000
-    NOISE_STD        = 0.05
+    NOISE_STD        = 0.01
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -122,12 +122,11 @@ DRAGON_METHODS = [
         "id":                 "spar_denoise",
         "description":        "DragonSR — smart-parallel + stochastic subsampling denoising (SSD).",
         "operators":          _ALL_OPS,
-        "curriculum":         True,
         "parallel_n":         1,
+        "parallel_mode":      "smart", # "none" | "smart"
         "loss_mode":          "full", # "ols" | "channel"
         "var_aug":            True,
         "add_noise":          True,
-        "smart_parallel":     True,
         "denoiser":           "lingam", # "gpr" or "lingam" or None
         "sampling":           Sampling.ENABLED,
         "mc_dropout":         MCDropout.ENABLED,
@@ -136,7 +135,6 @@ DRAGON_METHODS = [
     #     "id":          "allops",
     #     "description": "DragonSR — reference method (all ops, full OLS, var-aug, no noise)",
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"], 
-    #     "curriculum":  True,
     #     "parallel_N":  1,
     #     "loss_mode":   "full",
     #     "var_aug":     True,
@@ -148,12 +146,11 @@ DRAGON_METHODS = [
     #                     "(all / alg / alg+trig / alg+exp,ln) run in parallel "
     #                     "via ThreadPoolExecutor; best loss wins."),
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
     #     "parallel_N":  1,
     #     "loss_mode":   "full",
     #     "var_aug":     True,
     #     "add_noise":   False,
-    #     "smart_parallel": True,
+    #     "parallel_mode": "smart",
     # },
     # {
     #     "id":          "boosted_spar",
@@ -163,19 +160,17 @@ DRAGON_METHODS = [
     #                     "meta-combined via sparse-OLS / nested-OLS / "
     #                     "poly-rational-OLS (whichever fits best)."),
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
     #     "parallel_N":  1,
     #     "loss_mode":   "full",
     #     "var_aug":     True,
     #     "add_noise":   False,
-    #     "smart_parallel": True,
+    #     "parallel_mode": "smart",
     #     "boosted":        True,
     # },
     #  {
     #     "id":          "noolsratn",
     #     "description": "Ablation of allops — NO OLS / rat / nested (channel-only loss)",
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-    #     "curriculum":  True,
     #     "parallel_N":  1,
     #     "loss_mode":   "channel",
     #     "var_aug":     True,
@@ -185,7 +180,6 @@ DRAGON_METHODS = [
     #     "id":          "allops_const",
     #     "description": "DragonSR — +ConstantBrick (Adam-optimized constants)",
     #     "operators":   ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
-    #     "curriculum":  True,
     #     "parallel_N":  1,
     #     "loss_mode":   "channel",
     #     "var_aug":     True,
