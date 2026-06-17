@@ -178,7 +178,8 @@ class DragonOrchestrator:
 			csv_path = os.path.join(save_dir, "computation_file.csv")
 			pop = len(pd.read_csv(csv_path)) if not clean and os.path.exists(csv_path) else 0
 			extra = {} if clean or budget_mode == "complexity" else {"pop_path": save_dir}
-			T = min(pop + complexity * _CfgDragon.T_PER_LEVEL, remaining)
+			additional = min(_CfgDragon.T_PER_LEVEL, remaining)
+			T = pop + additional
 			sa = _make_sa(T, clean, extra)
 			sa.run()
 			reached_complexity = complexity
