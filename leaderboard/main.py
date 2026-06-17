@@ -185,6 +185,8 @@ if __name__ == "__main__":
 
     if args.config_file_path:
         apply_text_config(args.config_file_path)
+        if isinstance(_CfgExp.INIT_STRATEGIES, list) and len(_CfgExp.INIT_STRATEGIES) < _CfgExp.N_RUNS:
+            _CfgExp.INIT_STRATEGIES += [_CfgExp.INIT_STRATEGIES[-1]] * (_CfgExp.N_RUNS - len(_CfgExp.INIT_STRATEGIES))
 
     if args.data_path:
         _CfgPaths.EXTERNAL_DATA_CSV = args.data_path

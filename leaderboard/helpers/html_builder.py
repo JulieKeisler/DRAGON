@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from Config import Dragon as _CfgDragon, PySR as _CfgPySR
+from Config import Dragon as _CfgDragon, PySR as _CfgPySR, Experiment as _CfgExp
 from helpers.stats import _make_formula_stats_svg
 
 
@@ -21,6 +21,14 @@ _WINNER_REMAP = {
     "nested":   "nested",
     "ols":      "ols",
     "channel":  "channel",
+}
+
+_INIT_STRATEGY_LABELS = {
+  "random": "Random uniform",
+  "diverse": "Diverse population (seed DAGs)",
+  "xgboost": "XGBoost feature select",
+  "warmstart": "Warm-start (PySR)",
+  "adversarial": "Adversarial init",
 }
 
 
@@ -41,7 +49,8 @@ def _result_to_db_entry(r):
     else:
         total_t = int(r.get("actualT") if r.get("actualT") is not None else _CfgDragon.N_ITERATIONS)
         pop_k   = _CfgDragon.K_INIT
-        max_c   = _CfgDragon.MAX_COMPLEXITY
+        _mc = r.get("max_complexity_reached")
+        max_c = int(_mc) if _mc is not None and pd.notna(_mc) else _CfgDragon.MAX_COMPLEXITY
     # Smart-parallel extras (only present when method == 'spar').
     actual_t_winner     = r.get("actualT_winner")
     actual_t_per_stream = r.get("actualT_per_stream") or {}
@@ -395,15 +404,27 @@ const FORMULAS=[
 </div>
 """
 
+    init_strategies = list(getattr(_CfgExp, "INIT_STRATEGIES", []) or [])
+    if not init_strategies:
+      init_strategies = ["random"]
+    n_runs = int(getattr(_CfgExp, "N_RUNS", len(init_strategies)) or len(init_strategies))
+    if len(init_strategies) < n_runs:
+      init_strategies += [init_strategies[-1]] * (n_runs - len(init_strategies))
+    minit_labels = [
+      _INIT_STRATEGY_LABELS.get(str(strategy).strip().lower(), str(strategy))
+      for strategy in init_strategies[:n_runs]
+    ]
+
     JS = f"""\
 const PRELOADED_DB={db_json};
 const FORMULA_STATS_SVG={formula_stats_json};
 {formula_defs_js}
 const METHODS=['pysr','pysr_noise','allops','spar','boosted_spar','allops_const','noolsratn','spar_denoise'];
-const MINIT=['Random uniform','Diverse population (seed DAGs)','XGBoost feature select','Warm-start (PySR)','Adversarial init'];
+  const MINIT={json.dumps(minit_labels, ensure_ascii=False)};
+const RUN_COUNT=Math.max(1, MINIT.length);
 const PHASE_LABELS={{alg:'Algebraic',ln:'+Ln/Exp',trig:'+Sin/Cos',exploit:'Exploit'}};
 const PHASE_CLS={{alg:'pp-alg',ln:'pp-ln',trig:'pp-trig',exploit:'pp-expl'}};
-const METHOD_LABELS={{pysr:'Baseline',pysr_noise:'+Noise (GP denoising)',allops:'All ops ★ (ref)',spar:'Smart par***',boosted_spar:'Boosted spar***',allops_const:'+ConstBrick',noolsratn:'No OLS/rat/nest',spar_denoise:'Smart par w/ denoise***'}};
+const METHOD_LABELS={{pysr:'Baseline',pysr_noise:'+Noise (GP denoising)',allops:'All ops ★ (ref)',spar:'Smart par***',boosted_spar:'Boosted spar***',allops_const:'+ConstBrick',noolsratn:'No OLS/rat/nest',spar_denoise:'Smart par w/ denoise'}};
 
 let FULL_LEADERBOARD={json.dumps(full_leaderboard)};
 
@@ -484,20 +505,39 @@ function phasePill(ph){{
   return `<span class="pp ${{PHASE_CLS[ph]||''}}">${{PHASE_LABELS[ph]||ph}}</span>`;
 }}
 
+function initLabel(run, mid){{
+  if(mid==='pysr' || mid==='pysr_noise') return String(run+1);
+  return `R${{run+1}}`;
+}}
+
+function initStrategyText(run){{
+  return MINIT[run] || MINIT[MINIT.length-1] || `R${{run+1}}`;
+}}
+
 function renderCell(fid,mid){{
   let html='<div class="cg"><div class="runrow">';
   let vals=[],rts=[],polyrats=0;
-  for(let r=0;r<5;r++){{
+  for(let r=0;r<RUN_COUNT;r++){{
     const k=key(fid,mid,r);
     const d=DB[k];
-    const v=d?d.oneMinusR2:null;
+    if(!d || (!FULL_LEADERBOARD && (d.oneMinusR2===null||d.oneMinusR2===undefined))){{
+      if(FULL_LEADERBOARD){{
+        const lbl=initLabel(r, mid);
+        html+=`<div class="pill empty" data-fid="${{fid}}" data-mid="${{mid}}" data-run="${{r}}"
+          onmouseenter="showTT(event,'${{fid}}','${{mid}}',${{r}})"
+          onmouseleave="hideTT()"
+          onclick="openModal('${{fid}}','${{mid}}',${{r}})">${{lbl}}</div>`;
+      }}
+      continue;
+    }}
+    const v=d.oneMinusR2;
     const cls=lossClass(v);
-    const lbl=v!==null&&v!==undefined?fmtLoss(v):(mid==='pysr'?String(r+1):['R','D','X','W','A'][r]||String(r+1));
+    const lbl=v!==null&&v!==undefined?fmtLoss(v):initLabel(r, mid);
     html+=`<div class="pill ${{cls}}" data-fid="${{fid}}" data-mid="${{mid}}" data-run="${{r}}"
       onmouseenter="showTT(event,'${{fid}}','${{mid}}',${{r}})"
       onmouseleave="hideTT()"
       onclick="openModal('${{fid}}','${{mid}}',${{r}})">${{lbl}}</div>`;
-    if(d&&v!==null){{vals.push(v);if(d.runtime)rts.push(d.runtime);if(d.winner==='polyrat')polyrats++;}}
+    if(v!==null){{vals.push(v);if(d.runtime)rts.push(d.runtime);if(d.winner==='polyrat')polyrats++;}}
   }}
   html+='</div>';
   if(vals.length>=2){{
@@ -505,7 +545,8 @@ function renderCell(fid,mid){{
     const sig=Math.sqrt(vals.reduce((a,b)=>a+(b-mu)**2,0)/vals.length);
     html+=`<div class="smini">μ=${{fmtLoss(mu)}} σ=${{sig.toExponential(1)}}</div>`;
   }}
-  const winners=[0,1,2,3,4].map(r=>DB[key(fid,mid,r)]?.winner);
+  const runIdx=[...Array(RUN_COUNT).keys()];
+  const winners=runIdx.map(r=>DB[key(fid,mid,r)]?.winner);
   const anyWin=winners.some(Boolean);
   if(anyWin){{
     const badges=winners.map((w,i)=>{{
@@ -515,15 +556,14 @@ function renderCell(fid,mid){{
     }}).join(' ');
     html+=`<div style="margin-top:2px;display:flex;gap:2px;flex-wrap:wrap">${{badges}}</div>`;
   }}
-  const phases=[0,1,2,3,4].map(r=>DB[key(fid,mid,r)]?.phase).filter(Boolean);
+  const phases=runIdx.map(r=>DB[key(fid,mid,r)]?.phase).filter(Boolean);
   if(phases.length){{
     html+=`<div class="phase-pills">${{[...new Set(phases)].map(p=>phasePill(p)).join('')}}</div>`;
   }}
   // Per-run runtimes (R1..RN) listed individually
-  const allRts=[0,1,2,3,4].map(r=>{{const dd=DB[key(fid,mid,r)];return dd&&dd.runtime?dd.runtime:null;}});
-  if(allRts.some(t=>t!==null)){{
-    const parts=allRts.map((t,i)=>t!==null?`R${{i+1}}:\u202f${{t.toFixed(1)}}s`:`R${{i+1}}:\u202f\u2014`);
-    html+=`<div class="smini" style="white-space:normal;line-height:1.3">${{parts.join(' \u00b7 ')}}</div>`;
+  const parts=runIdx.reduce((acc,r)=>{{const dd=DB[key(fid,mid,r)]; if(dd!=null && dd.runtime!=null){{ acc.push(`R${{r+1}}:\u202f${{dd.runtime.toFixed(1)}}s`);}} return acc; }}, []);
+  if(parts.length){{
+    html+=`<div class="smini" style="white-space:normal;line-height:1.3">${{parts.join(' · ')}}</div>`;
   }}
   html+='</div>';
   return html;
@@ -534,27 +574,40 @@ function buildTable(){{
   const tbody=document.getElementById('tbody');
   tbody.innerHTML='';
   const methods=visibleMethods();
-  const cats=['physics','nguyen','remote','other'];
-  const cnames={{physics:'Physics laws',nguyen:'Nguyen benchmark (1–12)',remote:'Remote sensing indices',other:'Other'}};
-  cats.forEach(cat=>{{
-    const rows=FORMULAS.filter(f=>f.cat===cat&&(activeCat==='all'||activeCat===cat)&&hasDbEntry(f.id));
-    if(!rows.length) return;
-    const sr=document.createElement('tr');sr.className='secrow';
-    sr.innerHTML=`<td class="fcol">${{cnames[cat]}}</td>${{methods.map(()=>'<td></td>').join('')}}`;
-    tbody.appendChild(sr);
+  if(!FULL_LEADERBOARD){{
+    const rows=FORMULAS.filter(f=>hasDbEntry(f.id));
     rows.forEach(f=>{{
       const tr=document.createElement('tr');
-      let cells=`<td class="fcol"><div>${{f.name}}</div>${{FULL_LEADERBOARD && f.tex?`<div class="ftex">$${{f.tex}}$</div>`:''}}</td>`;
+      let cells=`<td class="fcol"><div>${{f.name}}</div></td>`;
       methods.forEach(m=>{{cells+=`<td id="cell_${{f.id}}_${{m}}">${{renderCell(f.id,m)}}</td>`;}});
       tr.innerHTML=cells;tbody.appendChild(tr);
     }});
-  }});
+  }} else {{
+    const cats=['physics','nguyen','remote','other'];
+    const cnames={{physics:'Physics laws',nguyen:'Nguyen benchmark (1–12)',remote:'Remote sensing indices',other:'Other'}};
+    cats.forEach(cat=>{{
+      const rows=FORMULAS.filter(f=>f.cat===cat&&(activeCat==='all'||activeCat===cat)&&hasDbEntry(f.id));
+      if(!rows.length) return;
+      const sr=document.createElement('tr');sr.className='secrow';
+      sr.innerHTML=`<td class="fcol">${{cnames[cat]}}</td>${{methods.map(()=>'<td></td>').join('')}}`;
+      tbody.appendChild(sr);
+      rows.forEach(f=>{{
+        const tr=document.createElement('tr');
+        let cells=`<td class="fcol"><div>${{f.name}}</div>${{f.tex?`<div class="ftex">$${{f.tex}}$</div>`:''}}</td>`;
+        methods.forEach(m=>{{cells+=`<td id="cell_${{f.id}}_${{m}}">${{renderCell(f.id,m)}}</td>`;}});
+        tr.innerHTML=cells;tbody.appendChild(tr);
+      }});
+    }});
+  }}
   updateStats();
   // Render LaTeX in the formula column (KaTeX auto-render).
   if(window.renderMathInElement){{
     try{{
       renderMathInElement(document.getElementById('tbl'),{{
-        delimiters:[{{left:'$',right:'$',display:false}}],
+        delimiters:[
+          {{left:'$$',right:'$$',display:true}},
+          {{left:'$',right:'$',display:false}},
+        ],
         throwOnError:false,
       }});
     }}catch(e){{}}
@@ -840,7 +893,7 @@ function openModal(fid,mid,run){{
       : `Run ${{run+1}} — PySR baseline (single deterministic config; only the data seed varies between runs for synthetic targets)`;
     document.getElementById('minit').value=pysrLbl;
   }} else {{
-    document.getElementById('minit').value=`R${{run+1}}: ${{MINIT[run]}}`;
+    document.getElementById('minit').value=`R${{run+1}}: ${{initStrategyText(run)}}`;
   }}
   const k=key(fid,mid,run);const d=DB[k]||{{}};
   // ── Formula tabs (suppress R²/MSE info-line for PySR which uses raw MSE) ──
@@ -1027,7 +1080,7 @@ function showTT(e,fid,mid,run){{
   const midx=METHODS.indexOf(mid);
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
-  h+=`<div class="ttr"><span>Init</span><span>${{MINIT[run]}}</span></div>`;
+  h+=`<div class="ttr"><span>Init</span><span>${{initStrategyText(run)}}</span></div>`;
   if(d){{
     if(d.oneMinusR2!==null&&d.oneMinusR2!==undefined) h+=`<div class="ttr"><span>1−R²</span><span>${{fmtLoss(d.oneMinusR2)}}</span></div>`;
     if(d.mse!==null&&d.mse!==undefined) h+=`<div class="ttr"><span>MSE</span><span>${{d.mse.toExponential(3)}}</span></div>`;

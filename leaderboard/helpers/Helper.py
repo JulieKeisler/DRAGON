@@ -51,6 +51,7 @@ def _build_result(target, method_cfg, run_id, strategy, best_loss, best_formula,
         "rat_degree":     loss_state.get("rat_degree"),
         "loss_history":   loss_history,
         "actualT":        int(actual_T) if actual_T is not None else None,
+        "max_complexity_reached": loss_state.get("max_complexity_reached"),
         "all_channel_formulas": loss_state.get("all_channel_formulas", []),
         "ops_used":         loss_state.get("ops_used"),
         "has_const":        loss_state.get("has_const"),
@@ -115,7 +116,6 @@ def apply_text_config(config_file_path: str) -> None:
     # Local import keeps Helper generic and avoids import-order coupling.
     from Config import Experiment, Dragon, Paths, Loss, OLS, PySR, MCDropout, Sampling, DRAGON_METHODS
 
-    config_classes = [Experiment, Dragon, Paths, Loss, OLS, PySR, MCDropout, Sampling]
     flat_key_priority = [Experiment, Dragon, PySR, Paths, Loss, OLS, MCDropout, Sampling]
 
     def _set_class_attr(cls, attr_name: str, value, line_no: int, key_label: str):

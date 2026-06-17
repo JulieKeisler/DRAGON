@@ -166,6 +166,7 @@ class DragonOrchestrator:
 		_iter_cap = _max_iters if _max_iters is not None else _CfgDragon.N_ITERATIONS
 
 		global_best = np.inf
+		reached_complexity = 0
 		total_iters = 0
 		budget_mode = method_cfg.get("budget_mode", "default")
 		for complexity in range(1, _CfgDragon.MAX_COMPLEXITY + 1):
@@ -180,6 +181,7 @@ class DragonOrchestrator:
 			T = min(pop + complexity * _CfgDragon.T_PER_LEVEL, remaining)
 			sa = _make_sa(T, clean, extra)
 			sa.run()
+			reached_complexity = complexity
 			try:
 				total_iters = len(pd.read_csv(csv_path))
 			except Exception:
@@ -187,7 +189,7 @@ class DragonOrchestrator:
 			global_best = min(global_best, sa.min_loss)
 			if global_best <= _CfgDragon.LOSS_THRESHOLD:
 				break
-		return global_best
+		return global_best, reached_complexity
 
 	@classmethod
 	def run_worker_pipeline(
@@ -214,10 +216,11 @@ class DragonOrchestrator:
 			feature_names, method_cfg["operators"], strategy=strategy, seed=run_id
 		)
 
-		best_loss = cls.run_search(
+		best_loss, reached_complexity = cls.run_search(
 			method_cfg, search_space, dag, searcher, save_dir, seed_models, _max_iters
 		)
 		searcher.finalize_ols_postprocessing()
+		loss_state["max_complexity_reached"] = int(reached_complexity) if reached_complexity else None
 
 		best_formula = loss_state.get("best_formula", "N/A")
 		if best_formula == "N/A":

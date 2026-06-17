@@ -109,7 +109,8 @@ def _run_smart_parallel(method_cfg, target, run_id, *,
             "search_space_ops": list(method_cfg.get("operators", [])),
         }
 
-    best = min(stream_results, key=lambda r: r.get("loss", float("inf")))
+    # Copy winner payload to avoid mutating the original stream result dict.
+    best = dict(min(stream_results, key=lambda r: r.get("loss", float("inf"))))
     best.update(method=method_id, description=method_cfg["description"],
                 search_space_ops=list(method_cfg.get("operators", [])))
     per_stream_T = {r.get("_stream_id", "?"): int(r["actualT"])
