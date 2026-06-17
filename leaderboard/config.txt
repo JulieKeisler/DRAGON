@@ -7,23 +7,24 @@
 # - Method override:      DRAGON_METHODS[index].field = value
 # - Method field shortcut: loss_mode = full (applies to DRAGON_METHODS[0])
 
-# You can provide one or many targets (comma-separated).
+# provide one or many targets (comma-separated).
 TARGETS = ndvi
-N_RUNS = 1
-
+# choose the number of runs for each targets and each run's strategy
+N_RUNS = 2 
+INIT_STRATEGIES = random,diverse
 # Optional global tuning
 N_TOP_FEATURES = 10
-NOISE_STD = 0 #0.01
+NOISE_STD = 0 # you can choose to add noise such that y_noise = y + N(0, std(y) * NOISE_STD)
 N_ITERATIONS = 1000
 K_INIT = 200
 MAX_COMPLEXITY = 8
 
 # Method-level overrides
 description = DragonSR custom runtime on external CSV
-parallel_mode = smart #None
+parallel_mode = smart # None
 loss_mode = full
 var_aug = true
 add_noise = true
-denoiser = None #lingam, gpr
+denoiser = None # lingam, gpr
 sampling = true
 mc_dropout = false
