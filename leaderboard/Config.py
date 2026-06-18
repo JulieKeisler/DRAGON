@@ -60,7 +60,7 @@ class OLS:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Dragon:
-    N_ITERATIONS   = 10_000
+    N_ITERATIONS   = 1_000
     K_INIT         = 500
     MAX_COMPLEXITY = 10
     MAX_NODES      = 15

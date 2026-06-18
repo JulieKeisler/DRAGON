@@ -8,18 +8,18 @@
 # - Method field shortcut: loss_mode = full (applies to DRAGON_METHODS[0])
 
 # provide one or many targets (comma-separated).
-TARGETS = ndvi
+TARGETS = bsi
 # choose the number of runs for each targets and each run's strategy
-N_RUNS = 1 
+N_RUNS = 5 
 INIT_STRATEGIES = diverse
 # Optional global tuning
 N_TOP_FEATURES = 10
 # you can choose to add noise such that y_noise = y + N(0, std(y) * NOISE_STD)
-NOISE_STD = 0
-N_ITERATIONS = 7000
-K_INIT = 30
+NOISE_STD = 0.01
+N_ITERATIONS = 5000
+K_INIT = 100
 MAX_COMPLEXITY = 55
-T_PER_LEVEL = 100
+T_PER_LEVEL = 20
 
 # Method-level overrides
 description = DragonSR custom runtime on external CSV

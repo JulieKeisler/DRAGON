@@ -18,8 +18,8 @@ from dataprocessing.Data import DatasetLoader
 class NoiseInjector:
     """Adds Gaussian noise to y (relative to std(y))."""
 
-    def __init__(self, noise_std: float = Experiment.NOISE_STD, seed: int = Experiment.RANDOM_SEED):
-        self.noise_std = noise_std
+    def __init__(self, noise_std: float | None = None, seed: int = Experiment.RANDOM_SEED):
+        self.noise_std = Experiment.NOISE_STD if noise_std is None else noise_std
         self.seed      = seed
 
     def transform(self, y: pd.Series, run_id: int = 0) -> pd.Series:
