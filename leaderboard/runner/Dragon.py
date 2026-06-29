@@ -8,7 +8,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 from runner.Worker import _run_smart_parallel, dragon_worker
 from dataprocessing.Preprocessing import PreprocessingPipeline
-from runner.Ols import OLSPostProcessor, correl
+from runner.Ols import OLSPostProcessor
+from pipeline.DragonOrchestrator import SearchLoss
 from helpers.stats import DAGInspector
 from pathlib import Path
 
@@ -135,6 +136,7 @@ class DragonSearcher:
         feature_names:      list[str],
         log_path:           str,
         loss_mode:          str        = "full",
+        search_loss:        str        = "channel",
         optimize_constants: bool       = False,
         subsample_ratio:    float      = 1.0,
         X_np:               np.ndarray = None,
@@ -148,18 +150,20 @@ class DragonSearcher:
         self.feature_names      = feature_names
         self.log_path           = log_path
         self.loss_mode          = loss_mode
+        self.search_loss        = search_loss
         self.optimize_constants = optimize_constants
         self.subsample_ratio    = subsample_ratio
         self.X_np               = X_np
         self.y_np               = y_np
         self.sample_weights     = sample_weights
 
-        self._ols = OLSPostProcessor()
+        self._ols = OLSPostProcessor(search_loss=self.search_loss)
         self.state = {
             "best_loss":       np.inf,
             "winner_type":     "channel",
             "corr_value":      0.0,
             "alignment_loss":  1.0,
+            "search_loss":     self.search_loss,
             "rat_degree":      None,
             "best_formula":    "N/A",
             "formula_channel": None,
@@ -182,26 +186,33 @@ class DragonSearcher:
         model.eval()
 
         pred_all, true_all = self.forward(model, self.train_loader, idx, self.device)
-        (mse, selected_c, ols_weights, alignment_loss,
+        (baseline_loss, selected_c, ols_weights, alignment_loss,
          _lr, nested, rational, valid_idx_global, analysis) = self.evaluate(
             pred_all, true_all)
+
+        # Defensive guard: if no channel produced a finite score, reject candidate.
+        ch_res = analysis.get("channel_results", []) if isinstance(analysis, dict) else []
+        has_valid_channel = any(v is not None and np.isfinite(v) for _, v in ch_res)
+        if not has_valid_channel:
+            selected_c = None
 
         y_np, y_pred, winner_type, rat_degree = self.resolve_prediction(
             pred_all, true_all, selected_c, ols_weights, nested, rational)
 
-        mse      = self.apply_weighted_loss(mse, y_np, y_pred)
-        corr_val = float(correl(
+        search_loss = SearchLoss.score(self.search_loss, y_pred, y_np)
+        search_loss = self.apply_weighted_loss(search_loss, y_np, y_pred)
+        corr_val = float(SearchLoss.correl(
             torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
             true_all))
 
-        if mse < self.state["best_loss"]:
-            self._update_state(mse, winner_type, corr_val, alignment_loss, rat_degree,
+        if search_loss < self.state["best_loss"]:
+            self._update_state(search_loss, winner_type, corr_val, alignment_loss, rat_degree,
                                y_pred, y_np, selected_c, ols_weights, nested, rational,
                                valid_idx_global, analysis, pred_all, model, idx)
 
-        print(f"Idx={idx}, Loss = {mse:.10f}")
+        print(f"Idx={idx}, Loss = {search_loss:.10f}")
         model.set_prediction_to_save("prediction", pd.DataFrame({"pred": y_pred, "true": y_np}))
-        return float(mse), model
+        return float(search_loss), model
 
     # ── Evaluation core (ex-DragonEvaluator) ─────────────────────────────────
 
@@ -236,6 +247,8 @@ class DragonSearcher:
     def resolve_prediction(self, pred_all, true_all, selected_c,
                            ols_weights, nested, rational):
         y_np = true_all.squeeze().numpy()
+        if selected_c is None:
+            return y_np, None, "channel", None
         if rational is not None:
             return y_np, rational["pred"], "rational", rational.get("max_degree")
         if nested is not None:
@@ -247,11 +260,15 @@ class DragonSearcher:
         ch_raw = (pred_all[:, selected_c].numpy()
                   if pred_all.ndim > 1 and pred_all.shape[-1] > 1
                   else pred_all.squeeze().numpy())
-        A = np.column_stack([ch_raw, np.ones_like(ch_raw)])
-        c, *_ = np.linalg.lstsq(A, y_np, rcond=None)
-        return y_np, float(c[0]) * ch_raw + float(c[1]), "channel", None
+        if self.search_loss == "corr":
+            A = np.column_stack([ch_raw, np.ones_like(ch_raw)])
+            c, *_ = np.linalg.lstsq(A, y_np, rcond=None)
+            return y_np, float(c[0]) * ch_raw + float(c[1]), "channel", None
+        return y_np, ch_raw, "channel", None
 
     def apply_weighted_loss(self, mse, y_np, y_pred):
+        if mse is None or not np.isfinite(mse):
+            return mse
         if self.sample_weights is None or self.subsample_ratio < 1.0 or y_pred is None:
             return mse
         try:
@@ -276,10 +293,13 @@ class DragonSearcher:
     def _maybe_optimize_constants(self, model):
         if not self.optimize_constants:
             return
-        if sum(p.numel() for p in model.parameters()) != 1:
+
+        params = [p for p in model.parameters() if p.requires_grad]
+        if not params:
             return
+
         model  = model.float()
-        opt    = torch.optim.Adam(model.parameters(), lr=0.001)
+        opt    = torch.optim.Adam(params, lr=0.001)
         mse_fn = nn.MSELoss()
         model.train()
         for epoch in range(100):
@@ -340,7 +360,7 @@ class DragonSearcher:
 
             with open(self.log_path, "a") as lf:
                 lf.write(f"=== NEW BEST  Idx={idx}  Loss={mse:.10f}  "
-                         f"Winner={winner_type.upper()}  alignment_loss={alignment_loss:.10f}\n")
+                         f"Winner={winner_type.upper()}  search_loss={self.search_loss}\n")
                 self._ols.print_analysis(analysis, formulas, valid_idx_global, selected_c, f=lf)
                 lf.write("\n")
             print(f"\n  >> NEW BEST loss={mse:.10f} [{winner_type.upper()}]  Idx={idx}")
@@ -354,6 +374,8 @@ class DragonSearcher:
         raw = str(formulas[selected_c]) if formulas and selected_c < len(formulas) else None
         if raw is None:
             return None
+        if self.search_loss != "corr":
+            return raw
         ch = (pred_all[:, selected_c].numpy().ravel()
               if pred_all.ndim > 1 and pred_all.shape[-1] > 1
               else pred_all.squeeze().numpy().ravel())

@@ -41,6 +41,7 @@ class Experiment:
 class Loss:
     KIND             = "mse"   # "mse" | "huber"
     HUBER_DELTA_FRAC = 0.20
+    SEARCH_LOSS      = "corr"  # "corr" | "channel" | "mse" | "raw_mse" | "mae" | "huber"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -68,10 +69,10 @@ class Dragon:
     LOSS_THRESHOLD = 1e-30
 
     SPAR_OP_GROUPS = {
-        "all":        ["select", "unary", "power", "ln", "exp", "sin", "cos"],
-        "alg":        ["select", "unary", "power"],
-        "alg_trig":   ["select", "unary", "power", "sin", "cos"],
-        "alg_explog": ["select", "unary", "power", "ln", "exp"],
+        "all":        ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
+        "alg":        ["select", "unary", "power", "const"],
+        "alg_trig":   ["select", "unary", "power", "sin", "cos", "const"],
+        "alg_explog": ["select", "unary", "power", "ln", "exp", "const"],
     }
 
 
@@ -114,7 +115,7 @@ class Sampling:
 #  METHOD REGISTRY
 # ══════════════════════════════════════════════════════════════════════════════
 
-_ALL_OPS = ["select", "unary", "power", "ln", "exp", "sin", "cos"]
+_ALL_OPS = ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"]
 
 DRAGON_METHODS = [
     {

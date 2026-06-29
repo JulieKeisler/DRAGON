@@ -37,10 +37,12 @@ def _extract_best_formula_from_log(log_path: str) -> str:
 
 def _build_result(target, method_cfg, run_id, strategy, best_loss, best_formula,
                   log_path, loss_state, actual_T, loss_history, landscape_svg, elapsed) -> dict:
+    search_loss = loss_state.get("search_loss")
     result = {
         "target": target, "method": method_cfg["id"], "run_id": run_id,
         "strategy": strategy, "_stream_id": method_cfg.get("_stream_id"),
-        "loss": float(best_loss), "r2": float(1.0 - best_loss) if best_loss <= 1.0 else 0.0,
+        "loss": float(best_loss),
+        "r2": float(1.0 - best_loss) if search_loss == "corr" and best_loss <= 1.0 else 0.0,
         "formula": str(best_formula), "time_s": elapsed, "log_path": log_path,
         "description": method_cfg["description"],
         "search_space_ops": list(method_cfg.get("operators", [])),
@@ -48,6 +50,7 @@ def _build_result(target, method_cfg, run_id, strategy, best_loss, best_formula,
         "winner_type":    loss_state.get("winner_type", "channel"),
         "corr_value":     float(loss_state.get("corr_value", 0.0)),
         "alignment_loss": float(loss_state.get("alignment_loss", 1.0)),
+        "search_loss":    search_loss,
         "rat_degree":     loss_state.get("rat_degree"),
         "loss_history":   loss_history,
         "actualT":        int(actual_T) if actual_T is not None else None,

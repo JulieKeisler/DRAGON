@@ -6,21 +6,7 @@ import torch
 from sklearn.linear_model import Ridge
 
 from Config import OLS as _CfgOLS, Loss as _CfgLoss
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PEARSON CORRELATION  (module-level utility)
-# ══════════════════════════════════════════════════════════════════════════════
-
-def correl(pred, true) -> float:
-    if isinstance(pred, torch.Tensor): pred = pred.numpy()
-    if isinstance(true, torch.Tensor): true = true.numpy()
-    pred = pred.ravel(); true = true.ravel()
-    pd_  = pred - pred.mean(); td_ = true - true.mean()
-    sp   = np.sqrt(np.sum(pd_ ** 2)); st = np.sqrt(np.sum(td_ ** 2))
-    if sp < 1e-12 or st < 1e-12:
-        return 0.0
-    return float(np.sum(pd_ * td_) / (sp * st + 1e-8))
+from pipeline.DragonOrchestrator import SearchLoss, AlignmentLoss
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -92,6 +78,7 @@ class OLSPostProcessor:
         complexity_max            = _CfgOLS.COMPLEXITY_MAX,
         loss_kind:          str   = _CfgLoss.KIND,
         huber_delta_frac:   float = _CfgLoss.HUBER_DELTA_FRAC,
+        search_loss:        str   = _CfgLoss.SEARCH_LOSS,
     ):
         self.rat_max_degree     = rat_max_degree
         self.max_basis_channels = max_basis_channels
@@ -100,6 +87,7 @@ class OLSPostProcessor:
         self.complexity_max     = complexity_max
         self.loss_kind          = loss_kind
         self.huber_delta_frac   = huber_delta_frac
+        self.search_loss        = search_loss
 
     # ── Public entry points ───────────────────────────────────────────────────
 
@@ -138,19 +126,27 @@ class OLSPostProcessor:
 
         _p(f"\n-- Single-channel analysis ({n_ch} channels) --")
         best_ch_norm = np.inf
+        show_r2 = self.search_loss == "corr"
         for c, norm_c in ch_res:
             f_str = formulas[c] if c < len(formulas) else "?"
             if norm_c is None:
                 _p(f"  ch[{c}]: constant or NaN (skipped)  formula={f_str}")
             else:
                 tag = " <<< SELECTED" if c == selected_c else ""
-                _p(f"  ch[{c}]: normMSE={norm_c:.10f}  R2={1.0-norm_c:.8f}  formula={f_str}{tag}")
+                line = f"  ch[{c}]: normMSE={norm_c:.10f}"
+                if show_r2:
+                    line += f"  R2={1.0-norm_c:.8f}"
+                line += f"  formula={f_str}{tag}"
+                _p(line)
                 if norm_c < best_ch_norm:
                     best_ch_norm = norm_c
 
         if ols_norm is not None and ols_wts is not None:
             _p(f"\n-- Sparse OLS fit --")
-            _p(f"  normMSE={ols_norm:.10f}  R2={1.0-ols_norm:.8f}")
+            line = f"  normMSE={ols_norm:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-ols_norm:.8f}"
+            _p(line)
             for vi, w in enumerate(ols_wts):
                 if abs(w) > 1e-6:
                     _p(f"    w={w:+.6f}  [{vi}] {formulas[vi] if vi < len(formulas) else '?'}")
@@ -165,7 +161,10 @@ class OLSPostProcessor:
                     _p(f"    w={nested['w'][j]:+.6f}  unary={nested['unaries'][j]:5s}  "
                        f"[{j}] {formulas[j] if j < len(formulas) else '?'}")
             _p(f"    bias = {nested['b']:+.6f}")
-            _p(f"  normMSE={norm_n:.10f}  R2={1.0-norm_n:.8f}")
+            line = f"  normMSE={norm_n:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-norm_n:.8f}"
+            _p(line)
             _p(f"  Formula = {self.format_nested(nested, formulas)}")
         else:
             _p("\n-- Nested OLS: no improvement --")
@@ -176,7 +175,10 @@ class OLSPostProcessor:
             deg    = rc.get("max_degree", "?")
             norm_r = rc["mse"] / var_y
             _p(f"\n  > Degre {deg}:")
-            _p(f"    normMSE={norm_r:.10f}  R2={1.0-norm_r:.8f}")
+            line = f"    normMSE={norm_r:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-norm_r:.8f}"
+            _p(line)
             _p(f"    Formula = {self.format_rational(rc, formulas, valid_idx_global)}")
             if norm_r < best_rat_norm:
                 best_rat_norm = norm_r; best_rat = rc
@@ -185,15 +187,28 @@ class OLSPostProcessor:
 
         _p("\n-- Comparison --")
         if best_ch_norm < np.inf:
-            _p(f"  Best channel [{selected_c}]:  normMSE={best_ch_norm:.10f}  R2={1.0-best_ch_norm:.8f}")
+            line = f"  Best channel [{selected_c}]:  normMSE={best_ch_norm:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-best_ch_norm:.8f}"
+            _p(line)
         if ols_norm is not None and ols_wts is not None:
-            _p(f"  Sparse OLS:              normMSE={ols_norm:.10f}  R2={1.0-ols_norm:.8f}")
+            line = f"  Sparse OLS:              normMSE={ols_norm:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-ols_norm:.8f}"
+            _p(line)
         if nested is not None:
             norm_n = nested["mse"] / var_y
-            _p(f"  Nested OLS:              normMSE={norm_n:.10f}  R2={1.0-norm_n:.8f}  link={nested['link']}")
+            line = f"  Nested OLS:              normMSE={norm_n:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-norm_n:.8f}"
+            line += f"  link={nested['link']}"
+            _p(line)
         if best_rat is not None:
-            _p(f"  Best Poly-Rational:      normMSE={best_rat_norm:.10f}  "
-               f"R2={1.0-best_rat_norm:.8f}  deg={best_rat['max_degree']}")
+            line = f"  Best Poly-Rational:      normMSE={best_rat_norm:.10f}"
+            if show_r2:
+                line += f"  R2={1.0-best_rat_norm:.8f}"
+            line += f"  deg={best_rat['max_degree']}"
+            _p(line)
 
     def format_nested(self, nested: dict, formulas: list, min_weight: float = 1e-4) -> str:
         """Format a nested-OLS result as a human-readable formula string."""
@@ -250,18 +265,6 @@ class OLSPostProcessor:
                if kept_b[k] and abs(b[k]) >= min_weight]
         den.append(f"{b0:+.4f}")
         return f"({' '.join(num)}) / ({' '.join(den)})"
-
-    # ── Normalised loss ───────────────────────────────────────────────────────
-
-    def _normalized_loss(self, pred, y, var_y) -> float:
-        if var_y < 1e-30:
-            return 1.0
-        if self.loss_kind == "huber":
-            delta = self.huber_delta_frac * float(np.sqrt(var_y))
-            r     = np.abs(y - pred)
-            quad  = np.minimum(r, delta)
-            return float(np.mean(0.5 * quad ** 2 + delta * (r - quad)) / (0.5 * var_y))
-        return float(np.mean((y - pred) ** 2) / var_y)
 
     # ── Parsimony-aware model selection ──────────────────────────────────────
 
@@ -343,24 +346,21 @@ class OLSPostProcessor:
                 y_t = fwd(y)
             if not np.all(np.isfinite(y_t)) or np.std(y_t) < 1e-12:
                 continue
-            y_t_c        = y_t - y_t.mean()
             unaries_pick = []
             chans_t      = np.empty_like(channels)
             valid_mask   = np.zeros(n_ch, dtype=bool)
             for j in range(n_ch):
-                best_corr, best_u, best_vals = -1.0, 'id', channels[:, j]
+                best_score, best_u, best_vals = np.inf, 'id', channels[:, j]
                 for u_name, u_fn in self._UNARIES.items():
                     with np.errstate(all='ignore'):
                         v = u_fn(channels[:, j])
                     if not np.all(np.isfinite(v)) or np.std(v) < 1e-12:
                         continue
-                    v_c   = v - v.mean()
-                    denom = np.sqrt((v_c ** 2).sum() * (y_t_c ** 2).sum()) + 1e-30
-                    c     = abs((v_c * y_t_c).sum() / denom)
-                    if np.isfinite(c) and c > best_corr:
-                        best_corr, best_u, best_vals = c, u_name, v
+                    score = SearchLoss.score(self.search_loss, v, y_t)
+                    if np.isfinite(score) and score < best_score:
+                        best_score, best_u, best_vals = score, u_name, v
                 unaries_pick.append(best_u)
-                if best_corr > 0:
+                if np.isfinite(best_score):
                     chans_t[:, j] = best_vals; valid_mask[j] = True
             if valid_mask.sum() == 0:
                 continue
@@ -407,11 +407,10 @@ class OLSPostProcessor:
             return None
         y_c   = y - y.mean()
         sy    = (y_c ** 2).sum() ** 0.5 + 1e-30
-        corrs = np.array([
-            abs(((channels[:, j] - channels[:, j].mean()) * y_c).sum() /
-                ((((channels[:, j] - channels[:, j].mean()) ** 2).sum() ** 0.5 + 1e-30) * sy))
+        scores = np.array([
+            SearchLoss.score(self.search_loss, channels[:, j], y)
             for j in range(k)])
-        sel        = np.argsort(-corrs)[:min(k, self.max_basis_channels)]
+        sel        = np.argsort(scores)[:min(k, self.max_basis_channels)]
         feats, mono_local = self._build_poly_features(channels[:, sel], max_degree)
         if feats.shape[1] == 0:
             return None
@@ -422,17 +421,19 @@ class OLSPostProcessor:
         feats      = feats[:, ok]
         mono_local = [m for m, ko in zip(mono_local, ok) if ko]
         if feats.shape[1] > self.max_features:
-            sc   = np.array([abs(((feats[:, j] - feats[:, j].mean()) * y_c).sum() /
-                                 ((((feats[:, j] - feats[:, j].mean()) ** 2).sum() ** 0.5 + 1e-30) * sy))
-                             for j in range(feats.shape[1])])
-            keep       = np.argsort(-sc)[:self.max_features]
+            sc   = np.array([
+                SearchLoss.score(self.search_loss, feats[:, j], y)
+                for j in range(feats.shape[1])])
+            keep       = np.argsort(sc)[:self.max_features]
             feats      = feats[:, keep]
             mono_local = [mono_local[i] for i in keep]
         m = feats.shape[1]
         if n < 2 * m + 2:
-            sc   = np.array([abs(np.corrcoef(feats[:, j], y)[0, 1])
-                             if np.std(feats[:, j]) > 1e-15 else 0.0 for j in range(m)])
-            keep = np.argsort(-sc)[:max(1, (n - 2) // 2)]
+            sc   = np.array([
+                SearchLoss.score(self.search_loss, feats[:, j], y)
+                if np.std(feats[:, j]) > 1e-15 else np.inf
+                for j in range(m)])
+            keep = np.argsort(sc)[:max(1, (n - 2) // 2)]
             feats = feats[:, keep]; mono_local = [mono_local[i] for i in keep]
             m = feats.shape[1]
             if m == 0:
@@ -494,19 +495,26 @@ class OLSPostProcessor:
     def _eval_single(self, pred_all, y, var_y, loss_mode):
         ch = pred_all.squeeze().numpy()
         if not np.all(np.isfinite(ch)) or np.std(ch) < 1e-12:
-            return 1.0, 0, None, 1.0, None, None, None, np.array([0]), {}
+            ana = {"var_y": var_y, "channel_results": [(0, None)], "n_ch": 1,
+                   "ols_mse_norm": None, "ols_kept_global": None, "ols_bias": None,
+                   "ols_weights": None, "nested": None, "rational_candidates": []}
+            return np.inf, None, None, np.inf, None, None, None, np.array([0]), ana
         if loss_mode == "channel":
-            r = correl(ch, y)
-            l = float(1 - r ** 2) if np.isfinite(r) else 1.0
+            l = SearchLoss.score(self.search_loss, ch, y)
             return l, 0, None, l, None, None, None, np.array([0]), {}
 
         w, b, pred = self._safe_lstsq(ch.reshape(-1, 1), y)
         if w is None:
-            r = correl(ch, y)
-            l = float(1 - r ** 2) if np.isfinite(r) else 1.0
+            l = SearchLoss.score(self.search_loss, ch, y)
             return l, 0, None, l, None, None, None, np.array([0]), {}
 
-        mse_lin = self._normalized_loss(pred, y, var_y)
+        if self.search_loss == "corr":
+            mse_lin = AlignmentLoss.channel_score(
+                self.search_loss, self.loss_kind, pred, y, var_y, self.huber_delta_frac
+            )
+        else:
+            mse_lin = SearchLoss.score(self.search_loss, ch, y)
+
         if loss_mode == "ols":
             ana = {"var_y": var_y, "channel_results": [(0, mse_lin)], "n_ch": 1,
                    "ols_mse_norm": mse_lin, "ols_kept_global": None,
@@ -543,17 +551,39 @@ class OLSPostProcessor:
         P    = pred_all.numpy()
         n_ch = P.shape[1]
 
-        best_ch_loss = 1.0; selected_c = 0; ch_res = []
+        # No channel at all: invalid candidate, must never be selected as best.
+        if n_ch == 0:
+            ana = {"var_y": var_y, "channel_results": [], "n_ch": 0,
+                   "ols_mse_norm": None, "ols_kept_global": None, "ols_bias": None,
+                   "ols_weights": None, "nested": None, "rational_candidates": []}
+            return np.inf, 0, None, np.inf, None, None, None, None, ana
+
+        # Start at +inf so losses > 1.0 (common for normalized MSE) can still win.
+        best_ch_loss = np.inf; selected_c = None; ch_res = []
         for c in range(n_ch):
             if not np.all(np.isfinite(P[:, c])) or np.std(P[:, c]) < 1e-12:
                 ch_res.append((c, None)); continue
-            w, b, pred = self._safe_lstsq(P[:, c:c+1], y)
-            if w is None:
-                ch_res.append((c, None)); continue
-            loss = self._normalized_loss(pred, y, var_y)
+
+            if self.search_loss == "corr":
+                w, b, pred = self._safe_lstsq(P[:, c:c+1], y)
+                if w is None:
+                    ch_res.append((c, None)); continue
+                loss = AlignmentLoss.channel_score(
+                    self.search_loss, self.loss_kind, pred, y, var_y, self.huber_delta_frac
+                )
+            else:
+                loss = SearchLoss.score(self.search_loss, P[:, c], y)
+
             ch_res.append((c, loss))
             if loss < best_ch_loss:
                 best_ch_loss = loss; selected_c = c
+
+        # All channels invalid (NaN/constant): reject candidate.
+        if selected_c is None:
+            ana = {"var_y": var_y, "channel_results": ch_res, "n_ch": n_ch,
+                   "ols_mse_norm": None, "ols_kept_global": None, "ols_bias": None,
+                   "ols_weights": None, "nested": None, "rational_candidates": []}
+            return np.inf, None, None, np.inf, None, None, None, None, ana
 
         if loss_mode == "channel":
             ana = {"var_y": var_y, "channel_results": ch_res, "n_ch": n_ch,
@@ -564,13 +594,13 @@ class OLSPostProcessor:
         mask             = np.array([np.all(np.isfinite(P[:, c])) and np.std(P[:, c]) > 1e-15
                                       for c in range(n_ch)])
         valid_idx_global = np.where(mask)[0]
-        ols_loss = 1.0; ols_weights = None; ols_bias = 0.0; ols_kept = None; lr_obj = None
+        ols_loss = np.inf; ols_weights = None; ols_bias = 0.0; ols_kept = None; lr_obj = None
         if mask.sum() > 0:
             try:
                 lr   = Ridge(alpha=1e-8).fit(P[:, mask], y)
                 r2   = lr.score(P[:, mask], y)
                 if np.isfinite(r2) and r2 > 0:
-                    ols_loss    = float(1.0 - r2)
+                    ols_loss    = max(0.0, float(1.0 - r2))
                     ols_kept    = np.zeros(n_ch, dtype=bool); ols_kept[valid_idx_global] = True
                     ols_weights = np.zeros(n_ch); ols_weights[mask] = lr.coef_
                     ols_bias    = float(lr.intercept_)
@@ -591,15 +621,24 @@ class OLSPostProcessor:
         # ── Full: nested + rational ───────────────────────────────────────────
         nested = None
         if mask.sum() > 0:
-            P_v   = P[:, mask]
-            y_c   = y - y.mean(); sy = np.sqrt((y_c ** 2).sum()) + 1e-30
-            corrs = np.array([
-                abs(((P_v[:, j] - P_v[:, j].mean()) * y_c).sum() /
-                    ((((P_v[:, j] - P_v[:, j].mean()) ** 2).sum() ** 0.5 + 1e-30) * sy))
-                if np.all(np.isfinite(P_v[:, j])) and np.std(P_v[:, j]) > 1e-15 else 0.0
-                for j in range(P_v.shape[1])])
-            top_local  = np.argsort(-corrs)[:self.max_basis_channels]
-            top_global = valid_idx_global[top_local]
+            if self.search_loss == "corr":
+                P_v   = P[:, mask]
+                y_c   = y - y.mean(); sy = np.sqrt((y_c ** 2).sum()) + 1e-30
+                corrs = np.array([
+                    abs(((P_v[:, j] - P_v[:, j].mean()) * y_c).sum() /
+                        ((((P_v[:, j] - P_v[:, j].mean()) ** 2).sum() ** 0.5 + 1e-30) * sy))
+                    if np.all(np.isfinite(P_v[:, j])) and np.std(P_v[:, j]) > 1e-15 else 0.0
+                    for j in range(P_v.shape[1])])
+                top_local  = np.argsort(-corrs)[:self.max_basis_channels]
+                top_global = valid_idx_global[top_local]
+            else:
+                local_indices = np.where(mask)[0]
+                losses = np.array([
+                    SearchLoss.score(self.search_loss, P[:, c], y)
+                    for c in local_indices
+                ])
+                top_local = np.argsort(losses)[:self.max_basis_channels]
+                top_global = local_indices[top_local]
             ns = self._nested_ols(P[:, top_global], y,
                                   mse_floor=min(ols_loss, best_ch_loss) * var_y)
             if ns is not None:

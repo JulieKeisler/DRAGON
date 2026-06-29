@@ -39,6 +39,18 @@ def _result_to_db_entry(r):
     wt   = _WINNER_REMAP.get(r.get("winner_type", ""), None)
     rd   = r.get("rat_degree")
     is_pysr = r.get("method") in ("pysr", "pysr_noise")
+    search_loss_name = str(
+      r.get("search_loss") or ("mse" if is_pysr else "corr")
+    ).strip().lower()
+    if search_loss_name == "channel":
+      search_loss_name = "corr"
+    search_loss_kind = {
+      "corr": "1−|corr|",
+      "mse": "MSE",
+      "raw_mse": "Raw MSE",
+      "mae": "MAE",
+      "huber": "Huber",
+    }.get(search_loss_name, search_loss_name.upper())
     if is_pysr:
         total_t = _CfgPySR.N_ITERATIONS
         pop_k   = _CfgPySR.POPULATION_SIZE
@@ -71,17 +83,9 @@ def _result_to_db_entry(r):
         "phase":      None,
         # Min search loss reached (the actual quantity the search optimised).
         # Dragon -> alignment_loss (1 - |corr|);  PySR -> raw MSE returned per member.
-        "searchLoss": (
-            (lambda _v: float(_v) if _v is not None and np.isfinite(_v) else None)(
-                min((h["loss"] for h in (r.get("hall_of_fame") or [])
-                     if h.get("loss") is not None and np.isfinite(h["loss"])),
-                    default=None)
-            )
-            if is_pysr else
-            (float(r["alignment_loss"]) if r.get("alignment_loss") is not None
-             and np.isfinite(float(r["alignment_loss"])) else None)
-        ),
-        "searchLossKind": "PySR MSE" if is_pysr else "1\u2212|corr|",
+        "searchLoss": finite_loss,
+        "searchLossKind": search_loss_kind,
+        "searchLossName": search_loss_name,
         "ops":        (", ".join(r["search_space_ops"]) if r.get("search_space_ops")
                        else ("+, -, *, /, exp, sqrt, abs, sin, cos, log" if is_pysr else None)),
         "nconst":     r.get("has_const") or ("yes (PySR constants always optimised)" if is_pysr else None),
@@ -98,7 +102,7 @@ def _result_to_db_entry(r):
         "channels":      [
             {
                 "tag":  f"ch[{c['idx']}]" + (" *" if c.get('selected') else ""),
-                "text": (f"1\u2212R\u00b2={c['loss']:.3e}  \u00b7  {c['formula']}"
+                "text": (f"loss={c['loss']:.3e}  \u00b7  {c['formula']}"
                           if c.get('loss') is not None else str(c['formula'])),
             }
             for c in (r.get("all_channel_formulas") or [])
@@ -331,10 +335,10 @@ const FORMULAS=[
 
     BODY += """\
 <div class="legend">
-  <span><span class="ld" style="background:#3b6d11"></span>exact (1−R²&lt;1e-6)</span>
-  <span><span class="ld" style="background:#185fa5"></span>great (&lt;1e-3)</span>
-  <span><span class="ld" style="background:#ba7517"></span>ok (&lt;0.1)</span>
-  <span><span class="ld" style="background:#a32d2d"></span>fail (≥0.1)</span>
+  <span><span class="ld" style="background:#3b6d11"></span>very low (&lt;1e-6)</span>
+  <span><span class="ld" style="background:#185fa5"></span>low (&lt;1e-3)</span>
+  <span><span class="ld" style="background:#ba7517"></span>medium (&lt;0.1)</span>
+  <span><span class="ld" style="background:#a32d2d"></span>high (≥0.1)</span>
   <span style="margin-left:8px;color:var(--color-text-tertiary)">winner badge:</span>
   <span class="winner-badge wb-polyrat">P-RAT</span>
   <span class="winner-badge wb-nested">NEST</span>
@@ -696,6 +700,8 @@ function _buildFormulaTabs(d, isPysr){{
 
   // Collect all available method formulas (no synthetic "Winner" tab)
   const tabs=[];
+  const isCorrMetric=(String(d?.searchLossName||'corr').toLowerCase()==='corr'||
+                      String(d?.searchLossName||'corr').toLowerCase()==='channel');
   if(d&&d.formulaChannel) tabs.push({{id:'ch',   label:'Channel',    expr:d.formulaChannel, loss:d.lossChannel, mse:d.mseCh}});
   if(d&&d.formulaOls)     tabs.push({{id:'ols',  label:'Sparse OLS', expr:d.formulaOls,     loss:d.lossOls,     mse:d.mseOls}});
   if(d&&d.formulaNested)  tabs.push({{id:'nest', label:'Nested OLS', expr:d.formulaNested,  loss:d.lossNested,  mse:d.mseNested}});
@@ -740,7 +746,7 @@ function _buildFormulaTabs(d, isPysr){{
       const lv=tabs[idx].loss;
       const mv=tabs[idx].mse;
       const parts=[];
-      if(lv!==null&&lv!==undefined) parts.push('1\u2212R\u00b2\u202f=\u202f'+lv.toExponential(6));
+      if(lv!==null&&lv!==undefined) parts.push((isCorrMetric?'1\u2212R\u00b2':'loss')+'\u202f=\u202f'+lv.toExponential(6));
       if(mv!==null&&mv!==undefined) parts.push('MSE\u202f=\u202f'+mv.toExponential(6));
       lossInfo.textContent=parts.join('\u2003');
     }}
@@ -1049,6 +1055,9 @@ function saveRun(){{
   DB[k]={{
     oneMinusR2:DB[k]?.oneMinusR2??null,
     mse:DB[k]?.mse??null,
+    searchLoss:DB[k]?.searchLoss??null,
+    searchLossKind:DB[k]?.searchLossKind??null,
+    searchLossName:DB[k]?.searchLossName??null,
     winner:DB[k]?.winner??null,
     bestCh:DB[k]?.bestCh??null,
     polyDeg:DB[k]?.polyDeg??null,
@@ -1078,20 +1087,23 @@ function showTT(e,fid,mid,run){{
   const f=FORMULAS.find(x=>x.id===fid);
   const mnames=['PySR','PySR +Noise','All ops ★ (ref)','Smart par','Boosted spar','ConstBrick','No OLS','Smart par+denoise'];
   const midx=METHODS.indexOf(mid);
+  const _isCorrMetric=(String(d?.searchLossName||'corr').toLowerCase()==='corr'||
+                       String(d?.searchLossName||'corr').toLowerCase()==='channel');
+  const _metricLabel=_isCorrMetric?'1−R²':'loss';
   const tt=document.getElementById('ttbox');
   let h=`<div class="tttitle">${{f.name}} · ${{mnames[midx]}} · R${{run+1}}</div>`;
   h+=`<div class="ttr"><span>Init</span><span>${{initStrategyText(run)}}</span></div>`;
   if(d){{
-    if(d.oneMinusR2!==null&&d.oneMinusR2!==undefined) h+=`<div class="ttr"><span>1−R²</span><span>${{fmtLoss(d.oneMinusR2)}}</span></div>`;
+    if(d.oneMinusR2!==null&&d.oneMinusR2!==undefined) h+=`<div class="ttr"><span>${{_metricLabel}}</span><span>${{fmtLoss(d.oneMinusR2)}}</span></div>`;
     if(d.mse!==null&&d.mse!==undefined) h+=`<div class="ttr"><span>MSE</span><span>${{d.mse.toExponential(3)}}</span></div>`;
     if(d.winner) h+=`<div class="ttr"><span>Winner</span><span>${{d.winner}}</span></div>`;
     if(d.polyDeg) h+=`<div class="ttr"><span>P-RAT degree</span><span>≤${{d.polyDeg}}</span></div>`;
     if(d.nestedLink) h+=`<div class="ttr"><span>Nested link</span><span>${{d.nestedLink}}</span></div>`;
-    // Per-method 1−R² breakdown
+    // Per-method score breakdown
     function ttloss(v){{ return (v!==null&&v!==undefined)?v.toExponential(3):'—'; }}
     if(d.lossChannel!==undefined||d.lossOls!==undefined||d.lossNested!==undefined){{
       h+=`<div style="border-top:0.5px solid var(--color-border-tertiary);margin:4px 0 3px"></div>`;
-      h+=`<div style="font-size:8px;font-weight:500;color:var(--color-text-secondary);margin-bottom:2px">1\u2212R\u00b2 per method</div>`;
+      h+=`<div style="font-size:8px;font-weight:500;color:var(--color-text-secondary);margin-bottom:2px">${{_metricLabel}} per method</div>`;
       if(d.lossChannel!==null&&d.lossChannel!==undefined) h+=`<div class="ttr"><span>Channel</span><span style="font-family:var(--font-mono)">${{ttloss(d.lossChannel)}}</span></div>`;
       if(d.lossOls!==null&&d.lossOls!==undefined)         h+=`<div class="ttr"><span>Sparse OLS</span><span style="font-family:var(--font-mono)">${{ttloss(d.lossOls)}}</span></div>`;
       if(d.lossNested!==null&&d.lossNested!==undefined)   h+=`<div class="ttr"><span>Nested OLS</span><span style="font-family:var(--font-mono)">${{ttloss(d.lossNested)}}</span></div>`;
