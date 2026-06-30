@@ -81,11 +81,11 @@ class Dragon:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PySR:
-    N_ITERATIONS    = 1_000
+    N_ITERATIONS    = 10_000
     POPULATIONS     = 5
     POPULATION_SIZE = 120
     MAXSIZE         = 30
-    JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.dragonenv/julia_env"
+    JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.venv311/julia_env"
     BINARY_OPS      = ["+", "-", "*", "/"]
     UNARY_OPS       = ["log", "exp", "sin", "cos", "sqrt", "abs"]
 

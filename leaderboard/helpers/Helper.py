@@ -106,6 +106,41 @@ def _parse_text_value(raw: str):
     return txt
 
 
+def _literal_brackets_balanced(txt: str) -> bool:
+    """Return True if (), [], {} are balanced, ignoring quoted content."""
+    pairs = {")": "(", "]": "[", "}": "{"}
+    opens = set(pairs.values())
+    stack = []
+    in_single = False
+    in_double = False
+    escaped = False
+
+    for ch in txt:
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\":
+            escaped = True
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if in_single or in_double:
+            continue
+
+        if ch in opens:
+            stack.append(ch)
+        elif ch in pairs:
+            if not stack or stack[-1] != pairs[ch]:
+                return False
+            stack.pop()
+
+    return not in_single and not in_double and not stack
+
+
 def apply_text_config(config_file_path: str) -> None:
     """Apply runtime overrides from a plain text config file.
 
@@ -136,24 +171,39 @@ def apply_text_config(config_file_path: str) -> None:
     with open(config_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    for line_no, line in enumerate(lines, start=1):
+    idx = 0
+    while idx < len(lines):
+        line_no = idx + 1
+        line = lines[idx]
         s = line.strip()
         if not s or s.startswith("#"):
+            idx += 1
             continue
         if "=" not in s:
             raise ValueError(f"Invalid config line {line_no}: missing '='")
 
         key, raw_val = s.split("=", 1)
         key = key.strip()
-        value = _parse_text_value(raw_val)
+
+        raw_val_combined = raw_val
+        raw_stripped = raw_val.strip()
+        if raw_stripped and raw_stripped[0] in "[{(":
+            while not _literal_brackets_balanced(raw_val_combined.strip()):
+                idx += 1
+                if idx >= len(lines):
+                    raise ValueError(f"Unterminated literal for key '{key}' starting at line {line_no}")
+                raw_val_combined += "\n" + lines[idx].rstrip("\n")
+
+        value = _parse_text_value(raw_val_combined)
 
         m = re.match(r"^DRAGON_METHODS\[(\d+)\]\.([A-Za-z_]\w*)$", key)
         if m:
-            idx = int(m.group(1))
+            method_idx = int(m.group(1))
             field = m.group(2)
-            if idx < 0 or idx >= len(DRAGON_METHODS):
-                raise IndexError(f"Invalid DRAGON_METHODS index at line {line_no}: {idx}")
-            DRAGON_METHODS[idx][field] = value
+            if method_idx < 0 or method_idx >= len(DRAGON_METHODS):
+                raise IndexError(f"Invalid DRAGON_METHODS index at line {line_no}: {method_idx}")
+            DRAGON_METHODS[method_idx][field] = value
+            idx += 1
             continue
 
         m = re.match(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$", key)
@@ -174,14 +224,18 @@ def apply_text_config(config_file_path: str) -> None:
             if cls is None:
                 raise ValueError(f"Unknown config class at line {line_no}: {class_name}")
             _set_class_attr(cls, attr_name, value, line_no, key)
+            idx += 1
             continue
 
         candidates = [cls for cls in flat_key_priority if hasattr(cls, key)]
         if len(candidates) == 1:
             _set_class_attr(candidates[0], key, value, line_no, key)
+            idx += 1
             continue
         if len(candidates) > 1:
             _set_class_attr(candidates[0], key, value, line_no, key)
+            idx += 1
             continue
 
         _set_default_method_field(key, value, line_no)
+        idx += 1
