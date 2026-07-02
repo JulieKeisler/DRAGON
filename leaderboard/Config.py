@@ -43,6 +43,13 @@ class Loss:
     HUBER_DELTA_FRAC = 0.20
     SEARCH_LOSS      = "corr"  # "corr" | "channel" | "mse" | "raw_mse" | "mae" | "huber"
 
+    COMPOSITION_PENALTY = 0.0   # weight of the term (0.0 disables it)
+    COMPOSITION_BASE    = 2.0   # exponential growth base per extra composition
+    COMPOSITION_GROUPS  = {     # op-class name -> family label
+        "Sin": "trig", "Cos": "trig",
+        "Exp": "explog", "Ln": "explog",
+    }
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  OLS POST-PROCESSING

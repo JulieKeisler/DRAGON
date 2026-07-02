@@ -12,6 +12,7 @@ from runner.Ols import OLSPostProcessor
 from pipeline.DragonOrchestrator import SearchLoss
 from helpers.stats import DAGInspector
 from pathlib import Path
+from Config import Loss as _LossCfg
 
 
 
@@ -158,6 +159,11 @@ class DragonSearcher:
         self.sample_weights     = sample_weights
 
         self._ols = OLSPostProcessor(search_loss=self.search_loss)
+
+        self._comp_penalty = float(getattr(_LossCfg, "COMPOSITION_PENALTY", 0.0) or 0.0)
+        self._comp_base    = float(getattr(_LossCfg, "COMPOSITION_BASE", 2.0) or 2.0)
+        self._comp_groups  = dict(getattr(_LossCfg, "COMPOSITION_GROUPS", {}) or {})
+
         self.state = {
             "best_loss":       np.inf,
             "winner_type":     "channel",
@@ -201,6 +207,9 @@ class DragonSearcher:
 
         search_loss = SearchLoss.score(self.search_loss, y_pred, y_np)
         search_loss = self.apply_weighted_loss(search_loss, y_np, y_pred)
+        comp_pen = self._composition_penalty(model)
+        if comp_pen and np.isfinite(search_loss):
+            search_loss = float(search_loss) + comp_pen
         corr_val = float(SearchLoss.correl(
             torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
             true_all))
@@ -289,6 +298,61 @@ class DragonSearcher:
             return float(np.dot(w, r ** 2) / vw)
         except Exception:
             return mse
+
+    def _composition_penalty(self, model):
+        """Exponential penalty for nesting functions of the same family.
+
+        Walks the candidate DAG and, for every function node (sin/cos/exp/ln),
+        computes the length of the longest chain of same-family function nodes
+        that ends at it (its nesting depth). Each nested level adds an
+        exponentially growing cost ``base**(depth-1) - 1`` so that deeper
+        same-type compositions (e.g. ``sin(cos(sin(x)))``) are penalized far
+        more than shallow ones. Returns ``0.0`` when disabled.
+        """
+        if self._comp_penalty <= 0.0 or not self._comp_groups:
+            return 0.0
+        try:
+            adj   = model.dag.matrix
+            nodes = model.dag.operations
+        except Exception:
+            return 0.0
+        n = len(nodes)
+        if n == 0:
+            return 0.0
+
+        # Family label per node (None when the node is not a tracked function).
+        fam = []
+        for nd in nodes:
+            cls = getattr(nd, "name", None)
+            cname = getattr(cls, "__name__", None)
+            if cname is None:
+                cname = str(cls).split(".")[-1].strip("'>\" ")
+            fam.append(self._comp_groups.get(cname))
+
+        # depth[v] = longest chain of same-family function nodes ending at v.
+        # Fixed-point relaxation makes this robust to node ordering (small DAG).
+        depth = [1 if fam[i] else 0 for i in range(n)]
+        for _ in range(n):
+            changed = False
+            for j in range(n):
+                if not fam[j]:
+                    continue
+                best = 0
+                for i in range(n):
+                    if fam[i] == fam[j] and adj[i, j] and depth[i] > best:
+                        best = depth[i]
+                if best + 1 > depth[j]:
+                    depth[j] = best + 1
+                    changed = True
+            if not changed:
+                break
+
+        base = self._comp_base
+        raw = 0.0
+        for j in range(n):
+            if fam[j] and depth[j] >= 2:
+                raw += base ** (depth[j] - 1) - 1.0
+        return self._comp_penalty * raw
 
     def _maybe_optimize_constants(self, model):
         if not self.optimize_constants:
