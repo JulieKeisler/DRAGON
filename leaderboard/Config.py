@@ -76,10 +76,14 @@ class Dragon:
     LOSS_THRESHOLD = 1e-30
 
     SPAR_OP_GROUPS = {
-        "all":        ["select", "unary", "power", "ln", "exp", "sin", "cos", "const"],
-        "alg":        ["select", "unary", "power", "const"],
-        "alg_trig":   ["select", "unary", "power", "sin", "cos", "const"],
-        "alg_explog": ["select", "unary", "power", "ln", "exp", "const"],
+        "all":        ["select", "unary", "power", "ln", "exp", "sin", "cos", "boost", "const"],
+        "alg":        ["select", "unary", "power", "boost", "const"],
+        "alg_trig":   ["select", "unary", "power", "sin", "cos", "boost", "const"],
+        "alg_explog": ["select", "unary", "power", "ln", "exp", "boost", "const"],
+        "all_no_const": ["select", "unary", "power", "ln", "exp", "sin", "cos", "boost"],
+        "alg_no_const": ["select", "unary", "power", "boost"],
+        "alg_trig_no_const": ["select", "unary", "power", "sin", "cos", "boost"],
+        "alg_explog_no_const": ["select", "unary", "power", "ln", "exp", "boost"],
     }
 
 

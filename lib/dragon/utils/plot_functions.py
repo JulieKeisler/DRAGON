@@ -5,7 +5,7 @@ import graphviz
 from sympy import Symbol, Add, Mul, Pow
 from dragon.search_space.dag_encoding import AdjMatrix, SymbolicNode, fill_adj_matrix
 from dragon.search_space.bricks.basics import Identity
-from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures, ConstantBrick
+from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures, ConstantBrick, ChannelBoost
 import torch.nn as nn
 import numpy as np
 from sympy import Integer, Rational, Float
@@ -196,6 +196,26 @@ def apply_operation(out, node):
         return [f"cos({x})" for x in out]
     if name == "Exp":
         return [f"exp({x})" for x in out]
+    if name == "ChannelBoost":
+        if len(out) == 0:
+            return out
+        if len(out) == 1:
+            a = out[0]
+            b = out[0]
+        else:
+            a, b = out[0], out[-1]
+        mode = getattr(op, "mode", "add")
+        if mode == "add":
+            derived = f"({a})+({b})"
+        elif mode == "sub":
+            derived = f"({a})-({b})"
+        elif mode == "mul":
+            derived = f"({a})*({b})"
+        elif mode == "div":
+            derived = f"({a})/({b})"
+        else:
+            derived = f"({a})+({b})"
+        return out + [derived]
 
     return out
 

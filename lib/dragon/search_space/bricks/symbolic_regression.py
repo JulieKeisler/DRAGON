@@ -245,6 +245,47 @@ class Substract(Brick):
         return "Substract()"
 
 
+class ChannelBoost(Brick):
+    """Augments the input by appending one boosted channel.
+
+    The input tensor is preserved, and a new channel is created from either
+    two selected channels or a simple pair derived from the available inputs.
+    Supported modes are: add, sub, mul, div.
+    """
+
+    def __init__(self, input_shape=None, mode="add", eps=1e-8, **args):
+        super(ChannelBoost, self).__init__(input_shape)
+        self.mode = mode
+        self.eps = eps
+
+    def forward(self, X):
+        n = X.shape[-1]
+        if n == 0:
+            return X
+        if n == 1:
+            derived = X[..., 0:1]
+        else:
+            a = X[..., 0:1]
+            b = X[..., -1:]
+            if self.mode == "add":
+                derived = a + b
+            elif self.mode == "sub":
+                derived = a - b
+            elif self.mode == "mul":
+                derived = a * b
+            elif self.mode == "div":
+                derived = a / (b + self.eps)
+            else:
+                derived = a + b
+        return torch.cat([X, derived], dim=-1)
+
+    def modify_operation(self, input_shape):
+        self.input_shape = input_shape
+
+    def __repr__(self):
+        return f"ChannelBoost(mode={self.mode})"
+
+
 class Power(Brick):
     """Raise the input tensor to a learnable exponent.
 
