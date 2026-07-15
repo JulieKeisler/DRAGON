@@ -46,32 +46,6 @@ class Negate(Brick):
     def __repr__(self):
         return "Negate()"
 
-# class SelectFeatures(Brick):
-#     def __init__(self, input_shape, feature_indices=None, **args):
-#         super(SelectFeatures, self).__init__(input_shape)
-#         self.feature_indices = feature_indices
-
-#     def forward(self, X, h=None):
-#         if self.feature_indices is None:
-#             return X
-
-#         n_features = X.shape[-1]
-#         idx = torch.as_tensor(self.feature_indices, device=X.device)
-
-#         if idx.max() >=n_features:
-#             #logger.warning(f'Index {idx}>X shaepe: {X.shape}, returning X.')
-#             return X
-
-#         return X[..., idx]
-
-
-#     def modify_operation(self, input_shape):
-#         self.input_shape = input_shape
-
-#     def __repr__(self):
-#         return f"SelectFeatures(feature_indices={self.feature_indices})"
-    
-
 class SelectFeatures(Brick):
     """Select (or sample) a subset of input features.
 
@@ -397,6 +371,27 @@ class Exp(Brick):
 
     def __repr__(self):
         return "Exp()"
+
+
+class ExpAffine(Brick):
+    """Element-wise exp(a * X) with learnable scalar a.
+
+    The parameter a is initialized to 1.0 by default and optimized during
+    candidate constant fitting, similarly to ConstantBrick parameters.
+    """
+
+    def __init__(self, input_shape=None, a=1.0, **args):
+        super(ExpAffine, self).__init__(input_shape)
+        self.a = nn.Parameter(torch.tensor(float(a), dtype=torch.float32))
+
+    def forward(self, X):
+        return torch.exp(self.a * X)
+
+    def modify_operation(self, input_shape):
+        self.input_shape = input_shape
+
+    def __repr__(self):
+        return f"ExpAffine(a={self.a.item():.4f})"
 
 # class Sqrt(Brick):
 #     """Element-wise sqrt. Negative inputs are clamped to 0."""

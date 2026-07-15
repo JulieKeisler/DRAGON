@@ -47,7 +47,7 @@ class Loss:
     COMPOSITION_BASE    = 2.0   # exponential growth base per extra composition
     COMPOSITION_GROUPS  = {     # op-class name -> family label
         "Sin": "trig", "Cos": "trig",
-        "Exp": "explog", "Ln": "explog",
+        "Exp": "explog", "Ln": "explog", "ExpAffine": "explog",
     }
 
 
@@ -95,6 +95,7 @@ class PySR:
     N_ITERATIONS    = 10_000
     POPULATIONS     = 5
     POPULATION_SIZE = 120
+    SHOULD_OPTIMIZE_CONSTANTS = True
     MAXSIZE         = 30
     JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.venv311/julia_env"
     BINARY_OPS      = ["+", "-", "*", "/"]
@@ -141,6 +142,7 @@ DRAGON_METHODS = [
         "denoiser":           "lingam", # "gpr" or "lingam" or None
         "sampling":           Sampling.ENABLED,
         "mc_dropout":         MCDropout.ENABLED,
+        "optimizer":          "dichotomy", # "adam" | "adamw" | "dichotomy"
     },
     # {
     #     "id":          "allops",

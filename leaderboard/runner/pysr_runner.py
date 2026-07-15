@@ -74,6 +74,17 @@ def run_pysr(
         else:
             X_df, y_series = _dataset_loader.load(target, run_id=run_id)
 
+        # ── Denoise (same fast GPR as DragonSR, not PySR's slow built-in) ──────
+        # PySR's denoise=True fits a GP on ALL points with n_restarts_optimizer=50,
+        # which is orders of magnitude slower than DragonSR's GPRDenoiser (subsampled,
+        # n_restarts=2). When add_noise=True we pre-denoise y here and feed the clean
+        # signal to PySR with denoise=False.
+        denoise_info = None
+        if add_noise:
+            from dataprocessing.Denoise import GPRDenoiser
+            denoiser = GPRDenoiser(seed=_CfgExp.RANDOM_SEED + run_id)
+            y_series, denoise_info = denoiser.transform(X_df, y_series)
+
         X             = X_df.values.astype(np.float64)
         y             = y_series.values.ravel().astype(np.float64)
         feature_names = list(X_df.columns)
@@ -86,7 +97,8 @@ def run_pysr(
             maxsize=_CfgPySR.MAXSIZE,
             binary_operators=_CfgPySR.BINARY_OPS,
             unary_operators=_CfgPySR.UNARY_OPS,
-            denoise=add_noise,
+            should_optimize_constants=_CfgPySR.SHOULD_OPTIMIZE_CONSTANTS,
+            denoise=False,
             julia_project=_CfgPySR.JULIA_PROJECT,
             verbosity=0,
             random_state=_CfgExp.RANDOM_SEED + run_id,
@@ -99,8 +111,11 @@ def run_pysr(
                 f"target={target} method={method_id} run_id={run_id}\n"
                 f"niterations={_CfgPySR.N_ITERATIONS} populations={_CfgPySR.POPULATIONS} "
                 f"population_size={_CfgPySR.POPULATION_SIZE} maxsize={_CfgPySR.MAXSIZE} "
-                f"denoise={add_noise}\n"
+                f"should_optimize_constants={_CfgPySR.SHOULD_OPTIMIZE_CONSTANTS} "
+                f"denoise={add_noise} denoise_backend={'GPRDenoiser' if add_noise else 'none'}\n"
             )
+            if denoise_info is not None:
+                _lf.write(f"denoise_info={denoise_info}\n")
 
         # ── Extract results ────────────────────────────────────────────────────
         df = model.equations_
@@ -142,7 +157,7 @@ def run_pysr(
         "time_s":      elapsed,
         "log_path":    log_path,
         "description": (
-            "PySR +Noise with GP denoising step (built-in PySR denoise=True)"
+            "PySR +Noise with DragonSR GPRDenoiser (subsampled Matern GP) pre-applied"
             if add_noise else "PySR (SymbolicRegression.jl)"
         ),
         "hall_of_fame": hall_of_fame,

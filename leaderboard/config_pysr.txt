@@ -1,0 +1,19 @@
+# Dedicated PySR batch config
+# Targets/formulas to run with PySR in leaderboard mode.
+N_RUNS = 1
+INIT_STRATEGIES = random
+NOISE_STD = 0.01
+
+# Optional: keep Dragon knobs harmless if accidentally invoked.
+N_ITERATIONS = 1
+K_INIT = 1
+T_PER_LEVEL = 1
+
+# PySR-specific knobs
+PySR.N_ITERATIONS = 100
+PySR.POPULATIONS = 1
+PySR.POPULATION_SIZE = 30
+PySR.SHOULD_OPTIMIZE_CONSTANTS = false
+PySR.MAXSIZE = 35
+PySR.BINARY_OPS = +,-,*,/
+PySR.UNARY_OPS = log,exp,sin,cos,sqrt,abs

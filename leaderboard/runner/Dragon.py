@@ -139,6 +139,7 @@ class DragonSearcher:
         loss_mode:          str        = "full",
         search_loss:        str        = "channel",
         optimize_constants: bool       = False,
+        constants_optimizer: str       = "dichotomy",
         subsample_ratio:    float      = 1.0,
         X_np:               np.ndarray = None,
         y_np:               np.ndarray = None,
@@ -153,6 +154,7 @@ class DragonSearcher:
         self.loss_mode          = loss_mode
         self.search_loss        = search_loss
         self.optimize_constants = optimize_constants
+        self.constants_optimizer = (constants_optimizer or "dichotomy").lower()
         self.subsample_ratio    = subsample_ratio
         self.X_np               = X_np
         self.y_np               = y_np
@@ -167,7 +169,6 @@ class DragonSearcher:
         self.state = {
             "best_loss":       np.inf,
             "winner_type":     "channel",
-            "corr_value":      0.0,
             "alignment_loss":  1.0,
             "search_loss":     self.search_loss,
             "rat_degree":      None,
@@ -188,7 +189,7 @@ class DragonSearcher:
                      else dict(zip(labels, args)))
         model     = MetaArchi(args_dict, input_shape=(self.num_features,)).to(self.device)
 
-        self._maybe_optimize_constants(model)
+        self._optimize_constants_search(model)
         model.eval()
 
         pred_all, true_all = self.forward(model, self.train_loader, idx, self.device)
@@ -210,12 +211,10 @@ class DragonSearcher:
         comp_pen = self._composition_penalty(model)
         if comp_pen and np.isfinite(search_loss):
             search_loss = float(search_loss) + comp_pen
-        corr_val = float(SearchLoss.correl(
-            torch.tensor(y_pred) if not isinstance(y_pred, torch.Tensor) else y_pred,
-            true_all))
 
         if search_loss < self.state["best_loss"]:
-            self._update_state(search_loss, winner_type, corr_val, alignment_loss, rat_degree,
+            self._last_comp_pen = float(comp_pen or 0.0)
+            self._update_state(search_loss, winner_type, alignment_loss, rat_degree,
                                y_pred, y_np, selected_c, ols_weights, nested, rational,
                                valid_idx_global, analysis, pred_all, model, idx)
 
@@ -354,43 +353,291 @@ class DragonSearcher:
                 raw += base ** (depth[j] - 1) - 1.0
         return self._comp_penalty * raw
 
-    def _maybe_optimize_constants(self, model):
+    def _const_fit_batch(self, max_points=512):
+        """Cache a small (X, y) tensor batch used as the cheap dichotomy objective."""
+        if getattr(self, "_cfb", None) is not None:
+            return self._cfb
+        if self.X_np is not None and self.y_np is not None:
+            n = len(self.y_np)
+            m = min(n, max_points)
+            rng = np.random.default_rng(0)
+            sub = rng.choice(n, m, replace=False) if n > m else np.arange(n)
+            Xb = torch.tensor(self.X_np[sub], dtype=torch.float32, device=self.device)
+            yb = torch.tensor(self.y_np[sub], dtype=torch.float32,
+                              device=self.device).reshape(-1, 1)
+        else:
+            xs, ys, got = [], [], 0
+            for Xb_, yb_ in self.train_loader:
+                xs.append(Xb_); ys.append(yb_); got += len(Xb_)
+                if got >= max_points:
+                    break
+            Xb = torch.cat(xs).to(self.device).float()
+            yb = torch.cat(ys).to(self.device).float().reshape(-1, 1)
+        self._cfb = (Xb, yb)
+        return self._cfb
+
+    def _probe_loss(self, model, Xb, yb):
+        """Scalar objective for the dichotomy, aligned with ``self.search_loss``.
+
+        Mirrors the channel-selection metric of the real pipeline: for every
+        output channel the per-channel prediction is scored with
+        ``SearchLoss.score(self.search_loss, ...)`` (with an affine alignment per
+        channel when the search loss is scale/shift invariant, i.e. ``corr``).
+        The per-channel scores are averaged so that every constant gets a signal,
+        even when it only affects a non-winning channel. Constant / non-finite
+        channels are penalised with the worst normalised value (1.0).
+        """
+        with torch.no_grad():
+            pred = model(Xb)
+        if pred.ndim == 1:
+            pred = pred.reshape(-1, 1)
+        P = pred.detach().cpu().numpy()
+        y = yb.detach().cpu().numpy().ravel()
+        n_ch = P.shape[1]
+        affine = (self.search_loss == "corr")
+        total = 0.0
+        for c in range(n_ch):
+            raw = P[:, c]
+            if not np.all(np.isfinite(raw)) or np.std(raw) < 1e-12:
+                total += 1.0
+                continue
+            if affine:
+                A = np.column_stack([raw, np.ones_like(raw)])
+                try:
+                    coef, *_ = np.linalg.lstsq(A, y, rcond=None)
+                    yp = coef[0] * raw + coef[1]
+                except Exception:
+                    yp = raw
+            else:
+                yp = raw
+            s = SearchLoss.score(self.search_loss, yp, y)
+            total += s if np.isfinite(s) else 1e6
+        return total / max(n_ch, 1)
+
+    def _scalefree_line_search(self, f, current, max_mag=1e12, iters=40, flat_rtol=1e-6):
+        """Scale-free 1-D minimizer for a scalar constant.
+
+        A coarse logarithmic grid (both signs + zero + the current value,
+        ``1e-3 … max_mag``) locates the correct order of magnitude, then a
+        golden-section refinement runs on the bracket formed by the two grid
+        points neighbouring the grid minimum. Handles constants from ~0 up to
+        ~1e12. When the objective is (numerically) invariant across the grid
+        (e.g. a pure-scale constant under a scale-invariant search loss), the
+        current value is kept unchanged to avoid injecting meaningless constants.
+        """
+        cands = [0.0, float(current)]
+        m = 1e-3
+        while m <= max_mag * (1.0 + 1e-9):
+            cands.append(m); cands.append(-m)
+            m *= 10.0
+        cands = sorted(set(cands))
+        vals = [f(x) for x in cands]
+        vmin, vmax = min(vals), max(vals)
+        if vmax - vmin <= flat_rtol * (abs(vmin) + 1e-12):
+            return float(current)  # objective invariant → keep current (clean)
+        i = int(np.argmin(vals))
+        lo = cands[max(0, i - 1)]
+        hi = cands[min(len(cands) - 1, i + 1)]
+        best_x, best_f = cands[i], vals[i]
+        if hi > lo:
+            gr = (5.0 ** 0.5 - 1.0) / 2.0
+            c = hi - gr * (hi - lo); d = lo + gr * (hi - lo)
+            fc = f(c); fd = f(d)
+            for _ in range(iters):
+                if fc < fd:
+                    hi, d, fd = d, c, fc
+                    c = hi - gr * (hi - lo); fc = f(c)
+                else:
+                    lo, c, fc = c, d, fd
+                    d = lo + gr * (hi - lo); fd = f(d)
+            mid = (lo + hi) / 2.0
+            fm = f(mid)
+            if fm <= best_f:
+                best_x, best_f = mid, fm
+        return best_x
+
+    def _dichotomy_constants(self, model, iters=40, max_mag=1e12, sweeps=1):
+        """Cheap approximation of scalar learnable constants via a scale-free search.
+
+        For every ExpAffine ``a`` and every ConstantBrick ``value`` we minimize a
+        objective aligned with ``self.search_loss`` (see ``_probe_loss``) using a
+        scale-free line search (log grid + local golden-section). This is a
+        coordinate-descent pass (optionally repeated ``sweeps`` times) that stays
+        cheap — a handful of forward passes per constant on a subsample. The
+        precise, multi-sweep refinement on the best model is done in
+        ``finalize_constants``.
+        """
         if not self.optimize_constants:
             return
+        targets = []  # (module, attribute)
+        for m in model.modules():
+            cls = m.__class__.__name__
+            if cls == "ExpAffine" and hasattr(m, "a"):
+                targets.append((m, "a"))
+            elif cls == "ConstantBrick" and hasattr(m, "value"):
+                targets.append((m, "value"))
+        if not targets:
+            return
+        Xb, yb = self._const_fit_batch()
 
+        for _ in range(max(1, sweeps)):
+            for mod, attr in targets:
+                param = getattr(mod, attr)
+                cur = float(param.detach().reshape(-1)[0])
+
+                def obj(val, _p=param):
+                    old = _p.detach().clone()
+                    with torch.no_grad():
+                        _p.fill_(float(val))
+                        v = self._probe_loss(model, Xb, yb)
+                        _p.copy_(old)
+                    return v
+
+                best = self._scalefree_line_search(obj, cur, max_mag=max_mag, iters=iters)
+                with torch.no_grad():
+                    param.fill_(float(best))
+
+    def _optimize_constants_search(self, model):
+        """Per-candidate constant optimization during search (optimizer-dependent)."""
+        if not self.optimize_constants:
+            return
+        if self.constants_optimizer == "dichotomy":
+            self._dichotomy_constants(model)
+        else:
+            self._gradient_optimize_constants(model, epochs=100)
+
+    def _make_constant_optimizer(self, params):
+        """Build the gradient optimizer selected via ``constants_optimizer``."""
+        name = self.constants_optimizer
+        lr = 1e-3
+        if name == "adamw":
+            return torch.optim.AdamW(params, lr=lr)
+        return torch.optim.Adam(params, lr=lr)
+
+    def _gradient_optimize_constants(self, model, epochs=300):
+        """Gradient fit of every learnable constant with the selected optimizer.
+
+        Robust to divergence: the best finite-loss parameter state is snapshotted
+        and restored at the end, so NaN/Inf constants can never leak out.
+        """
         params = [p for p in model.parameters() if p.requires_grad]
         if not params:
             return
-
         model  = model.float()
-        opt    = torch.optim.Adam(params, lr=0.001)
+        opt    = self._make_constant_optimizer(params)
         mse_fn = nn.MSELoss()
+        best_loss  = float("inf")
+        best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
         model.train()
-        for epoch in range(100):
+        for epoch in range(epochs):
             epoch_loss = 0.0; n_seen = 0
+            diverged = False
             for Xb, yb in self.train_loader:
                 Xb, yb = Xb.to(self.device).float(), yb.to(self.device).float()
                 opt.zero_grad()
-                loss = mse_fn(model(Xb), yb)
-                loss.backward(); opt.step()
+                pred = model(Xb)
+                if pred.ndim == 1:
+                    pred = pred.reshape(-1, 1)
+                target = yb.reshape(-1, 1).expand_as(pred)
+                loss = mse_fn(pred, target)
+                if not torch.isfinite(loss):
+                    diverged = True
+                    break
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(params, 10.0)
+                opt.step()
                 epoch_loss += loss.item() * Xb.size(0); n_seen += Xb.size(0)
-            epoch_loss /= max(n_seen, 1)
-            if epoch == 0 and (epoch_loss > 1.0 or np.isnan(epoch_loss)):
+            if diverged:
                 break
+            epoch_loss /= max(n_seen, 1)
+            if not np.isfinite(epoch_loss):
+                break
+            if epoch_loss < best_loss:
+                best_loss  = epoch_loss
+                best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
             if epoch_loss < 1e-12:
                 break
+        model.load_state_dict(best_state)
+        model.eval()
+
+    def _full_forward(self, model):
+        """Forward pass over the full training set (no subsampling)."""
+        model.eval()
+        all_pred, all_true = [], []
+        with torch.no_grad():
+            for Xb, yb in self.train_loader:
+                all_pred.append(model(Xb.to(self.device)).detach().cpu())
+                all_true.append(yb.to(self.device).detach().cpu())
+        return torch.cat(all_pred), torch.cat(all_true)
+
+    def finalize_constants(self):
+        """Final precise optimization of the best model's constants, then re-score.
+
+        Runs a proper gradient fit (Adam) on the learnable constants of the best
+        model found during search, then recomputes predictions / loss / formula
+        fields so the reported results reflect the refined constants.
+        """
+        if not self.optimize_constants:
+            return
+        model = self.state.get("best_model")
+        if model is None:
+            return
+        try:
+            # Final refinement must be consistent with the chosen optimizer:
+            #  - dichotomy: same search-loss-aligned line search, finer (more
+            #    golden iterations) and multi-sweep on the best model only;
+            #  - adam/adamw: a longer gradient fit of all constants.
+            if self.constants_optimizer == "dichotomy":
+                self._dichotomy_constants(model, iters=64, sweeps=4)
+            else:
+                self._gradient_optimize_constants(model, epochs=300)
+        except Exception as e:
+            print(f"  >> final constant optimization failed: {e}")
+            return
+        try:
+            pred_all, true_all = self._full_forward(model)
+            (_baseline, selected_c, ols_weights, _align, _lr,
+             nested, rational, valid_idx_global, analysis) = self.evaluate(pred_all, true_all)
+            ch_res = analysis.get("channel_results", []) if isinstance(analysis, dict) else []
+            if not any(v is not None and np.isfinite(v) for _, v in ch_res):
+                selected_c = None
+            y_np, y_pred, winner_type, rat_degree = self.resolve_prediction(
+                pred_all, true_all, selected_c, ols_weights, nested, rational)
+            search_loss = SearchLoss.score(self.search_loss, y_pred, y_np)
+            comp_pen = self._composition_penalty(model)
+            if comp_pen and np.isfinite(search_loss):
+                search_loss = float(search_loss) + comp_pen
+
+            if not np.isfinite(search_loss):
+                print("  >> final re-score is non-finite, keeping pre-optimization result")
+                return
+
+            s = self.state
+            s["best_loss"]        = float(search_loss)
+            s["winner_type"]      = winner_type
+            s["rat_degree"]       = rat_degree
+            s["best_pred_all_np"] = pred_all.detach().cpu().numpy()
+            s["best_y_np"]        = np.asarray(y_np, dtype=np.float64).ravel()
+            if y_pred is not None:
+                s["best_pred_np"] = np.asarray(y_pred, dtype=np.float64).ravel()
+            self._compute_formulas_into_state(
+                s, model.dag.matrix, model.dag.operations, selected_c, analysis,
+                valid_idx_global, pred_all, y_np, winner_type, rat_degree)
+            print(f"  >> FINAL constant optimization done, refined loss={search_loss:.10f}")
+        except Exception as e:
+            print(f"  >> final re-score failed: {e}")
 
     # ── State update ─────────────────────────────────────────────────────────
 
-    def _update_state(self, mse, winner_type, corr_val, alignment_loss, rat_degree,
+    def _update_state(self, mse, winner_type, alignment_loss, rat_degree,
                       y_pred, y_np, selected_c, ols_weights, nested, rational,
                       valid_idx_global, analysis, pred_all, model, idx):
         s = self.state
         s["best_loss"]      = mse
         s["winner_type"]    = winner_type
-        s["corr_value"]     = corr_val
         s["alignment_loss"] = float(alignment_loss)
         s["rat_degree"]     = rat_degree
+        s["best_model"]     = model
         try:
             yp_np            = (y_pred.detach().cpu().numpy() if isinstance(y_pred, torch.Tensor)
                                 else np.asarray(y_pred, dtype=np.float64))
@@ -404,33 +651,43 @@ class DragonSearcher:
         try:
             adj      = model.dag.matrix
             nodes    = model.dag.operations
-            formulas = graph_to_all_formulas(adj, self.feature_names, nodes)
-            s["best_formula"] = str(formulas[selected_c]) if formulas else "N/A"
-            s["best_formulas"] = [str(f) for f in formulas] if formulas else []
 
             ops_str, const_str, dag_size, dag_text, dag_svg, dag_data = DAGInspector.summarize(adj, nodes)
             s.update(ops_used=ops_str, has_const=const_str, dag_size=dag_size,
                      dag_text=dag_text, dag_svg=dag_svg, dag_data=dag_data)
-
-            s["formula_channel"]      = self._channel_formula(formulas, selected_c, pred_all, y_np)
-            s["all_channel_formulas"] = self._all_channel_formulas(formulas, analysis, selected_c)
-            s["formula_ols"]          = self._ols_formula(formulas, analysis)
-            s["formula_nested"]       = (self._ols.format_nested(analysis["nested"], formulas)
-                                         if analysis.get("nested") and formulas else None)
-            s["formula_polyrat"]      = self._polyrat_formulas(formulas, valid_idx_global, analysis)
-
             self._update_losses(s, analysis, selected_c)
-            self._set_best_formula(s, winner_type, rat_degree)
+            formulas = self._compute_formulas_into_state(
+                s, adj, nodes, selected_c, analysis, valid_idx_global,
+                pred_all, y_np, winner_type, rat_degree)
 
             with open(self.log_path, "a") as lf:
                 lf.write(f"=== NEW BEST  Idx={idx}  Loss={mse:.10f}  "
+                         f"CompPen={getattr(self, '_last_comp_pen', 0.0):.10f}  "
                          f"Winner={winner_type.upper()}  search_loss={self.search_loss}\n")
                 self._ols.print_analysis(analysis, formulas, valid_idx_global, selected_c, f=lf)
                 lf.write("\n")
-            print(f"\n  >> NEW BEST loss={mse:.10f} [{winner_type.upper()}]  Idx={idx}")
+            print(f"\n  >> NEW BEST loss={mse:.10f} [{winner_type.upper()}]  "
+                  f"CompPen={getattr(self, '_last_comp_pen', 0.0):.10f}  Idx={idx}")
             self._ols.print_analysis(analysis, formulas, valid_idx_global, selected_c)
         except Exception as e:
             print(f"  >> Could not extract formula: {e}")
+
+    def _compute_formulas_into_state(self, s, adj, nodes, selected_c, analysis,
+                                     valid_idx_global, pred_all, y_np,
+                                     winner_type, rat_degree):
+        """Build readable formula strings from the graph (no SymPy) and store them."""
+        formulas = graph_to_all_formulas(adj, self.feature_names, nodes, parse_sympy=False)
+        _sel = selected_c if (formulas and selected_c is not None and selected_c < len(formulas)) else 0
+        s["best_formula"]  = str(formulas[_sel]) if formulas else "N/A"
+        s["best_formulas"] = [str(f) for f in formulas] if formulas else []
+        s["formula_channel"]      = self._channel_formula(formulas, selected_c, pred_all, y_np)
+        s["all_channel_formulas"] = self._all_channel_formulas(formulas, analysis, selected_c)
+        s["formula_ols"]          = self._ols_formula(formulas, analysis)
+        s["formula_nested"]       = (self._ols.format_nested(analysis["nested"], formulas)
+                                     if analysis.get("nested") and formulas else None)
+        s["formula_polyrat"]      = self._polyrat_formulas(formulas, valid_idx_global, analysis)
+        self._set_best_formula(s, winner_type, rat_degree)
+        return formulas
 
     # ── Formula helpers ─────────────────────────────────────────────────────── #todo: do we keep them in the searcher or move them to a separate helper class ?
 

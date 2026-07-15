@@ -209,6 +209,7 @@ class DragonOrchestrator:
 			loss_mode=method_cfg.get("loss_mode", "full"),
 			search_loss=search_loss,
 			optimize_constants=method_cfg.get("optimize_constants", False),
+			constants_optimizer=method_cfg.get("optimizer", "dichotomy"),
 			subsample_ratio=sampling.subsample_ratio,
 			X_np=sampling.X_np,
 			y_np=sampling.y_np,
@@ -365,6 +366,10 @@ class DragonOrchestrator:
 		best_loss, reached_complexity = cls.run_search(
 			method_cfg, search_space, dag, searcher, save_dir, seed_models, _max_iters
 		)
+		searcher.finalize_constants()
+		refined = loss_state.get("best_loss")
+		if refined is not None and np.isfinite(refined):
+			best_loss = float(refined)
 		searcher.finalize_ols_postprocessing()
 		loss_state["max_complexity_reached"] = int(reached_complexity) if reached_complexity else None
 

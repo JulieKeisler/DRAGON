@@ -1,21 +1,19 @@
-# provide one target
-TARGETS = phi
 # choose the number of runs for each targets and each run's strategy
-N_RUNS = 10
+N_RUNS = 2
 # random or diverse
 INIT_STRATEGIES = random
 # number off kept top features
 N_TOP_FEATURES = 14
 # add noise such that y_noise = y + N(0, std(y) * NOISE_STD)
 NOISE_STD = 0.01
-N_ITERATIONS = 10000
+N_ITERATIONS = 500
 K_INIT = 30
 MAX_COMPLEXITY = 55
 T_PER_LEVEL = 5
 LOSS_THRESHOLD = None
 SEARCH_LOSS = corr
 
-SUBSAMPLING_RATIO = 1
+SUBSAMPLING_RATIO = 0.1
 
 Loss.COMPOSITION_PENALTY = 0.01
 Loss.COMPOSITION_BASE = 2.0

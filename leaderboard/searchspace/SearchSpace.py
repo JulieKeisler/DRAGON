@@ -30,7 +30,7 @@ from dragon.search_operators.dag_neighborhoods import EvoDagInterval, HpInterval
 from dragon.search_space.bricks.basics import Identity
 from dragon.search_space.bricks.symbolic_regression import (
     SelectFeatures, Inverse, Negate, Power, SumFeatures, ConstantBrick,
-    Ln, Sin, Cos, Exp, ChannelBoost,
+    Ln, Sin, Cos, Exp, ExpAffine, ChannelBoost,
 )
 
 class SearchSpaceBuilder:
@@ -106,6 +106,7 @@ class SearchSpaceBuilder:
             "sin":      _hpv("Sin",        _const("SinOp",  Sin)),
             "cos":      _hpv("Cos",        _const("CosOp",  Cos)),
             "exp":      _hpv("Exp",        _const("ExpOp",  Exp)),
+            "expa":     _hpv("ExpAffine",  _const("ExpAffineOp", ExpAffine)),
             "boost":    _hpv("ChannelBoost", _const("ChannelBoostOp", ChannelBoost),
                              {"mode": _cat("mode", ["add", "sub", "mul", "div"])}),
             "const":    _hpv("ConstantBrick", _const("ConstOp", ConstantBrick)),

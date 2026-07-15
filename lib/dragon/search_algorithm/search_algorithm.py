@@ -253,12 +253,21 @@ class SearchAlgorithm(ABC):
                         logger.error(f'Failed to load x, idx= {idx}.')
             if delete:
                 shutil.rmtree(x_path)
-        try:
-            df_pop = pd.read_csv(self.save_dir+"/computation_file.csv")
-            df_pop = pd.concat((df_pop, row_pop), axis=0)
-        except FileNotFoundError:
-            df_pop = row_pop
-        df_pop.to_csv(self.save_dir+"/computation_file.csv", index=False)
+        # Append the new row instead of reading + rewriting the whole file each
+        # iteration. Rewriting the full CSV every evaluation is O(N) per step
+        # (O(N^2) overall) and dominates the runtime once the population grows.
+        csv_path = self.save_dir+"/computation_file.csv"
+        file_exists = os.path.exists(csv_path)
+        if file_exists:
+            # Align columns to the existing header so appended rows stay consistent.
+            # Reading only the header (nrows=0) is O(1) regardless of population size.
+            try:
+                header_cols = pd.read_csv(csv_path, nrows=0).columns.tolist()
+                if header_cols:
+                    row_pop = row_pop.reindex(columns=header_cols)
+            except Exception:
+                pass
+        row_pop.to_csv(csv_path, mode="a", header=not file_exists, index=False)
     
   
     def evaluate_first_population_mpi(self):
