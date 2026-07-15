@@ -96,6 +96,7 @@ class PySR:
     POPULATIONS     = 5
     POPULATION_SIZE = 120
     SHOULD_OPTIMIZE_CONSTANTS = True
+    ADD_NOISE       = None
     MAXSIZE         = 30
     JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.venv311/julia_env"
     BINARY_OPS      = ["+", "-", "*", "/"]

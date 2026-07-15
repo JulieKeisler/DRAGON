@@ -9,6 +9,7 @@ import numpy as np
 from Config import (
     Experiment as _CfgExp,
     Paths as _CfgPaths,
+    PySR as _CfgPySR,
     DRAGON_METHODS as DRAGON_METHOD_CONFIGS,
 )
 from dataprocessing.Data import DatasetLoader
@@ -59,6 +60,14 @@ def run_pysr_only(targets=None, n_runs=None):
     if n_runs is None:
         n_runs = _CfgExp.N_RUNS
     os.makedirs(_CfgPaths.OUTPUT_DIR, exist_ok=True)
+    add_noise_setting = getattr(_CfgPySR, "ADD_NOISE", None)
+    if add_noise_setting is True:
+        add_noise_values = (True,)
+    elif add_noise_setting is False:
+        add_noise_values = (False,)
+    else:
+        add_noise_values = (False, True)
+
     results_path = os.path.join(_CfgPaths.OUTPUT_DIR, "results.json")
     if os.path.exists(results_path):
         with open(results_path) as f:
@@ -89,7 +98,7 @@ def run_pysr_only(targets=None, n_runs=None):
             _y_noisy   = _y_clean + _noise_rng.normal(
                 0, _CfgExp.NOISE_STD * float(_y_clean.std()), len(_y_clean)
             )
-            for add_noise in (False, True):
+            for add_noise in add_noise_values:
                 method_id = "pysr_noise" if add_noise else "pysr"
                 if (target, run_id, method_id) in done:
                     print(f"  [SKIP] {target}/run_{run_id}/{method_id} already present")
