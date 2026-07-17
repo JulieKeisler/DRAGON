@@ -1,0 +1,41 @@
+# choose the number of runs for each targets and each run's strategy
+N_RUNS = 10
+# random or diverse
+INIT_STRATEGIES = random
+# number off kept top features
+N_TOP_FEATURES = 14
+# add noise such that y_noise = y + N(0, std(y) * NOISE_STD)
+NOISE_STD = 0.1
+N_ITERATIONS = 10000
+K_INIT = 30
+MAX_COMPLEXITY = 55
+T_PER_LEVEL = 5
+LOSS_THRESHOLD = None
+SEARCH_LOSS = corr
+
+SUBSAMPLING_RATIO = 0.1
+
+Loss.COMPOSITION_PENALTY = 0.01
+Loss.COMPOSITION_BASE = 2.0
+
+
+Dragon.SPAR_OP_GROUPS = {
+    "all": ["select", "unary", "power", "ln", "exp", "sin", "cos", "boost", "const"],
+    "alg": ["select", "unary", "power", "boost", "const"],
+    "alg_trig": ["select", "unary", "power", "sin", "cos", "boost", "const"],
+    "alg_explog": ["select", "unary", "power", "ln", "exp", "boost", "const"],
+}
+
+
+# Method-level overrides
+description = DragonSR custom runtime on external CSV
+parallel_mode = smart
+loss_mode = channel
+var_aug = true
+add_noise = true
+ # you can choose the denoiser: lingam, gpr
+denoiser = gpr
+sampling = true
+mc_dropout = false
+optimize_constants = true
+optimizer = dichotomy
