@@ -1,7 +1,0 @@
-# engine|target|config
-dragonsr|n5|config2.txt
-dragonsr|schechter|config2.txt
-
-# Dedicated PySR runs (targets driven by this plan)
-pysr|schechter|config_pysr.txt
-pysr|kepler|config_pysr.txt

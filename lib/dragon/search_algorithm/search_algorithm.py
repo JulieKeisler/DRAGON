@@ -511,6 +511,7 @@ class SearchAlgorithm(ABC):
                 else:
                     if ".csv" not in x:
                         os.remove(self.save_dir+f"/{x}")
+        return self.min_loss
 
 def timed_evaluation(x, idx, max_duration, evaluation):
     def handler(signum, frame):

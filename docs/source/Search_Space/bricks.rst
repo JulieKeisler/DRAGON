@@ -29,6 +29,77 @@ Two-dimensional Operations
    :show-inheritance:
    :noindex:
 
+Symbolic Regression Bricks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following bricks are designed for symbolic regression. They are defined in
+``dragon.search_space.bricks.symbolic_regression`` and can be composed into
+DAGs just like any other brick.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 40 40
+
+   * - Brick
+     - Signature
+     - Description
+   * - ``SelectFeatures``
+     - ``(input_shape, feature_indices, combination_weights)``
+     - Slices input to selected feature indices; supports importance-weighted combination sampling
+   * - ``SplitFeatures``
+     - ``(input_shape, feature_index)``
+     - Extracts a single feature by index
+   * - ``SwitchFeatures``
+     - ``(input_shape, index_a, index_b)``
+     - Swaps two feature columns
+   * - ``SumFeatures``
+     - ``(input_shape,)``
+     - Sums all input features into a single scalar per sample
+   * - ``Negate``
+     - ``(input_shape,)``
+     - Negates the input: ``-x``
+   * - ``Inverse``
+     - ``(input_shape,)``
+     - Reciprocal: ``1/x``
+   * - ``Divide``
+     - ``(input_shape_a, input_shape_b)``
+     - Element-wise division of two parent outputs
+   * - ``Substract``
+     - ``(input_shape_a, input_shape_b)``
+     - Element-wise subtraction of two parent outputs
+   * - ``ChannelBoost``
+     - ``(input_shape, mode)``
+     - Appends an augmented channel via ``add`` / ``sub`` / ``mul`` / ``div``
+   * - ``Power``
+     - ``(input_shape, exponent)``
+     - Learnable exponent: ``x^a`` where ``a`` is optimizable
+   * - ``ConstantBrick``
+     - ``(input_shape, value)``
+     - Learnable scalar constant accessible via dichotomy or gradient descent
+   * - ``Ln``
+     - ``(input_shape,)``
+     - Natural logarithm: ``ln(|x|)``
+   * - ``Sin``
+     - ``(input_shape,)``
+     - Sine: ``sin(x)``
+   * - ``Cos``
+     - ``(input_shape,)``
+     - Cosine: ``cos(x)``
+   * - ``Exp``
+     - ``(input_shape,)``
+     - Exponential: ``exp(x)``
+   * - ``ExpAffine``
+     - ``(input_shape, a)``
+     - Learnable affine exponential: ``exp(a * x)`` where ``a`` is optimizable
+   * - ``Sqrt``
+     - ``(input_shape,)``
+     - Square root: ``sqrt(|x|)``
+
+Constant optimization for ``ConstantBrick.value`` and ``ExpAffine.a`` is
+provided by ``sweep_constants`` and ``scalefree_line_search`` in the same
+module.  See the :doc:`Symbolic Regression <../SymbolicRegression/index>`
+section for notebooks and the OLS pipeline documentation.
+
 Bricks variables
 ------------------
 

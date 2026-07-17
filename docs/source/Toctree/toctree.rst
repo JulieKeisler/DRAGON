@@ -35,10 +35,19 @@
 ..
 
 .. toctree::
-  :caption: Applications
+  :caption: AutoDL
   :maxdepth: 2
   :hidden:
 
-  ../Applications/index
+  ../AutoDL/index
+
+..
+
+.. toctree::
+  :caption: Symbolic Regression
+  :maxdepth: 2
+  :hidden:
+
+  ../SymbolicRegression/index
 
 ..

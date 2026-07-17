@@ -302,6 +302,31 @@ This `NodeVariable` will have its operation encoded as `CatVar` in case of multi
 A random `AdjMatrix` is created by first drawing the number of nodes from the graph. Then a random value of `NodeVariable` is drawn for each node.
 Finally an `AdjMatrix` of the right dimension is created.
 
+Symbolic Regression
+~~~~~~~~~~~~~~~~~~~~
+
+The same DAG encoding used for neural architecture search can also be used for
+symbolic regression.  In this setting the bricks are mathematical operators
+(``SelectFeatures``, ``Power``, ``ExpAffine``, ``ChannelBoost``, etc.) instead
+of neural network layers, and the search objective is to recover a compact
+symbolic formula from data.
+
+Key differences from the NAS setting:
+
+- The input features are raw data columns (not engineered representations).
+- Feature selection via ``SelectFeatures`` with importance-weighted combinations
+  replaces the learned input projections.
+- Constant optimization (``ConstantBrick.value``, ``ExpAffine.a``) uses
+  golden-section line search rather than gradient descent.
+- The OLS pipeline (sparse OLS, nested link-function OLS, polynomial-rational
+  OLS) post-processes the multi-channel DAG output into a single scalar formula.
+- A composition penalty discourages deeply nested same-family functions
+  (e.g. ``sin(cos(sin(x)))``).
+
+The full list of SR-specific bricks is documented in the
+`bricks section <bricks.rst>`_ and the notebooks in
+:doc:`Symbolic Regression <../SymbolicRegression/index>`.
+
 
 
 Implementation

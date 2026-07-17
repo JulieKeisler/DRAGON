@@ -11,7 +11,7 @@
 Key Features
 ------------
 
-- A flexible seach space
+- A flexible search space
      - The search space based on Directed Acyclic Graphs (DAGs) where the nodes can be any **PyTorch** layer (custom or not) and the edges are the connections between them. 
      - The code to implement the DAGs-based search space was inspired by the [zellij](https://zellij.readthedocs.io/en/latest/) package developed for hyperparameters optimization. 
      - **DRAGON** search space includes cell-based search spaces [4]_.
@@ -19,6 +19,12 @@ Key Features
 - Flexible optimization algorithms
      - The search algorithms defined in **DRAGON** are based on search operators used to modify elements of the search space (e.g., mutations, neighborhoods, crossover), which can be used to develop new search algorithms.
      - Efficient algorithms are also implemented in **DRAGON** such as the Random Search, Evolutionary Algorithm, Mutant UCB, and HyperBand.
+
+- Symbolic Regression
+     - **DRAGON** supports symbolic regression through a dedicated set of bricks (``SelectFeatures``, ``Power``, ``ExpAffine``, ``ChannelBoost``, etc.), OLS-based post-processing, and formula extraction.
+     - The OLS pipeline combines sparse linear regression, nested link-function OLS, and polynomial-rational OLS to produce compact symbolic formulas.
+     - Feature selection (XGBoost/LightGBM/CatBoost importance), constant optimization (golden-section line search), and composition penalties are available out of the box.
+     - See ``docs/source/SymbolicRegression/`` for notebooks covering ideal gas recovery, multivariate regression, noisy data, and constant optimization.
 
 - Applications to various tasks
      - The flexibility of **DRAGON** makes it usable for various applications.
