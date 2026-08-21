@@ -193,14 +193,13 @@ The same external-data mechanism can be used with `--pysr-only` or with the comb
 
 When target noise is enabled, the noisy target is generated as:
 
-[
+$$
 y_{\mathrm{noisy}}
-==================
+=
+y + \mathcal{N}\left(0,\epsilon\,\operatorname{std}(y)\right),
+$$
 
-y+\mathcal{N}!\left(0,\epsilon,\operatorname{std}(y)\right),
-]
-
-where (\epsilon) is set through `NOISE_STD`.
+where $\epsilon$ is set through `NOISE_STD`.
 
 The experiments reported in the paper use:
 
