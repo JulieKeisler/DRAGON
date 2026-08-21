@@ -196,7 +196,7 @@ When target noise is enabled, the noisy target is generated as:
 ```math
 y_{\mathrm{noisy}}
 =
-y + \mathcal{N}\left(0,\epsilon\,\operatorname{std}(y)\right)
+y + \mathcal{N}\left(0,\epsilon\,\mathrm{std}(y)\right)
 ```
 
 where $\epsilon$ is set through `NOISE_STD`.
