@@ -2,7 +2,7 @@
 
 This directory contains the experimental pipeline used to compare **DragonSR** and **PySR** on the symbolic regression benchmarks reported in:
 
-> *Constant-Free DAG Search for Symbolic Regression via Post-Hoc Coefficient Extraction*
+> *DragonSR: Directed Acyclic Graph Search forEquation Discovery*
 
 The pipeline provides a common interface for:
 
