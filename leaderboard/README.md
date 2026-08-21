@@ -273,7 +273,3 @@ method/
 ```
 
 This separates the immutable experimental outputs used in the paper from the evolving source code hosted on GitHub.
-
-## Citation
-
-If you use this pipeline or the archived experimental results, please cite the associated paper and Zenodo dataset.
