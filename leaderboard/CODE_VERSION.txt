@@ -1,0 +1,44 @@
+DragonSR frozen code version
+frozen: 2026-10-14T11:22:51
+host: CLEPS  root: /scratch/jkeisler/EvoDagsAutoDL
+
+Fixes applied (2026-10-14), all tested before freezing:
+  1 printer guards: bricks (Exp/Ln/Power/Sqrt/Inverse), Ols _U_WRAP /
+    _LINK_WRAP / nested special cases, VarAugmentor guard reporting
+  2 Ols var_y in float64 with a finite/positive assert
+  3 search seeded once per run (set_seed, change_random=True)
+  4 level-1 models kept, T on t scale, one post-loop cleanup
+
+leaderboard/runner/Ols.py                                      0519c4adfd26859a07c8166321d61d2f
+leaderboard/runner/Worker.py                                   569b88c699446f703682589d2a589edd
+leaderboard/pipeline/DragonOrchestrator.py                     975f190a106e68952dc69fddfe91f78f
+leaderboard/dataprocessing/Features.py                         64c85fd06298add4224934813d687326
+leaderboard/dataprocessing/Preprocessing.py                    ed91add06aa8000adfbe3f28fdae482b
+leaderboard/helpers/Helper.py                                  1b5e9d63d39615c05c2d555c8308ac55
+lib/dragon/utils/symbolic/dag_to_formula.py                    1e7a5b24f5fc87696af05dfef516301b
+leaderboard/runner/Dragon.py                                   cc056f53b9307a391f5de3d496f384fa
+leaderboard/runner/pysr_runner.py                              17b8e0cc988f27b0d2e4f79f3999678a
+leaderboard/searchspace/SearchSpace.py                         afa67f9de119046fb5527aae84755f26
+leaderboard/target_categories.py                               ccde22282be32fce336ada967d4ff2a7
+leaderboard/dataprocessing/Data.py                             d33bc4526ce759cb60665035421e34ff
+leaderboard/dataprocessing/Denoise.py                          a2f1daec4e6691ba4dcb58b20f32c9d9
+leaderboard/Config.py                                          fccd1de5575141b21ccd49eaf5f30f10
+leaderboard/main.py                                            086c8b86ad58797e2e5f34b97e8fea00
+leaderboard/helpers/stats.py                                   0ac2e1eb006febbe3b6f47027a405721
+lib/dragon/search_space/bricks/symbolic_regression.py          28a26d882ff925658bb71c899f15215c
+lib/dragon/search_algorithm/mutant_ucb.py                      a5e643da65401354b894e20cae0767da
+lib/dragon/search_algorithm/search_algorithm.py                0edf84a639ba8a1b43a8008e9c3d37da
+lib/dragon/search_operators/base_neighborhoods.py              a1b504997a74b2767930a48ab171e125
+lib/dragon/search_space/dag_encoding.py                        8447e1e743850439eee84d80763b3179
+lib/dragon/search_space/dag_variables.py                       1c9e590c66b8bc7c6a9395959fc8cc19
+
+AGGREGATE 2846c144672ae5097016b64ee96fc379
+
+pkg pysr         1.5.10
+pkg juliacall    0.9.26
+pkg juliapkg     0.1.24
+pkg numpy        1.26.4
+pkg torch        2.9.1
+pkg xgboost      3.2.0
+python 3.11.14
+interpreter /home/jkeisler/miniconda3/envs/sbck-gpu/bin/python

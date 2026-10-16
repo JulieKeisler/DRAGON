@@ -73,7 +73,12 @@ class PhysicsGenerator:
         return pd.DataFrame({"a": a}), pd.Series(2 * np.pi * np.sqrt(a**3 / (G * M_sun)), name="T")
 
     def _bode(self):
-        nv = np.arange(0, 9, dtype=float)
+        # Titius-Bode is defined on integer planet indices n = 0..8, which gives
+        # only nine observations -- 667x fewer than every other benchmark, and
+        # few enough that a flexible model interpolates them exactly. The law is
+        # sampled here as a continuous function of the index over the same range,
+        # so that sample size is not a confound in the comparison.
+        nv = self.rng.uniform(0.0, 8.0, self.n)
         return pd.DataFrame({"n": nv}), pd.Series(0.4 + 0.3 * 2**nv, name="a")
 
     def _schechter(self):

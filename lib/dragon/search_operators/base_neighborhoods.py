@@ -178,18 +178,28 @@ class CatInterval(VarNeighborhood):
 
     def __call__(self, value, size=1):
         if size > 1:
-            res = []
-            for _ in range(size):
-                v = self.target.random()
-                while v == value:
-                    v = self.target.random()
-                res.append(v)
-            return res
+            return [self._draw_different(value) for _ in range(size)]
         else:
+            return self._draw_different(value)
+
+    def _draw_different(self, value, max_draws=100):
+        """Draw a feature different from :code:`value`, giving up after
+        :code:`max_draws` attempts.
+
+        A `CatVar` may hold a single candidate -- e.g. the `feature_indices`
+        hyperparameter of a target whose feature selection kept one feature --
+        and then no different value exists.  Redrawing unconditionally spins
+        forever on pure-Python code: observed on the `hubble` benchmark
+        (`y = 70*d`, one feature, so `feature_indices` can only ever be `[0]`),
+        where tasks burned 21 h of CPU without completing a single evaluation.
+        Returning the unchanged value makes the mutation a no-op instead.
+        """
+        v = self.target.random()
+        draws = 1
+        while v == value and draws < max_draws:
             v = self.target.random()
-            while v == value:
-                v = self.target.random()
-            return v
+            draws += 1
+        return v
 
     @VarNeighborhood.neighborhood.setter
     def neighborhood(self, neighborhood=None):

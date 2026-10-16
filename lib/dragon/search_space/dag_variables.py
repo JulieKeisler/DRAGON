@@ -44,7 +44,6 @@ class HpVar(Variable):
         for h in hyperparameters:
             assert isinstance(hyperparameters[h], Variable), f"The hyperparameters should be instances of Variable but got {h} instead."
         self.operation = operation
-        self.label = label
         self.hyperparameters = hyperparameters
 
     def random(self, size = 1):
@@ -81,8 +80,9 @@ class HpVar(Variable):
                     name = self.operation
                 hp = {}
                 for h in self.hyperparameters:
-                    hp[h] = h.random(1)
+                    hp[h] = self.hyperparameters[h].random(1)
                 res.append([name, hp])
+            return res
 
     def isconstant(self):
         """isconstant()

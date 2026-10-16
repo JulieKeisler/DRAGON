@@ -18,6 +18,10 @@ sys.path.insert(0, str(dragon_root))
 import lib.dragon
 sys.modules['dragon'] = sys.modules['lib.dragon']
 
+# Target categories for operator group selection
+sys.path.insert(0, str(dragon_root))
+from target_categories import get_operators_for_target
+
 # ── Dragon library imports ────────────────────────────────────────────────────
 from dragon.search_space.bricks_variables import operations_var
 from dragon.search_space.base_variables import CatVar, Constant, ArrayVar
@@ -39,8 +43,9 @@ class SearchSpaceBuilder:
     Parameters
     ----------
     feature_names  : ordered list of feature name strings
-    feature_scores : dict mapping name → importance weight
+    feature_scores : dict mapping name -> importance weight
     operator_keys  : list of operator tags, e.g. ['select', 'unary', 'power', ...]
+    target         : target name (e.g., "n4", "evi2") - determines operators
     """
 
     def __init__(
@@ -48,11 +53,17 @@ class SearchSpaceBuilder:
         feature_names:  list[str],
         feature_scores: dict[str, float],
         operator_keys:  list[str],
+        target:         str = None,
     ):
         self.feature_names  = feature_names
         self.feature_scores = feature_scores
         self.operator_keys  = operator_keys
+        self.target         = target
         self._combo_builder = CombinationBuilder()
+
+        # If target is provided, override operator_keys with target-specific ones
+        if target is not None:
+            self.operator_keys = get_operators_for_target(target)
 
     def build(self, all_combos: list = None) -> tuple:
         """Return (ArrayVar search_space, EvoDagVariable dag)."""

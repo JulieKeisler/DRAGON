@@ -53,6 +53,11 @@ def _build_result(target, method_cfg, run_id, strategy, best_loss, best_formula,
         "rat_degree":     loss_state.get("rat_degree"),
         "loss_history":   loss_history,
         "actualT":        int(actual_T) if actual_T is not None else None,
+        # VarAugmentor guards that fired on a SELECTED feature, per candidate
+        # name: {"zero_guard"|"clipped"|"nonfinite": n_rows}.  Empty when no
+        # guard fired.  These change the function a feature name denotes, so
+        # they are recorded per run rather than left in the log.
+        "var_aug_guards": (method_cfg.get("_var_aug_guards") or {}),
         "max_complexity_reached": loss_state.get("max_complexity_reached"),
         "all_channel_formulas": loss_state.get("all_channel_formulas", []),
         "ops_used":         loss_state.get("ops_used"),

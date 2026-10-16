@@ -30,8 +30,10 @@ class Experiment:
     INIT_STRATEGIES  = ["random", "diverse", "xgboost", "warmstart", "adversarial"] #todo: define other startegies ("xgboost", "warmstart", "adversarial")
     RANDOM_SEED      = 42
     N_TOP_FEATURES   = 10
+    VAR_AUG_K        = 0    # 0/1 = legacy single-or-pair var_aug; >=2 = forward stepwise, keep K
     N_SYNTH_SAMPLES  = 6000
     NOISE_STD        = 0.01
+    NOISE_MODE       = "absolute"   # "absolute" (paper) | "relative" y*(1+N(0,eps))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -68,6 +70,12 @@ class OLS:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Dragon:
+    # When True (legacy), SearchSpaceBuilder overrides the per-stream operator
+    # list with get_operators_for_target(target), i.e. the target's analytic
+    # class.  That is prior knowledge of the answer and collapses all SPAR
+    # streams onto one operator set.  False = each stream keeps its assigned
+    # group, so the six streams span all 12 operators for every target.
+    PER_TARGET_OPS = True
     N_ITERATIONS   = 1_000
     K_INIT         = 500
     MAX_COMPLEXITY = 10
@@ -98,6 +106,7 @@ class PySR:
     SHOULD_OPTIMIZE_CONSTANTS = True
     ADD_NOISE       = None
     MAXSIZE         = 30
+    PRECISION       = 64   # float32 overflows newton (m1*m2), kepler (a^3), planck (nu^3)
     JULIA_PROJECT   = "/Users/elyaschikhaoui/Desktop/dragon/.venv311/julia_env"
     BINARY_OPS      = ["+", "-", "*", "/"]
     UNARY_OPS       = ["log", "exp", "sin", "cos", "sqrt", "abs"]
@@ -138,6 +147,7 @@ DRAGON_METHODS = [
         "parallel_n":         1,
         "parallel_mode":      "smart", # "none" | "smart"
         "loss_mode":          "full", # "ols" | "channel"
+        "SPAR_LOSS_MODES":    None,   # e.g. ["channel","full"] -> cross each SPAR group with each loss_mode
         "var_aug":            True,
         "add_noise":          True,
         "denoiser":           "lingam", # "gpr" or "lingam" or None

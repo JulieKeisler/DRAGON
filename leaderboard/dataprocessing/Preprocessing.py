@@ -18,12 +18,23 @@ from dataprocessing.Data import DatasetLoader
 class NoiseInjector:
     """Adds Gaussian noise to y (relative to std(y))."""
 
-    def __init__(self, noise_std: float | None = None, seed: int = Experiment.RANDOM_SEED):
+    def __init__(self, noise_std: float | None = None, seed: int = Experiment.RANDOM_SEED,
+                 noise_mode: str | None = None):
         self.noise_std = Experiment.NOISE_STD if noise_std is None else noise_std
         self.seed      = seed
+        self.noise_mode = (noise_mode
+                           if noise_mode is not None
+                           else getattr(Experiment, "NOISE_MODE", "absolute")).lower()
 
     def transform(self, y: pd.Series, run_id: int = 0) -> pd.Series:
-        rng   = np.random.default_rng(self.seed + run_id + 9999)
+        rng = np.random.default_rng(self.seed + run_id + 9999)
+        if self.noise_mode == "relative":
+            # y * (1 + N(0, eps)): each point is perturbed in proportion to its OWN
+            # magnitude, so the local signal-to-noise ratio is 1/eps everywhere.
+            # The default "absolute" mode scales by std(y) of the whole dataset, which
+            # on wide-dynamic-range targets (newton spans 4e11) buries >99% of points
+            # at eps=0.01 and makes eps incomparable across benchmarks.
+            return y * (1.0 + rng.normal(0, self.noise_std, len(y)))
         noise = rng.normal(0, self.noise_std * float(y.std()), len(y))
         return y + noise
 
@@ -80,6 +91,15 @@ class PreprocessingPipeline:
         info["feature_names"] = feature_names
         info["feat_scores"] = feat_scores
         info["n_selected_features"] = len(feature_names)
+        # Guards fired by VarAugmentor on the features that were actually
+        # SELECTED.  These change the function the feature name denotes
+        # ("1/(x)" is 0 where |x| <= 1e-12; a product is clipped at the float32
+        # ceiling), so they are reported rather than left silent.
+        _gr = getattr(self._var_augmentor, "guard_report", None) or {}
+        _sel_guards = {n: _gr[n] for n in feature_names if n in _gr}
+        if _sel_guards:
+            info["var_aug_guards"] = _sel_guards
+            print(f"[var_aug] guards fired on selected features: {_sel_guards}")
 
         return X, y, info
 
@@ -105,4 +125,11 @@ class PreprocessingPipeline:
 
         feature_names = info["feature_names"]
         feat_scores = info["feat_scores"]
+        # Carry the VarAugmentor guard firings to the result writer.  method_cfg
+        # reaches _build_result (and is copied into each SPAR sub_cfg), so the
+        # counts land in results.json instead of only in the log.
+        try:
+            method_cfg["_var_aug_guards"] = info.get("var_aug_guards", {}) or {}
+        except Exception:
+            pass
         return X_sel, y, feature_names, feat_scores

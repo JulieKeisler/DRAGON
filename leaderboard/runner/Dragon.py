@@ -414,7 +414,8 @@ class DragonSearcher:
             total += s if np.isfinite(s) else 1e6
         return total / max(n_ch, 1)
 
-    def _scalefree_line_search(self, f, current, max_mag=1e12, iters=40, flat_rtol=1e-6):
+    def _scalefree_line_search(self, f, current, max_mag=1e12, iters=40,
+                               flat_rtol=1e-6, flat_atol=1e-9):
         """Scale-free 1-D minimizer for a scalar constant.
 
         A coarse logarithmic grid (both signs + zero + the current value,
@@ -433,7 +434,13 @@ class DragonSearcher:
         cands = sorted(set(cands))
         vals = [f(x) for x in cands]
         vmin, vmax = min(vals), max(vals)
-        if vmax - vmin <= flat_rtol * (abs(vmin) + 1e-12):
+        # A purely relative tolerance collapses to ~0 when vmin ~ 0, which is
+        # exactly the noise-free case: the objective is then invariant to a
+        # scale constant, but the guard never fires and the grid minimum is
+        # decided by floating-point noise (routinely landing on ±max_mag).
+        # The search losses are O(1) normalised quantities, so an absolute
+        # floor is meaningful.
+        if vmax - vmin <= max(flat_rtol * abs(vmin), flat_atol):
             return float(current)  # objective invariant → keep current (clean)
         i = int(np.argmin(vals))
         lo = cands[max(0, i - 1)]
@@ -700,9 +707,16 @@ class DragonSearcher:
         ch = (pred_all[:, selected_c].numpy().ravel()
               if pred_all.ndim > 1 and pred_all.shape[-1] > 1
               else pred_all.squeeze().numpy().ravel())
-        A  = np.column_stack([ch, np.ones_like(ch)])
+        # The channel can carry constants of order 1e12 (the corr search loss is
+        # scale-free, so nothing penalises them).  [ch, 1] then has a condition
+        # number ~1e12 and lstsq(rcond=None) truncates the intercept column,
+        # silently returning a NO-INTERCEPT fit: leavitt eps=0 reported
+        # -1.5911*ln(P) + 0 (R^2 = 0.903) instead of -1.2204*ln(P) - 1.43
+        # (R^2 = 1.0).  Scale the channel to unit magnitude before solving.
+        _scale = float(np.max(np.abs(ch))) or 1.0
+        A  = np.column_stack([ch / _scale, np.ones_like(ch)])
         c, *_ = np.linalg.lstsq(A, y_np.ravel(), rcond=None)
-        a1, a0 = float(c[0]), float(c[1])
+        a1, a0 = float(c[0]) / _scale, float(c[1])
         if abs(a1 - 1.0) > 1e-4 or abs(a0) > 1e-4:
             return f"{a1:.6e} * ({raw}) + {a0:.6e}"
         return raw

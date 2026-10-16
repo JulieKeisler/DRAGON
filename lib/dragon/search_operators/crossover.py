@@ -82,6 +82,8 @@ class DAGTwoPoint:
             - Exchange the parts between `cxpoint1` and `cxpoint2`
             - For each element between those points, if one of them is an `AdjMatrix`: use the `adj_matrix_crossover` function to mix the graphs.
         """
+        if len(ind1) == 0 or len(ind2) == 0:
+            return ind1, ind2
         size = min(len(ind1), len(ind2))
         if size>1:
             cxpoint1 = random.randint(1, size)

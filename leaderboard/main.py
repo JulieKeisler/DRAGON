@@ -49,7 +49,7 @@ def run_all(targets=None, n_runs=None, resume=False):
     return run_pysr_only(targets, n_runs)
 
 
-def run_pysr_only(targets=None, n_runs=None):
+def run_pysr_only(targets=None, n_runs=None, run_ids=None):
     """Complete missing PySR entries in an existing results.json, then rebuild HTML.
 
     Entries with formula starting with 'ERROR:' or 'SKIP' are treated as
@@ -91,7 +91,7 @@ def run_pysr_only(targets=None, n_runs=None):
     loader = DatasetLoader()
 
     for target in targets:
-        for run_id in range(n_runs):
+        for run_id in (run_ids if run_ids is not None else range(n_runs)):
             _seed_data = _CfgExp.RANDOM_SEED + run_id
             _X_base, _y_clean = loader.load(target, run_id=run_id)
             _noise_rng = np.random.default_rng(_seed_data + 9999)
@@ -115,7 +115,7 @@ def run_pysr_only(targets=None, n_runs=None):
     return results
 
 
-def run_dragon_only(targets=None, n_runs=None, build_html_full=True):
+def run_dragon_only(targets=None, n_runs=None, build_html_full=True, run_ids=None):
     """Complete missing Dragon entries in an existing results.json, then rebuild HTML.
 
     Entries with formula 'N/A', '' or starting with 'ERROR:' are treated as
@@ -149,7 +149,7 @@ def run_dragon_only(targets=None, n_runs=None, build_html_full=True):
     new_results = []
 
     for target in targets:
-        for run_id in range(n_runs):
+        for run_id in (run_ids if run_ids is not None else range(n_runs)):
             for cfg in DRAGON_METHOD_CONFIGS:
                 method_id = cfg["id"]
                 if (target, run_id, method_id) in done:
@@ -182,6 +182,10 @@ if __name__ == "__main__":
                         help="Path to a CSV dataset used directly for all non-synthetic targets")
     parser.add_argument("--config_file_path", type=str, default=None,
                         help="Path to a text config file overriding values in Config.py")
+    parser.add_argument("--run-id", type=int, default=None,
+                        help="Only run this single run_id (for SLURM array parallelism; PySR only)")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Override Paths.OUTPUT_DIR (per-task results dir for parallel runs)")
     parser.add_argument("--pysr-only", action="store_true",
                         help="Skip DragonSR; only run missing PySR entries and rebuild HTML")
     parser.add_argument("--dragon-only", action="store_true",
@@ -200,6 +204,9 @@ if __name__ == "__main__":
     if args.data_path:
         _CfgPaths.EXTERNAL_DATA_CSV = args.data_path
 
+    if args.output_dir:
+        _CfgPaths.OUTPUT_DIR = args.output_dir
+
     if args.leaderboard:
         if args.dragon_only:
             run_dragon_only()
@@ -216,10 +223,11 @@ if __name__ == "__main__":
                 print("Generating full leaderboard HTML from an empty results set")
             build_html(results)
     elif args.run_dragonsr:
-        run_dragon_only(build_html_full=False)
+        run_dragon_only(build_html_full=False,
+                        run_ids=[args.run_id] if args.run_id is not None else None)
     elif args.dragon_only:
-        run_dragon_only()
+        run_dragon_only(run_ids=[args.run_id] if args.run_id is not None else None)
     elif args.pysr_only:
-        run_pysr_only()
+        run_pysr_only(run_ids=[args.run_id] if args.run_id is not None else None)
     else:
         run_all(resume=args.resume)

@@ -84,9 +84,9 @@ class VarNeighborhood(VarAddon):
 
     """
 
-    def __init__(self, neighborhood, variable=None):
+    def __init__(self, neighborhood=None, variable=None):
         super(VarAddon, self).__init__(variable)
-        self.neighborhood = neighborhood
+        self._neighborhood = neighborhood
 
     @property
     def neighborhood(self):

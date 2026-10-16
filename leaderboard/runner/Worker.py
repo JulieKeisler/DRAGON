@@ -3,14 +3,15 @@ import time
 import traceback
 
 import torch
-from Config import Experiment as _CfgExp, Paths as _CfgPaths
+from Config import (Experiment as _CfgExp, Paths as _CfgPaths,
+                    Dragon as _CfgDragon)
 import numpy as np
 
 from runner.Ols import OLSPostProcessor
 from helpers.stats import _collect_landscape
 from helpers.Helper import _build_result
 from pipeline.DragonOrchestrator import DragonOrchestrator
-from Config import Dragon as _CfgDragon
+from target_categories import get_spar_groups_for_target
 
 def dragon_worker(method_cfg: dict, target: str, run_id: int,
                   *, _max_iters: int = None,
@@ -29,6 +30,13 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
     feature_names = _feature_names_preloaded
     feat_scores = _feat_scores_preloaded
     seed = _CfgExp.RANDOM_SEED + run_id
+    # Seed the process RNG once.  The SPAR streams are THREADS sharing one
+    # global numpy/random state, so seeding inside each stream would reseed
+    # that shared state concurrently and correlate the streams; the parent
+    # (_run_smart_parallel) seeds instead, and a lone worker seeds here.
+    if not method_cfg.get("_in_smart_stream"):
+        from dragon.utils.tools import set_seed
+        set_seed(seed, change_random=True)
 
     try:
         run_dir = os.path.join(
@@ -56,6 +64,7 @@ def dragon_worker(method_cfg: dict, target: str, run_id: int,
             strategy=strategy,
             save_dir=save_dir,
             _max_iters=_max_iters,
+            target=target,
         )
 
     except Exception:
@@ -77,16 +86,39 @@ def _run_smart_parallel(method_cfg, target, run_id, *,
                         _feature_names_preloaded=None, _feat_scores_preloaded=None) -> dict:
     from concurrent.futures import ThreadPoolExecutor, as_completed
     method_id      = method_cfg["id"]
-    _n_streams     = len(_CfgDragon.SPAR_OP_GROUPS)
+
+    # Use target-aware SPAR operator groups
+    _spar_groups = get_spar_groups_for_target(target)
+    # Optionally cross every SPAR operator group with several loss_modes, so the
+    # search is run under each objective instead of committing to one globally.
+    # All modes score against the SAME target here, so cross-stream loss stays comparable.
+    _loss_modes = method_cfg.get("SPAR_LOSS_MODES") or [None]
+    if not isinstance(_loss_modes, (list, tuple)):
+        _loss_modes = [_loss_modes]
+    _n_streams     = len(_spar_groups) * len(_loss_modes)
+    # No explicit budget from the caller means "use the configured one";
+    # a hard-coded fallback here silently overrode N_ITERATIONS from the config.
     _iter_cap      = _max_iters if _max_iters is not None else _CfgDragon.N_ITERATIONS
     _stream_budget = max(1, _iter_cap // _n_streams)
+
+    # One deterministic seeding per run, before any stream starts.  Before this
+    # the search drew from an unseeded process-wide RNG, so no run was
+    # reproducible.  Thread interleaving still orders the draws, so a run is
+    # reproducible in its starting state, not bitwise; serialising the streams
+    # would be required for that.
+    from dragon.utils.tools import set_seed
+    set_seed(_CfgExp.RANDOM_SEED + run_id, change_random=True)
 
     stream_results = []
     with ThreadPoolExecutor(max_workers=_n_streams) as ex:
         futs = {}
-        for stream_id, ops in _CfgDragon.SPAR_OP_GROUPS.items():
+        for stream_id, ops in _spar_groups.items():
+          for _lm in _loss_modes:
+            _sid = stream_id if _lm is None else f"{stream_id}|{_lm}"
             sub_cfg = {**method_cfg, "operators": list(ops),
-                       "_in_smart_stream": True, "_stream_id": stream_id}
+                       "_in_smart_stream": True, "_stream_id": _sid}
+            if _lm is not None:
+                sub_cfg["loss_mode"] = _lm
             futs[ex.submit(dragon_worker, sub_cfg, target, run_id,
                            _max_iters=_stream_budget,
                            _X_preprocessed=_X_preprocessed, _y_preprocessed=_y_preprocessed,
@@ -110,7 +142,39 @@ def _run_smart_parallel(method_cfg, target, run_id, *,
         }
 
     # Copy winner payload to avoid mutating the original stream result dict.
-    best = dict(min(stream_results, key=lambda r: r.get("loss", float("inf"))))
+    # Streams routinely TIE at machine precision (loss 0 or ~1e-16) when the model is
+    # exact; plain min() then returns whichever future completed first, which is random
+    # and often an ugly-but-equivalent rendering (or a worse model that fits equally).
+    # Among near-tied streams prefer the simpler model class, then the shorter formula.
+    _TIE_REL, _TIE_ABS = 0.02, 1e-10
+    _ORDER = {"channel": 0, "linear": 0, "ols": 1, "nested": 2, "rational": 3}
+
+    def _loss_of(r):
+        v = r.get("loss")
+        return float("inf") if v is None else v
+
+    _lo = min((_loss_of(r) for r in stream_results), default=float("inf"))
+    if _lo == float("inf"):
+        _near_ties = list(stream_results)
+    else:
+        _cut = _lo + max(abs(_lo) * _TIE_REL, _TIE_ABS)
+        _near_ties = [r for r in stream_results if _loss_of(r) <= _cut] or list(stream_results)
+
+    def _has_var(r):
+        # A bare constant ("0.0000", "-3.5e+15") is degenerate: on targets with huge
+        # dynamic range it can land in the tie window with loss 0. Never prefer one.
+        return any(c.isalpha() for c in str(r.get("formula") or ""))
+
+    def _simplicity(r):
+        return (0 if _has_var(r) else 1,
+                _ORDER.get(r.get("winner_type"), 9),
+                len(str(r.get("formula") or "")),
+                _loss_of(r))
+
+    if len(_near_ties) > 1:
+        print(f"[spar/{target}/run{run_id}] {len(_near_ties)} streams within tie window "
+              f"of {_lo:.6g}; picking simplest")
+    best = dict(min(_near_ties, key=_simplicity))
     best.update(method=method_id, description=method_cfg["description"],
                 search_space_ops=list(method_cfg.get("operators", [])))
     per_stream_T = {r.get("_stream_id", "?"): int(r["actualT"])
@@ -178,4 +242,3 @@ def _run_smart_parallel(method_cfg, target, run_id, *,
         r.pop("_best_pred_np", None); r.pop("_best_y_np", None)
     best.pop("_best_pred_np", None); best.pop("_best_y_np", None)
     return best
-

@@ -37,6 +37,19 @@ from dragon.search_space.bricks.symbolic_regression import (
 )
 
 
+
+def _recovered_models(save_dir):
+	"""Number of models recoverable from `save_dir`, i.e. root-level x_<idx>.pkl.
+
+	`Mutant_UCB.run_no_mpi` sets `t = len(self.storage)` after recovery, and
+	`recover_population` drops any row whose x_<idx>.pkl is missing.  The
+	absolute budget T must therefore be measured on that scale, not on the rows
+	of computation_file.csv, which count evaluations including repeats of the
+	same arm.
+	"""
+	import glob as _glob
+	return len(_glob.glob(os.path.join(save_dir, "x_*.pkl")))
+
 class SearchLoss:
 	"""Registry for search loss functions used by DragonSearcher."""
 
@@ -182,7 +195,7 @@ class DragonOrchestrator:
 	"""Pipeline orchestrator for DRAGON setup, seeding, and search execution."""
 
 	@staticmethod
-	def setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device):
+	def setup_searcher(method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device, target=None):
 		from torch.utils.data import DataLoader
 		from runner.Dragon import DragonSearcher, RegressionDataset
 		from searchspace.SearchSpace import SearchSpaceBuilder
@@ -192,7 +205,8 @@ class DragonOrchestrator:
 		loader = DataLoader(RegressionDataset(X_sel, y), batch_size=32, shuffle=True)
 		all_combos = CombinationBuilder().build(feature_names, feat_scores)
 		search_space, dag = SearchSpaceBuilder(
-			feature_names, feat_scores, method_cfg["operators"]
+			feature_names, feat_scores, method_cfg["operators"],
+			target=(target if getattr(_CfgDragon, "PER_TARGET_OPS", True) else None)
 		).build(all_combos)
 		sampling = SamplingContext.get_sampling(method_cfg, X_sel, y)
 		sample_weights = MCDropoutWeighter.get_sample_weights(method_cfg, X_sel, y, seed, method_id)
@@ -291,7 +305,7 @@ class DragonOrchestrator:
 		loss_threshold = _CfgDragon.LOSS_THRESHOLD
 		os.makedirs(save_dir, exist_ok=True)
 
-		def _make_sa(T, clean, extra=None):
+		def _make_sa(T, first, extra=None):
 			kw = dict(
 				search_space=search_space,
 				evaluation=searcher,
@@ -300,12 +314,12 @@ class DragonOrchestrator:
 				N=parallel_N,
 				E=1000,
 				save_dir=save_dir,
-				clean_all=clean,
+				clean_all=False,   # fix 4: never delete between levels; cleaned once after the loop
 				verbose=True,
 				loss_threshold=loss_threshold,
 				**(extra or {}),
 			)
-			if clean and seed_models is not None:
+			if first and seed_models is not None:
 				kw["models"] = seed_models
 			return Mutant_UCB(**kw)
 
@@ -320,13 +334,13 @@ class DragonOrchestrator:
 			if remaining <= 0:
 				break
 			dag.complexity = complexity
-			clean = complexity == 1
+			first = complexity == 1
 			csv_path = os.path.join(save_dir, "computation_file.csv")
-			pop = len(pd.read_csv(csv_path)) if not clean and os.path.exists(csv_path) else 0
-			extra = {} if clean or budget_mode == "complexity" else {"pop_path": save_dir}
+			pop = 0 if first else _recovered_models(save_dir)
+			extra = {} if first or budget_mode == "complexity" else {"pop_path": save_dir}
 			additional = min(_CfgDragon.T_PER_LEVEL, remaining)
 			T = pop + additional
-			sa = _make_sa(T, clean, extra)
+			sa = _make_sa(T, first, extra)
 			sa.run()
 			reached_complexity = complexity
 			try:
@@ -336,6 +350,26 @@ class DragonOrchestrator:
 			global_best = min(global_best, sa.min_loss)
 			if loss_threshold is not None and global_best <= loss_threshold:
 				break
+
+		# Disk safeguard, run ONCE now that no level deletes (fix 4).  Same
+		# logic as search_algorithm.py:504-511, applied only to THIS run's own
+		# save_dir: drop every directory that is not best_model/ and every
+		# non-csv file.  /scratch has been filled by save/ trees before, so
+		# this is not optional once per-level cleaning is removed.
+		try:
+			import shutil as _sh
+			for _x in os.listdir(save_dir):
+				_full = os.path.join(save_dir, _x)
+				if os.path.isdir(_full):
+					if "best_model" not in _x:
+						_sh.rmtree(_full, ignore_errors=True)
+				elif ".csv" not in _x:
+					try:
+						os.remove(_full)
+					except OSError:
+						pass
+		except FileNotFoundError:
+			pass
 		return global_best, reached_complexity
 
 	@classmethod
@@ -353,9 +387,10 @@ class DragonOrchestrator:
 		strategy,
 		save_dir,
 		_max_iters=None,
+		target=None,
 	):
 		searcher, dag, search_space = cls.setup_searcher(
-			method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device
+			method_cfg, X_sel, y, feature_names, feat_scores, log_path, seed, device, target=target
 		)
 		loss_state = searcher.state
 

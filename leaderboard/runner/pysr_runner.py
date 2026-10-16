@@ -59,6 +59,7 @@ def run_pysr(
 
     t_start      = time.time()
     best_loss    = np.inf
+    best_formula_minloss = "N/A"
     best_formula = "N/A"
     hall_of_fame = []
 
@@ -98,6 +99,7 @@ def run_pysr(
             binary_operators=_CfgPySR.BINARY_OPS,
             unary_operators=_CfgPySR.UNARY_OPS,
             should_optimize_constants=_CfgPySR.SHOULD_OPTIMIZE_CONSTANTS,
+            precision=getattr(_CfgPySR, "PRECISION", 64),
             denoise=False,
             julia_project=_CfgPySR.JULIA_PROJECT,
             verbosity=0,
@@ -126,9 +128,26 @@ def run_pysr(
                     "loss":       float(row["loss"]),
                     "formula":    str(row["equation"]),
                 })
-            best_loss    = min(h["loss"] for h in hall_of_fame if np.isfinite(h["loss"]))
-            best_row     = df.loc[df["loss"].idxmin()]
-            best_formula = str(best_row["equation"])
+            finite = [h["loss"] for h in hall_of_fame if np.isfinite(h["loss"])]
+            best_loss    = min(finite) if finite else np.inf
+            if finite:
+                # Reporting argmin(loss) selects the most complex point of the
+                # Pareto front (median complexity 53 of a 55 cap), which under
+                # noise is an overfit of the target rather than the law. PySR's
+                # own parsimony metric ("score") is the documented choice for
+                # model selection, so it is what is reported; the argmin-loss
+                # equation is retained alongside it, and the full front is in
+                # hall_of_fame for offline re-selection.
+                best_row     = df.loc[df["loss"].idxmin()]
+                best_formula_minloss = str(best_row["equation"])
+                if "score" in df.columns and np.isfinite(df["score"]).any():
+                    sel_row  = df.loc[df["score"].idxmax()]
+                else:
+                    sel_row  = best_row
+                best_formula = str(sel_row["equation"])
+            else:
+                best_formula = "PySR: no finite-loss equation"
+                best_formula_minloss = best_formula
 
     except Exception:
         tb = traceback.format_exc()
@@ -154,6 +173,7 @@ def run_pysr(
         "loss":        float(best_loss),
         "r2":          float(1.0 - best_loss) if best_loss <= 1.0 else 0.0,
         "formula":     str(best_formula),
+        "formula_minloss": str(best_formula_minloss),
         "time_s":      elapsed,
         "log_path":    log_path,
         "description": (

@@ -76,6 +76,15 @@ class VarAugmentor:
         cands    = self._build_candidates(X)
         cands    = self._clean(cands, raw_cols)
 
+        k = int(getattr(Experiment, "VAR_AUG_K", 0) or 0)
+        if k >= 2:
+            to_add = self._stepwise(cands, raw_cols, y.values.ravel(), k)
+            print(f"[var_aug] stepwise k={k}: {to_add}")
+            if to_add:
+                X = pd.concat([X, pd.DataFrame({n: cands[n] for n in to_add},
+                                               index=X.index)], axis=1)
+            return X
+
         names  = list(cands.keys())
         values = np.array(list(cands.values()), dtype=np.float64)
 
@@ -100,12 +109,52 @@ class VarAugmentor:
             X = pd.concat([X, pd.DataFrame({n: cands[n] for n in to_add}, index=X.index)], axis=1)
         return X
 
+    def _stepwise(self, cands: dict, raw_cols: set, y: np.ndarray, k: int) -> list:
+        """Forward stepwise: repeatedly add the candidate that most reduces joint OLS MSE.
+
+        Marginal-correlation (matching-pursuit) selection picks collinear surrogates
+        instead of the true terms; selecting on the refit residual does not.
+        """
+        names = list(cands.keys())
+        V     = np.array([cands[n] for n in names], dtype=np.float64)
+        scale = np.maximum(np.abs(V).max(axis=1, keepdims=True), 1e-300)
+        Vn    = V / scale
+        cols, chosen = [np.ones(len(y))], []
+        for _ in range(k):
+            best_m, best_i = np.inf, None
+            for i, nm in enumerate(names):
+                if nm in chosen:
+                    continue
+                A = np.column_stack(cols + [Vn[i]])
+                try:
+                    c, *_ = np.linalg.lstsq(A, y, rcond=-1)
+                except np.linalg.LinAlgError:
+                    continue
+                m = float(((A @ c - y) ** 2).mean())
+                if np.isfinite(m) and m < best_m:
+                    best_m, best_i = m, i
+            if best_i is None:
+                break
+            chosen.append(names[best_i])
+            cols.append(Vn[best_i])
+        return [n for n in chosen if n not in raw_cols]
+
     def _build_candidates(self, X: pd.DataFrame) -> dict[str, np.ndarray]:
+        # guard_report[name] = {"zero_guard": n, "clipped": n, "nonfinite": n}
+        # Every guard below changes the FUNCTION the name denotes; recording the
+        # firings keeps that visible instead of silent (the name "1/(x)" does
+        # not say that it is 0 where |x| <= 1e-12).
+        self.guard_report = {}
+        def _g(name, key, n):
+            if n:
+                self.guard_report.setdefault(name, {})[key] = int(n)
         cands = {c: X[c].values.astype(np.float64) for c in X.columns}
         for c in list(X.columns):
             v = cands[c]
             cands[f"({c})**2"]            = v ** 2
             cands[f"({c})**3"]            = v ** 3
+            _zero = np.abs(v) <= 1e-12
+            _g(f"1/({c})", "zero_guard", _zero.sum())
             cands[f"1/({c})"]             = np.where(np.abs(v) > 1e-12, 1.0 / v, 0.0)
             cands[f"sqrt(abs({c}))"]      = np.sqrt(np.abs(v))
             cands[f"-({c})"]              = -v
@@ -115,17 +164,34 @@ class VarAugmentor:
             cands[f"({ci}+{cj})"]  = vi + vj
             cands[f"({ci}-{cj})"]  = vi - vj
             cands[f"({cj}-{ci})"]  = vj - vi
-            cands[f"({ci}*{cj})"]  = np.clip(vi * vj, -self._F32_MAX, self._F32_MAX)
+            _prod = vi * vj
+            _g(f"({ci}*{cj})", "clipped",
+               (np.abs(_prod) > self._F32_MAX).sum() + (~np.isfinite(_prod)).sum())
+            cands[f"({ci}*{cj})"]  = np.clip(_prod, -self._F32_MAX, self._F32_MAX)
+            _g(f"({ci}/{cj})", "zero_guard", (np.abs(vj) <= 1e-12).sum())
             cands[f"({ci}/{cj})"]  = np.where(np.abs(vj) > 1e-12, vi / vj, 0.0)
+            _g(f"({cj}/{ci})", "zero_guard", (np.abs(vi) <= 1e-12).sum())
             cands[f"({cj}/{ci})"]  = np.where(np.abs(vi) > 1e-12, vj / vi, 0.0)
         return cands
 
     def _clean(self, cands: dict, raw_cols: set) -> dict:
-        return {
-            name: np.clip(np.where(np.isfinite(v), v, 0.0), -self._F32_MAX, self._F32_MAX)
-            for name, v in cands.items()
-            if name in raw_cols or np.std(v) > 1e-15
-        }
+        if not hasattr(self, "guard_report"):
+            self.guard_report = {}
+        out = {}
+        for name, v in cands.items():
+            if not (name in raw_cols or np.std(v) > 1e-15):
+                continue
+            nf = int((~np.isfinite(v)).sum())
+            w  = np.where(np.isfinite(v), v, 0.0)
+            cl = int((np.abs(w) > self._F32_MAX).sum())
+            if nf:
+                self.guard_report.setdefault(name, {})["nonfinite"] = \
+                    self.guard_report.setdefault(name, {}).get("nonfinite", 0) + nf
+            if cl:
+                self.guard_report.setdefault(name, {})["clipped"] = \
+                    self.guard_report.setdefault(name, {}).get("clipped", 0) + cl
+            out[name] = np.clip(w, -self._F32_MAX, self._F32_MAX)
+        return out
 
     def _batch_r2(self, T: np.ndarray, y: np.ndarray) -> np.ndarray:
         T   = np.where(np.isfinite(T), T, 0.0)

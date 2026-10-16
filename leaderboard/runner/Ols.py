@@ -55,39 +55,39 @@ class OLSPostProcessor:
         'id'  : lambda f: f,
         'sq'  : lambda f: f"({f})**2",
         'sqrt': lambda f: f"sqrt(abs({f}))",
-        'inv' : lambda f: f"1/({f})",
+        'inv' : lambda f: f"1/(abs({f})+1e-08)",
         'neg' : lambda f: f"-({f})",
-        'log' : lambda f: f"log(abs({f}))",
+        'log' : lambda f: f"log(abs({f})+1e-08)",
     }
     _LINK_WRAP = {
         'id'  : lambda s: s,
-        'log' : lambda s: f"exp({s})",
+        'log' : lambda s: f"exp(clip({s}, -50, 50))",
         'sqrt': lambda s: f"({s})**2",
         'sq'  : lambda s: f"sqrt(abs({s}))",
-        'inv' : lambda s: f"1/({s})",
+        'inv' : lambda s: f"1/(abs({s})+1e-08)",
         'cbrt': lambda s: f"({s})**3",
     }
     _POST_ORDER = {"channel": 0, "linear": 0, "ols": 1, "nested": 2, "rational": 3}
 
     def __init__(
         self,
-        rat_max_degree:     int   = _CfgOLS.RAT_MAX_DEGREE,
-        max_basis_channels: int   = _CfgOLS.RAT_MAX_BASIS_CH,
-        max_features:       int   = _CfgOLS.RAT_MAX_FEATURES,
-        parsimony_rel_tol:  float = _CfgOLS.PARSIMONY_REL_TOL,
-        complexity_max            = _CfgOLS.COMPLEXITY_MAX,
-        loss_kind:          str   = _CfgLoss.KIND,
-        huber_delta_frac:   float = _CfgLoss.HUBER_DELTA_FRAC,
-        search_loss:        str   = _CfgLoss.SEARCH_LOSS,
+        rat_max_degree:     int   = None,
+        max_basis_channels: int   = None,
+        max_features:       int   = None,
+        parsimony_rel_tol:  float = None,
+        complexity_max            = None,
+        loss_kind:          str   = None,
+        huber_delta_frac:   float = None,
+        search_loss:        str   = None,
     ):
-        self.rat_max_degree     = rat_max_degree
-        self.max_basis_channels = max_basis_channels
-        self.max_features       = max_features
-        self.parsimony_rel_tol  = parsimony_rel_tol
-        self.complexity_max     = complexity_max
-        self.loss_kind          = loss_kind
-        self.huber_delta_frac   = huber_delta_frac
-        self.search_loss        = search_loss
+        self.rat_max_degree     = _CfgOLS.RAT_MAX_DEGREE if rat_max_degree is None else rat_max_degree
+        self.max_basis_channels = _CfgOLS.RAT_MAX_BASIS_CH if max_basis_channels is None else max_basis_channels
+        self.max_features       = _CfgOLS.RAT_MAX_FEATURES if max_features is None else max_features
+        self.parsimony_rel_tol  = _CfgOLS.PARSIMONY_REL_TOL if parsimony_rel_tol is None else parsimony_rel_tol
+        self.complexity_max     = _CfgOLS.COMPLEXITY_MAX if complexity_max is None else complexity_max
+        self.loss_kind          = _CfgLoss.KIND if loss_kind is None else loss_kind
+        self.huber_delta_frac   = _CfgLoss.HUBER_DELTA_FRAC if huber_delta_frac is None else huber_delta_frac
+        self.search_loss        = _CfgLoss.SEARCH_LOSS if search_loss is None else search_loss
 
     # ── Public entry points ───────────────────────────────────────────────────
 
@@ -99,8 +99,19 @@ class OLSPostProcessor:
         (mse_norm, selected_c, ols_weights, best_channel_loss,
          lr_stub, nested, rational, valid_idx_global, analysis)
         """
-        y     = true_all.squeeze().numpy()
-        var_y = float(np.var(y))
+        # float64 throughout: a float32 y overflows on Newton (m1*m2 ~ 1e60
+        # against a float32 ceiling of 3.4e38), which makes var_y inf.  `inf`
+        # does NOT satisfy `< 1e-30`, so the old code fell through with an
+        # infinite normaliser and silently degraded model selection.
+        y     = np.asarray(true_all.squeeze().numpy(), dtype=np.float64)
+        var_y = float(np.var(y, dtype=np.float64))
+        if not np.isfinite(var_y) or var_y <= 0.0:
+            raise ValueError(
+                "OLS.evaluate: var(y) must be finite and positive, got "
+                f"{var_y!r} (n={y.size}, finite_y={int(np.isfinite(y).sum())}). "
+                "This means the target overflowed or is constant; fix the "
+                "dtype or the data rather than scoring against it."
+            )
         if var_y < 1e-30:
             return 1.0, 0, None, 1.0, None, None, None, None, {}
         if pred_all.ndim == 1 or pred_all.shape[-1] == 1:
@@ -223,13 +234,13 @@ class OLSPostProcessor:
             return f"{b:.4f}"
         used_u = {unaries[i] for i, _ in valid_w}
         if link == "log" and used_u == {"log"}:
-            terms = [f"({formulas[i]})**({wi:.4f})" for i, wi in valid_w]
+            terms = [f"(abs({formulas[i]})+1e-08)**({wi:.4f})" for i, wi in valid_w]
             return f"{np.exp(b):.4e} * " + " * ".join(terms)
         if link == "log":
             inner = " ".join(f"{wi:+.4f}*{self._U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
             return f"{np.exp(b):.4e} * exp({inner})"
         if link == "inv" and used_u == {"inv"}:
-            denom = " ".join(f"{wi:+.4f}/({formulas[i]})" for i, wi in valid_w)
+            denom = " ".join(f"{wi:+.4f}/(abs({formulas[i]})+1e-08)" for i, wi in valid_w)
             if abs(b) > min_weight:
                 denom += f" {b:+.4f}"
             return f"1 / ({denom})"
