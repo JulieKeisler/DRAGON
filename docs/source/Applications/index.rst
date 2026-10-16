@@ -124,4 +124,5 @@ For more detailed examples of various applications, see:
    image
    load_forecasting
    symbolic_regression
+   dragonsr_quickstart
    time_series_forecasting
