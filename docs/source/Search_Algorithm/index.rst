@@ -174,5 +174,6 @@ For the detailed implementations of these algorithms, see:
    ssea
    mutant_ucb
    hyperband
+   dragonsr
    
 ..

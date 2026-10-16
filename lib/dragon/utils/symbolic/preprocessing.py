@@ -1,0 +1,257 @@
+"""Input preparation for DragonSR: variable augmentation and feature selection.
+
+Ported verbatim from the frozen experiment code (``leaderboard/dataprocessing/
+Features.py``, CODE_VERSION AGGREGATE 2846c144).  The values the frozen code read
+from its global configuration are constructor arguments with the paper's values
+as defaults; logging replaces ``print``.
+
+``VarAugmentor`` adds the engineered feature (or pair of features) most
+correlated with the target; ``XGBoostSelector`` ranks the features by XGBoost
+gain importance and keeps the top ``n_top``.  The name of an engineered feature
+is itself an expression of the raw inputs, e.g. ``(B11+B4)`` or ``(x)**2``, so
+a printed formula can be evaluated on the raw inputs alone.
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+from itertools import combinations
+
+from sklearn.preprocessing import StandardScaler
+import xgboost as xgb
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Paper values (the frozen global Config, as overridden by config_fixed_noise*.txt):
+# N_TOP_FEATURES = 14, RANDOM_SEED = 42, VAR_AUG_K = 0.
+N_TOP_FEATURES = 14
+SELECTOR_SEED  = 42
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  XGBOOST FEATURE SELECTOR
+# ══════════════════════════════════════════════════════════════════════════════
+
+class XGBoostSelector:
+    """Ranks features by XGBoost importance and returns the top-k subset.
+
+    Parameters
+    ----------
+    n_top         : number of features to keep (default 14, the paper's value)
+    n_estimators  : XGBoost trees
+    max_depth     : XGBoost tree depth
+    learning_rate : XGBoost learning rate
+    seed          : random seed of the XGBoost model (default 42, the paper's value)
+    """
+
+    def __init__(
+        self,
+        n_top:         int   = N_TOP_FEATURES,
+        n_estimators:  int   = 100,
+        max_depth:     int   = 6,
+        learning_rate: float = 0.1,
+        seed:          int   = SELECTOR_SEED,
+    ):
+        self.n_top         = n_top
+        self.n_estimators  = n_estimators
+        self.max_depth     = max_depth
+        self.learning_rate = learning_rate
+        self.seed          = seed
+
+    def transform(self, X: pd.DataFrame, y: pd.Series) -> tuple[list[str], dict[str, float]]:
+        """Return (top_feature_names, full_score_dict) ranked by XGBoost importance."""
+        X_sc = StandardScaler().fit_transform(X)
+        z_sc = StandardScaler().fit_transform(y.values.reshape(-1, 1)).ravel()
+
+        mdl = xgb.XGBRegressor(
+            n_estimators=self.n_estimators,
+            max_depth=self.max_depth,
+            learning_rate=self.learning_rate,
+            random_state=self.seed,
+            verbosity=0,
+        )
+        mdl.fit(X_sc, z_sc)
+
+        fi        = pd.Series(mdl.feature_importances_, index=X.columns).sort_values(ascending=False)
+        top_feats = fi.head(self.n_top).index.tolist()
+        scores    = fi.to_dict()
+        return top_feats, scores
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  VARIABLE AUGMENTER
+# ══════════════════════════════════════════════════════════════════════════════
+
+class VarAugmentor:
+    """Adds the single most predictive engineered feature to X."""
+
+    _R2_THRESHOLD = 0.999
+    _F32_MAX      = np.finfo(np.float32).max
+
+    def __init__(self, var_aug_k: int = 0):
+        # 0/1 = single-or-pair augmentation (the paper's setting); >= 2 = forward
+        # stepwise selection of k engineered features (frozen VAR_AUG_K).
+        self.var_aug_k = var_aug_k
+
+    def transform(self, X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
+        raw_cols = set(X.columns)
+        cands    = self._build_candidates(X)
+        cands    = self._clean(cands, raw_cols)
+
+        k = int(self.var_aug_k or 0)
+        if k >= 2:
+            to_add = self._stepwise(cands, raw_cols, y.values.ravel(), k)
+            logger.info(f"[var_aug] stepwise k={k}: {to_add}")
+            if to_add:
+                X = pd.concat([X, pd.DataFrame({n: cands[n] for n in to_add},
+                                               index=X.index)], axis=1)
+            return X
+
+        names  = list(cands.keys())
+        values = np.array(list(cands.values()), dtype=np.float64)
+
+        r2_single               = self._batch_r2(values, y.values.ravel())
+        best_single_idx         = int(np.argmax(r2_single))
+        best_single_name        = names[best_single_idx]
+        best_single_r2          = float(r2_single[best_single_idx])
+
+        best_pair_name, best_pair_r2 = self._best_pair(names, values, y.values.ravel())
+
+        single_is_new = best_single_name not in raw_cols
+        pair_new_cols = [n for n in best_pair_name if n not in raw_cols]
+
+        if best_single_r2 >= self._R2_THRESHOLD and len(pair_new_cols) >= (1 if single_is_new else 2):
+            to_add = [best_single_name] if single_is_new else []
+            logger.info(f"[var_aug] single: {best_single_name}  r2={best_single_r2:.4f}")
+        else:
+            to_add = pair_new_cols
+            logger.info(f"[var_aug] pair: {best_pair_name}  r2={best_pair_r2:.4f}")
+
+        if to_add:
+            X = pd.concat([X, pd.DataFrame({n: cands[n] for n in to_add}, index=X.index)], axis=1)
+        return X
+
+    def _stepwise(self, cands: dict, raw_cols: set, y: np.ndarray, k: int) -> list:
+        """Forward stepwise: repeatedly add the candidate that most reduces joint OLS MSE.
+
+        Marginal-correlation (matching-pursuit) selection picks collinear surrogates
+        instead of the true terms; selecting on the refit residual does not.
+        """
+        names = list(cands.keys())
+        V     = np.array([cands[n] for n in names], dtype=np.float64)
+        scale = np.maximum(np.abs(V).max(axis=1, keepdims=True), 1e-300)
+        Vn    = V / scale
+        cols, chosen = [np.ones(len(y))], []
+        for _ in range(k):
+            best_m, best_i = np.inf, None
+            for i, nm in enumerate(names):
+                if nm in chosen:
+                    continue
+                A = np.column_stack(cols + [Vn[i]])
+                try:
+                    c, *_ = np.linalg.lstsq(A, y, rcond=-1)
+                except np.linalg.LinAlgError:
+                    continue
+                m = float(((A @ c - y) ** 2).mean())
+                if np.isfinite(m) and m < best_m:
+                    best_m, best_i = m, i
+            if best_i is None:
+                break
+            chosen.append(names[best_i])
+            cols.append(Vn[best_i])
+        return [n for n in chosen if n not in raw_cols]
+
+    def _build_candidates(self, X: pd.DataFrame) -> dict[str, np.ndarray]:
+        # guard_report[name] = {"zero_guard": n, "clipped": n, "nonfinite": n}
+        # Every guard below changes the FUNCTION the name denotes; recording the
+        # firings keeps that visible instead of silent (the name "1/(x)" does
+        # not say that it is 0 where |x| <= 1e-12).
+        self.guard_report = {}
+        def _g(name, key, n):
+            if n:
+                self.guard_report.setdefault(name, {})[key] = int(n)
+        cands = {c: X[c].values.astype(np.float64) for c in X.columns}
+        for c in list(X.columns):
+            v = cands[c]
+            cands[f"({c})**2"]            = v ** 2
+            cands[f"({c})**3"]            = v ** 3
+            _zero = np.abs(v) <= 1e-12
+            _g(f"1/({c})", "zero_guard", _zero.sum())
+            cands[f"1/({c})"]             = np.where(np.abs(v) > 1e-12, 1.0 / v, 0.0)
+            cands[f"sqrt(abs({c}))"]      = np.sqrt(np.abs(v))
+            cands[f"-({c})"]              = -v
+            cands[f"log(abs({c})+1e-12)"] = np.log(np.abs(v) + 1e-12)
+        for ci, cj in combinations(X.columns, 2):
+            vi, vj = X[ci].values.astype(np.float64), X[cj].values.astype(np.float64)
+            cands[f"({ci}+{cj})"]  = vi + vj
+            cands[f"({ci}-{cj})"]  = vi - vj
+            cands[f"({cj}-{ci})"]  = vj - vi
+            _prod = vi * vj
+            _g(f"({ci}*{cj})", "clipped",
+               (np.abs(_prod) > self._F32_MAX).sum() + (~np.isfinite(_prod)).sum())
+            cands[f"({ci}*{cj})"]  = np.clip(_prod, -self._F32_MAX, self._F32_MAX)
+            _g(f"({ci}/{cj})", "zero_guard", (np.abs(vj) <= 1e-12).sum())
+            cands[f"({ci}/{cj})"]  = np.where(np.abs(vj) > 1e-12, vi / vj, 0.0)
+            _g(f"({cj}/{ci})", "zero_guard", (np.abs(vi) <= 1e-12).sum())
+            cands[f"({cj}/{ci})"]  = np.where(np.abs(vi) > 1e-12, vj / vi, 0.0)
+        return cands
+
+    def _clean(self, cands: dict, raw_cols: set) -> dict:
+        if not hasattr(self, "guard_report"):
+            self.guard_report = {}
+        out = {}
+        for name, v in cands.items():
+            if not (name in raw_cols or np.std(v) > 1e-15):
+                continue
+            nf = int((~np.isfinite(v)).sum())
+            w  = np.where(np.isfinite(v), v, 0.0)
+            cl = int((np.abs(w) > self._F32_MAX).sum())
+            if nf:
+                self.guard_report.setdefault(name, {})["nonfinite"] = \
+                    self.guard_report.setdefault(name, {}).get("nonfinite", 0) + nf
+            if cl:
+                self.guard_report.setdefault(name, {})["clipped"] = \
+                    self.guard_report.setdefault(name, {}).get("clipped", 0) + cl
+            out[name] = np.clip(w, -self._F32_MAX, self._F32_MAX)
+        return out
+
+    def _batch_r2(self, T: np.ndarray, y: np.ndarray) -> np.ndarray:
+        T   = np.where(np.isfinite(T), T, 0.0)
+        Tc  = T - T.mean(axis=1, keepdims=True)
+        Ts  = np.sqrt((Tc ** 2).mean(axis=1))
+        y_c = y - y.mean()
+        y_s = y.std()
+        d   = Tc @ y_c / len(y)
+        return np.divide(d, Ts * y_s, where=Ts > 1e-15, out=np.zeros(T.shape[0])) ** 2
+
+    def _best_pair(
+        self, names: list[str], values: np.ndarray, y: np.ndarray
+    ) -> tuple[tuple[str, str], float]:
+        best_r2, best_pair = 0.0, (names[0], names[1])
+        for i in range(len(names)):
+            vi   = values[i]
+            rest = values[i + 1:]
+            if not rest.shape[0]:
+                break
+            templates = [
+                vi + rest,
+                vi - rest,
+                rest - vi,
+                np.clip(vi * rest, -self._F32_MAX, self._F32_MAX),
+                np.where(np.abs(rest) > 1e-12, vi / rest, 0.0),
+                np.where(np.abs(vi)   > 1e-12, rest / vi, 0.0),
+            ]
+            br = np.zeros(rest.shape[0])
+            for T in templates:
+                r2     = self._batch_r2(np.atleast_2d(T), y)
+                better = r2 > br
+                br[better] = r2[better]
+            for k in range(rest.shape[0]):
+                if br[k] > best_r2:
+                    best_r2   = br[k]
+                    best_pair = (names[i], names[i + 1 + k])
+        return best_pair, best_r2
+
+

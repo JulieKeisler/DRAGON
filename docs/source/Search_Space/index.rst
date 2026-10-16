@@ -313,6 +313,7 @@ The implementation of the objects and variables use to encode the Deep Neural Ne
    :maxdepth: 1
 
    dag_encoding
+   symbolic
 
 The Figure below illustrates how the elements are linked together. 
 The hierarchical composition of the variables creating a DAG allows optimization at various levels, from the graph structure to any operation hyperparameters. 

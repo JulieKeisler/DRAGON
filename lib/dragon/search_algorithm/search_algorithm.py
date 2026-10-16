@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import pickle
 import os
 import signal
+import threading
 from dragon.utils.tools import logger
 import numpy as np
 import pandas as pd
@@ -514,6 +515,11 @@ class SearchAlgorithm(ABC):
         return self.min_loss
 
 def timed_evaluation(x, idx, max_duration, evaluation):
+    # SIGALRM can only be installed from the main thread; DragonSR runs its
+    # streams as threads, which evaluate without the time limit (the frozen
+    # experiment code applied the same rule as a monkey-patch, runner/Dragon.py).
+    if threading.current_thread() is not threading.main_thread():
+        return evaluation(x, idx)
     def handler(signum, frame):
         print(f'Evaluation of model {idx} took more than {max_duration} seconds. Stopping evaluation.')
         raise TimeoutError()

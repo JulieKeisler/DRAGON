@@ -123,4 +123,5 @@ For more detailed examples of various applications, see:
 
    image
    load_forecasting
+   symbolic_regression
    time_series_forecasting

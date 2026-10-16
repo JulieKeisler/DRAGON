@@ -1,14 +1,16 @@
-"""Symbolic regression utilities for DRAGON.
-
-This package contains all DRAGON-specific symbolic regression components:
+"""Symbolic regression components of DRAGON, used by DragonSR.
 
 Submodules
 ----------
-- ``dag_to_formula`` — DAG extraction, SymPy compilation, formula formatting
-- ``formula_extraction`` — OLS analysis dict → formula strings
-- ``dag_inspector`` — DAG structure introspection and SVG/text export
-- ``denoise`` — GPR/LinGAM denoisers, MC-Dropout, noise injection
-- ``features_selection`` — Feature selectors, VarAugmentor, CombinationBuilder
-- ``simplification`` — Composition penalty for nested same-family functions
-- ``loss_function/`` — Search losses, OLS pipeline, fitting, selection
+- ``preprocessing`` -- variable augmentation and XGBoost feature selection
+- ``evaluation``    -- ``DragonSearcher``, the loss Mutant-UCB evaluates: builds a
+  candidate graph, fits its constants and scores its channels
+- ``combination``   -- the four model classes that combine a graph's channels
+- ``losses``        -- search and alignment losses
+- ``dag_to_formula`` -- the printer: a graph's channels as expressions, with every
+  guard of the evaluated operators printed
+- ``dag_inspector`` -- structural summary of a graph
+
+The search space is ``dragon.search_space.symbolic`` and the estimator
+``dragon.search_algorithm.dragonsr.DragonSR``.
 """

@@ -57,6 +57,8 @@ setup(
     ],
     extras_require={
         "mpi": ["mpi4py>=3.1.2"],
+        "sr": ["scikit-learn", "xgboost"],   # DragonSR: feature selection
+        "test": ["pytest", "scikit-learn", "xgboost"],
         "docs": docs_extras
     },
     python_requires=">=3.9",

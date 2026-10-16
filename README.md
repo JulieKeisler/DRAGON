@@ -27,6 +27,28 @@ Key Features
 - Easy parallelization over multiple GPUs
      - The distributed version requires a MPI library, such as [MPICH](https://www.mpich.org/) or [Open MPI](https://www.open-mpi.org/) and is based on [mpi4py](https://mpi4py.readthedocs.io/en/stable/intro.html#what-is-mpi).
 
+Symbolic regression (DragonSR)
+------------
+
+**DragonSR** searches DAGs of symbolic operators for a closed-form expression of
+the data. A graph carries several channels, which a least-squares stage combines
+under one of four model classes, and the search runs under two objectives in
+parallel streams. Install with `pip install dragon-autodl[sr]`, then:
+
+```python
+from dragon.search_algorithm.dragonsr import DragonSR
+
+model = DragonSR(n_iterations=2000).fit(X, y)   # X: pandas DataFrame
+print(model.formula_)                             # the reported expression
+model.predict(X_new)                              # evaluates that expression
+```
+
+The search space is `dragon.search_space.symbolic`, the evaluation components
+are in `dragon.utils.symbolic`, and the estimator is
+`dragon.search_algorithm.dragonsr`. The experiment code of the DragonSR paper is
+kept unchanged in `leaderboard/`; `tests/` checks the library against it
+(`pip install dragon-autodl[test]`, then `pytest tests`).
+
 Basic Concepts
 ------------
 
