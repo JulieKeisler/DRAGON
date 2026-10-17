@@ -35,3 +35,15 @@ def test_numpy_input_and_names():
                  var_aug=False, seed=0).fit(X, X[:, 0] * X[:, 1])
     assert m.raw_feature_names_ == ["x0", "x1"]
     assert np.all(np.isfinite(m.predict(X)))
+
+
+def test_budget_beyond_curriculum_warns():
+    import pytest
+    rng = np.random.default_rng(2)
+    x = rng.uniform(-1, 1, 200)
+    m = DragonSR(n_iterations=400, families=["rational"], objectives=["full"],
+                 k_init=5, t_per_level=5, max_complexity=2, var_aug=False, seed=0)
+    with pytest.warns(UserWarning, match="t_per_level >= 198"):
+        m.fit(pd.DataFrame({"x": x}), 2 * x)
+    # the curriculum caps the stream: about k_init + max_complexity * t_per_level
+    assert m.n_evaluations_ < 30

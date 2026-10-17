@@ -27,11 +27,13 @@ Usage
 from __future__ import annotations
 
 import keyword
+import math
 import os
 import random
 import shutil
 import tempfile
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
@@ -236,6 +238,17 @@ class DragonSR:
         objectives = list(self.objectives) if self.objectives else [None]
         n_streams = len(streams) * len(objectives)
         stream_budget = max(1, int(self.n_iterations) // n_streams)
+        # The curriculum, not n_iterations, bounds what a stream spends: at most
+        # k_init + max_complexity * t_per_level evaluations (plus a few at the
+        # last level).  The paper's 20,000 over 12 streams (1,666 each) fits
+        # 30 + 55 * 30; a larger budget is only spent if t_per_level grows.
+        spendable = int(self.k_init) + int(self.max_complexity) * int(self.t_per_level)
+        if stream_budget > spendable:
+            need = math.ceil((stream_budget - int(self.k_init)) / int(self.max_complexity))
+            warnings.warn(
+                f"each stream can spend about {spendable} evaluations "
+                f"(k_init + max_complexity * t_per_level), below its budget of {stream_budget}; "
+                f"set t_per_level >= {need} to spend n_iterations", stacklevel=2)
         device = torch.device(self.device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
         # One seeding per run, before any stream starts (frozen _run_smart_parallel).

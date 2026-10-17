@@ -38,6 +38,12 @@ most 15 nodes, the 14 most important features, the correlation loss with a
 composition penalty of 0.01. On noisy targets the paper scored each candidate
 on a random 10% of the observations (``subsample=0.1``).
 
+``n_iterations`` is a ceiling shared by the streams: each stream spends at
+most about ``k_init + max_complexity * t_per_level`` evaluations, which the
+paper's settings (30 + 55 x 30) match to its 1,666 per stream. For a larger
+budget, raise ``t_per_level`` as well; ``fit`` warns when the budget cannot be
+spent.
+
 Every guard of the evaluated operators (the exponential clamps its argument at
 20, the logarithm passes non-positive values through, powers act on
 :math:`|x|`) is printed with its operation, so ``formula_`` is the function the
