@@ -26,6 +26,7 @@ from searchspace.SearchSpace import SearchSpaceBuilder as FrozenSpace
 
 from dragon.search_space.symbolic import (CombinationBuilder, SymbolicSearchSpace,
                                           OPERATOR_FAMILIES)
+from dragon.utils.symbolic import dag_to_formula
 from dragon.utils.symbolic.combination import OLSPostProcessor
 from dragon.utils.symbolic.evaluation import DragonSearcher, RegressionDataset
 from dragon.utils.symbolic.losses import SearchLoss, AlignmentLoss
@@ -33,6 +34,13 @@ from dragon.utils.symbolic.preprocessing import VarAugmentor, XGBoostSelector
 
 frozen_config.Loss.COMPOSITION_PENALTY = 0.01   # paper configuration
 frozen_config.Dragon.PER_TARGET_OPS = False
+
+
+@pytest.fixture(autouse=True)
+def _frozen_number_format(monkeypatch):
+    """The frozen code prints coefficients with fixed decimals; the library
+    prints them to six significant figures unless told to print as it did."""
+    monkeypatch.setattr(dag_to_formula, "LEGACY_FORMAT", True)
 
 
 def _data(n=600, seed=0):

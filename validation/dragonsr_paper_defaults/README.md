@@ -47,3 +47,9 @@ twelve parallel searches share one random generator.
 **Files.** `results/` holds the 30 run outputs (`<target>_run<r>.json`).
 `roll_libval.py` collects them into rows, `libval_paired.py` pairs them with the
 paper's verdicts, and both have cluster paths at the top to repoint.
+
+**Printed coefficients.** These runs printed fitted coefficients with four
+decimals, as the paper's code did, so a coefficient below 0.01 kept at most two
+significant figures. The library has since printed them to at least six
+significant figures (`dragon.utils.symbolic.dag_to_formula.coef`); the search
+and the fitted values are unchanged.

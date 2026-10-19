@@ -16,6 +16,7 @@ import torch
 from sklearn.linear_model import Ridge
 
 from dragon.utils.symbolic.losses import SearchLoss, AlignmentLoss, HUBER_DELTA_FRAC
+from dragon.utils.symbolic.dag_to_formula import coef
 
 # Defaults of the frozen Config.OLS / Config.Loss classes (unchanged by the paper's configs).
 RAT_MAX_DEGREE    = 2
@@ -249,22 +250,22 @@ class OLSPostProcessor:
         valid_w = [(i, wi) for i, wi in enumerate(w)
                    if i < len(valid) and valid[i] and abs(wi) >= min_weight and i < len(formulas)]
         if not valid_w:
-            return f"{b:.4f}"
+            return f"{coef(b, '.4f')}"
         used_u = {unaries[i] for i, _ in valid_w}
         if link == "log" and used_u == {"log"}:
-            terms = [f"(abs({formulas[i]})+1e-08)**({wi:.4f})" for i, wi in valid_w]
-            return f"{np.exp(b):.4e} * " + " * ".join(terms)
+            terms = [f"(abs({formulas[i]})+1e-08)**({coef(wi, '.4f')})" for i, wi in valid_w]
+            return f"{coef(np.exp(b), '.4e')} * " + " * ".join(terms)
         if link == "log":
-            inner = " ".join(f"{wi:+.4f}*{self._U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
-            return f"{np.exp(b):.4e} * exp({inner})"
+            inner = " ".join(f"{coef(wi, '+.4f')}*{self._U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
+            return f"{coef(np.exp(b), '.4e')} * exp({inner})"
         if link == "inv" and used_u == {"inv"}:
-            denom = " ".join(f"{wi:+.4f}/(abs({formulas[i]})+1e-08)" for i, wi in valid_w)
+            denom = " ".join(f"{coef(wi, '+.4f')}/(abs({formulas[i]})+1e-08)" for i, wi in valid_w)
             if abs(b) > min_weight:
-                denom += f" {b:+.4f}"
+                denom += f" {coef(b, '+.4f')}"
             return f"1 / ({denom})"
-        inner = " ".join(f"{wi:+.4f}*{self._U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
+        inner = " ".join(f"{coef(wi, '+.4f')}*{self._U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
         if abs(b) > min_weight:
-            inner += f" {b:+.4f}"
+            inner += f" {coef(b, '+.4f')}"
         return self._LINK_WRAP[link](inner)
 
     def format_rational(self, rational: dict, formulas: list, valid_idx_global,
@@ -286,13 +287,13 @@ class OLSPostProcessor:
                 parts.append(f"({f_str})" if exp == 1 else f"({f_str})**{exp}")
             return "*".join(parts) if parts else "1"
 
-        num = [f"{a[k]:+.4f}*{mono_str(m)}" for k, m in enumerate(monos)
+        num = [f"{coef(a[k], '+.4f')}*{mono_str(m)}" for k, m in enumerate(monos)
                if kept_a[k] and abs(a[k]) >= min_weight]
         if abs(a0) >= min_weight or not num:
-            num.append(f"{a0:+.4f}")
-        den = [f"{b[k]:+.4f}*{mono_str(m)}" for k, m in enumerate(monos)
+            num.append(f"{coef(a0, '+.4f')}")
+        den = [f"{coef(b[k], '+.4f')}*{mono_str(m)}" for k, m in enumerate(monos)
                if kept_b[k] and abs(b[k]) >= min_weight]
-        den.append(f"{b0:+.4f}")
+        den.append(f"{coef(b0, '+.4f')}")
         return f"({' '.join(num)}) / ({' '.join(den)})"
 
     # ── Parsimony-aware model selection ──────────────────────────────────────

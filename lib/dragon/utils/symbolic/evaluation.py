@@ -23,7 +23,7 @@ from torch.utils.data import Dataset
 from dragon.search_space.dag_encoding import AdjMatrix
 from dragon.utils.symbolic.combination import OLSPostProcessor
 from dragon.utils.symbolic.dag_inspector import DAGInspector
-from dragon.utils.symbolic.dag_to_formula import graph_to_all_formulas
+from dragon.utils.symbolic.dag_to_formula import coef, graph_to_all_formulas
 from dragon.utils.symbolic.losses import SearchLoss
 
 # Composition penalty of the paper's runs (frozen config: Loss.COMPOSITION_PENALTY
@@ -65,8 +65,10 @@ class MetaArchi(nn.Module):
 
 class RegressionDataset(Dataset):
     def __init__(self, X: pd.DataFrame, y: pd.Series):
-        self.X = torch.DoubleTensor(X.values)
-        self.y = torch.DoubleTensor(y.values)
+        # a copy: pandas may hand back a read-only or negatively strided view,
+        # which torch refuses
+        self.X = torch.tensor(np.array(X.values, dtype=np.float64))
+        self.y = torch.tensor(np.array(y.values, dtype=np.float64))
 
     def __len__(self):
         return len(self.X)
@@ -731,10 +733,10 @@ class DragonSearcher:
         bias = analysis.get("ols_bias", 0.0)
         if wts is None or not formulas:
             return None
-        terms = [f"{w:+.4f}*({formulas[i]})"
+        terms = [f"{coef(w, '+.4f')}*({formulas[i]})"
                  for i, w in enumerate(wts) if abs(w) > 1e-6 and i < len(formulas)]
         if abs(bias) > 1e-6:
-            terms.append(f"{bias:+.4f}")
+            terms.append(f"{coef(bias, '+.4f')}")
         return " ".join(terms) if terms else None
 
     def _polyrat_formulas(self, formulas, valid_idx_global, analysis) -> dict:

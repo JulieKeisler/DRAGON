@@ -26,6 +26,28 @@ from dragon.search_space.bricks.symbolic_regression import (
 
 _FMT_FUNCS = {"sqrt", "ln", "sin", "cos", "exp", "abs", "log"}
 
+# Fitted coefficients used to be printed with a fixed number of decimals
+# ("%+.4f"), which keeps two significant figures below 0.01 and one below
+# 0.001: a fitted 0.000817 printed as 0.0008, whose cube is 6% off.  coef()
+# keeps at least six significant figures, and never fewer decimals than the
+# fixed spec it replaces.  LEGACY_FORMAT = True prints exactly as the code of
+# the paper's runs did (the equivalence tests compare against that code).
+LEGACY_FORMAT = False
+
+
+def coef(x, spec="+.4f"):
+    """Print the number *x*; *spec* is the fixed format it used to be printed with."""
+    if LEGACY_FORMAT:
+        return format(x, spec)
+    x = float(x)
+    sign = "+" if spec.startswith("+") else ""
+    if x == 0.0 or not np.isfinite(x):
+        return format(x, sign + "g")
+    if spec.endswith("e"):
+        return format(x, sign + ".6e")
+    sig = max(6, int(np.floor(np.log10(abs(x)))) + 1 + 4)
+    return format(x, f"{sign}.{sig}g")
+
 
 def _is_wrapped(expr):
     """Return True if *expr* is entirely enclosed by a matching pair of parentheses."""
@@ -250,7 +272,7 @@ def apply_operation(out, node):
             value = value.item()
         elif value is None:
             value = 0.0
-        return [str(round(value, 6))]
+        return [str(round(value, 6)) if LEGACY_FORMAT else coef(value, "")]
     if name == "Power":
         exp = getattr(op, "exponent", 2.0)
         if hasattr(exp, "item"):
@@ -660,22 +682,22 @@ def format_nested(nested: dict, formulas: list, min_weight: float = 1e-4) -> str
     valid_w = [(i, wi) for i, wi in enumerate(w)
                if i < len(valid) and valid[i] and abs(wi) >= min_weight and i < len(formulas)]
     if not valid_w:
-        return f"{b:.4f}"
+        return f"{coef(b, '.4f')}"
     used_u = {unaries[i] for i, _ in valid_w}
     if link == "log" and used_u == {"log"}:
-        terms = [f"({formulas[i]})**({wi:.4f})" for i, wi in valid_w]
-        return f"{np.exp(b):.4e} * " + " * ".join(terms)
+        terms = [f"({formulas[i]})**({coef(wi, '.4f')})" for i, wi in valid_w]
+        return f"{coef(np.exp(b), '.4e')} * " + " * ".join(terms)
     if link == "log":
-        inner = " ".join(f"{wi:+.4f}*{_U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
-        return f"{np.exp(b):.4e} * exp({inner})"
+        inner = " ".join(f"{coef(wi, '+.4f')}*{_U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
+        return f"{coef(np.exp(b), '.4e')} * exp({inner})"
     if link == "inv" and used_u == {"inv"}:
-        denom = " ".join(f"{wi:+.4f}/({formulas[i]})" for i, wi in valid_w)
+        denom = " ".join(f"{coef(wi, '+.4f')}/({formulas[i]})" for i, wi in valid_w)
         if abs(b) > min_weight:
-            denom += f" {b:+.4f}"
+            denom += f" {coef(b, '+.4f')}"
         return f"1 / ({denom})"
-    inner = " ".join(f"{wi:+.4f}*{_U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
+    inner = " ".join(f"{coef(wi, '+.4f')}*{_U_WRAP[unaries[i]](formulas[i])}" for i, wi in valid_w)
     if abs(b) > min_weight:
-        inner += f" {b:+.4f}"
+        inner += f" {coef(b, '+.4f')}"
     return _LINK_WRAP[link](inner)
 
 
@@ -710,11 +732,11 @@ def format_rational(rational: dict, formulas: list, valid_idx_global,
             parts.append(f"({f_str})" if exp == 1 else f"({f_str})**{exp}")
         return "*".join(parts) if parts else "1"
 
-    num = [f"{a[k]:+.4f}*{mono_str(m)}" for k, m in enumerate(monos)
+    num = [f"{coef(a[k], '+.4f')}*{mono_str(m)}" for k, m in enumerate(monos)
            if kept_a[k] and abs(a[k]) >= min_weight]
     if abs(a0) >= min_weight or not num:
-        num.append(f"{a0:+.4f}")
-    den = [f"{b[k]:+.4f}*{mono_str(m)}" for k, m in enumerate(monos)
+        num.append(f"{coef(a0, '+.4f')}")
+    den = [f"{coef(b[k], '+.4f')}*{mono_str(m)}" for k, m in enumerate(monos)
            if kept_b[k] and abs(b[k]) >= min_weight]
-    den.append(f"{b0:+.4f}")
+    den.append(f"{coef(b0, '+.4f')}")
     return f"({' '.join(num)}) / ({' '.join(den)})"
