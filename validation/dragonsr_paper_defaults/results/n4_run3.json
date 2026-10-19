@@ -1,0 +1,150 @@
+{
+ "target": "n4",
+ "run": 3,
+ "formula": "(0 + 0 + 1 * x * 1 + 0 + 0) * (1.0 + 0 + 1 * x * 1 + 0 - (x / x**2 + 1 * x * 1 - x**2 * (x + x**2) * x + 1.0) + x + x**3 + x**2 + x / x**2 + 1.0)",
+ "winner_type": "channel",
+ "stream": "rational|channel",
+ "loss": 1.6939782909730638e-12,
+ "n_evaluations": 19971,
+ "time_s": 18962.879956007004,
+ "feature_names": [
+  "x",
+  "(x)**3",
+  "(x)**2"
+ ],
+ "streams": [
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 1.6935342017632138e-12,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 9215.652314662933,
+   "formula": "(+1.0000*(x * 1) -1.0000*(x * 1)*(x**3 * x**3)) / (-1.0000*(x * 1) +1.0000)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 1.6939782909730638e-12,
+   "winner_type": "rational",
+   "actualT": 1662,
+   "max_complexity_reached": 55,
+   "time_s": 9879.538050413132,
+   "formula": "(+1.0000*(x * 1 * 1) -1.0000*(x * 1 * 1)*(x**3 * x**3 * 1)) / (-1.0000*(x * 1 * 1) +1.0000)"
+  },
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 1.6939782909730638e-12,
+   "winner_type": "rational",
+   "actualT": 1657,
+   "max_complexity_reached": 55,
+   "time_s": 9879.725781202316,
+   "formula": "(+1.0000*(sign((x) * (1)) * (abs(x * 1) + 1e-30)**1) -1.0000*(sign((x) * (1)) * (abs(x * 1) + 1e-30)**1)*(sign(((x)**3) * (sign(x)*(abs(x)+1e-30)**3)) * (abs(x**3 * sign(x) * (abs(x) + 1e-30)**3) + 1e-30)**1)) / (-1.0000*(sign((x) * (1)) * (abs(x * 1) + 1e-30)**1) +1.0000)"
+  },
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 1.6939782909730638e-12,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 10336.223474025726,
+   "formula": "(+1.0000*(1 * (x + 0) * 1) +0.0043*(1 * (x + 0) * 1)*(x**3 * (x**3 + 0) * -230.899445)) / (-1.0000*(1 * (x + 0) * 1) +1.0000)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 1.6939782909730638e-12,
+   "winner_type": "ols",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 10739.896457910538,
+   "formula": "+1.0000*(x + x**3 * 1) +1.0000*(x**2 + x * 1 * x**2 * (x + x**3 + x**2))"
+  },
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 1.708549424161987e-08,
+   "winner_type": "rational",
+   "actualT": 1656,
+   "max_complexity_reached": 55,
+   "time_s": 10846.174112558365,
+   "formula": "(-0.2004*(x + sin(x) + x**3 + x**3 + cos(x**3))*(0 + 0 + x + x + cos(x)) +0.1893*(0 + 0 + x + x + cos(x))**2 +0.1324*(x + sin(x) + x**3 + x**3 + cos(x**3))**2 +0.1767*(x + sin(x) + x**3 + x**3 + cos(x**3)) -0.2981) / (+0.0496*(x + sin(x) + x**3 + x**3 + cos(x**3))*(0 + 0 + x + x + cos(x)) -0.1070*(0 + 0 + x + x + cos(x))**2 -0.0054*(x + sin(x) + x**3 + x**3 + cos(x**3))**2 -0.0964*(x + sin(x) + x**3 + x**3 + cos(x**3)) +1.0000)"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 0.000619206199861666,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 17135.27164030075,
+   "formula": "1.163311e+00 * (sign((((x) * (exp(minimum(x, 20)))) * (1)) * (((x)**3) + (exp((-0.056814)*((((x)**3) + (((1) * (1)) * (x))) + (0)))))) * (abs(x * exp(minimum(x, 20)) * 1 * (x**3 + exp(-0.056814 * (x**3 + 1 * 1 * x + 0)))) + 1e-30)**1) + -2.828148e-02"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.0007577677133620009,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 17486.79111266136,
+   "formula": "-6.606678e+01 * (-(sign(0.224395) * (abs(0.224395) + 1e-30)**3 * 1 * 1 * (x**2 + 0 + sign(x) * (abs(x) + 1e-30)**3 + 0 + sign((x)**3) * (abs(x**3) + 1e-30)**3 + 0.224395 + sign((x)**2) * (abs(x**2) + 1e-30)**3 + 0 + 0 + x + 0 + 0 + 0 + x**2 + sign((x)**2) * (abs(x**2) + 1e-30)**3 + (x + 0 + 0 + 0) * (x**2 + 0.224395 + sign(0.224395) * (abs(0.224395) + 1e-30)**3 + sign(0.224395) * (abs(0.224395) + 1e-30)**3)))) + -2.024234e-01"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 1.6939782909730638e-12,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 17716.017099142075,
+   "formula": "(0 + 0 + 1 * x * 1 + 0 + 0) * (1.0 + 0 + 1 * x * 1 + 0 - (x / x**2 + 1 * x * 1 - x**2 * (x + x**2) * x + 1.0) + x + x**3 + x**2 + x / x**2 + 1.0)"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.0002772114504377976,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 17874.083401679993,
+   "formula": "-1.997499e-01 * (0 + x + 0 + 0 + 0 + 0 - (0 + x + 0 + x**2 + x + x**2 + 1 * x * 1 + x * x**3 * 1 + x**3 * x**2 * 1 + x**2 * (x + x**2) * 12.367732 + sin(x**2 + x + x**2 + x + 0 + x**3 + 0 + x**2 + 12.367732) + 708113.3125 + 1 / (sign((x)**2) * (abs(x**2) + 1e-30)**-1 * (x + 0 + x**3 + 0 + x**2 + 12.367732) + 1e-08))) + -1.414455e+05"
+  },
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 1.6969416304357665e-05,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 52,
+   "time_s": 17942.728766202927,
+   "formula": "2.981470e-05 * (sign(((((((0.150155) + (((x) * (1)+((x)**3) * (1)+((x)**2) * (-0.233773)))) + (((x) + (0)+((x)**3) + (0)+((x)**2) + (0.150155)))) + (71.650383)) + (sign(((x)**2) + (0.150155))*(abs(((x)**2) + (0.150155))+1e-30)**2)) + ((((x) * (1)+((x)**3) * (1)+((x)**2) * (-0.233773))) * (((x) + (0)+((x)**3) + (0)+((x)**2) + (0.150155))))) + (where((0.150155)>0, ln(0.150155), 0.150155))) * (abs(0.150155 + x * 1 + x**3 * 1 + x**2 * -0.233773 + x + 0 + x**3 + 0 + x**2 + 0.150155 + 71.650383 + sign(((x)**2) + (0.150155)) * (abs(x**2 + 0.150155) + 1e-30)**2 + (x * 1 + x**3 * 1 + x**2 * -0.233773) * (x + 0 + x**3 + 0 + x**2 + 0.150155) + where((0.150155)>0, ln(0.150155), 0.150155)) + 1e-30)**3) + -1.025609e+01"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.0001457463907635903,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 18962.577698230743,
+   "formula": "2.670412e-01 * (0 + exp(-0.397468 * (0 + 0 + 0 + x * exp(1.02737 * x) * 1 * where(((x) * (1))>0, ln((x) * (1)), (x) * (1)) * x * exp(-0.861374 * x) * 1 / (exp(1.02737 * x) + 1e-08))) + 1 / (1 * 1 * 1 * 1 * 1 / (exp(1.02737 * x) + 1e-08) + 1e-08) + sign((((((1) * (1)) * (1)) * (1)) * (1/((exp((1.02737)*(x)))+1e-08))) * (exp((-0.397468)*((((0) + (0)) + (0)) + (((((x) * (exp((1.02737)*(x)))) * (1)) * (where(((x) * (1))>0, ln((x) * (1)), (x) * (1)))) * (((x) * (exp((-0.861374)*(x)))) * (1/((exp((1.02737)*(x)))+1e-08)))))))) * (abs(1 * 1 * 1 * 1 * 1 / (exp(1.02737 * x) + 1e-08) * exp(-0.397468 * (0 + 0 + 0 + x * exp(1.02737 * x) * 1 * where(((x) * (1))>0, ln((x) * (1)), (x) * (1)) * x * exp(-0.861374 * x) * 1 / (exp(1.02737 * x) + 1e-08)))) + 1e-30)**-3) + -8.198299e-01"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}

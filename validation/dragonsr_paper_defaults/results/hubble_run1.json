@@ -1,0 +1,149 @@
+{
+ "target": "hubble",
+ "run": 1,
+ "formula": "7.000000e+01 * (d) + 1.026432e-11",
+ "winner_type": "channel",
+ "stream": "log|channel",
+ "loss": 0.0,
+ "n_evaluations": 20012,
+ "time_s": 5754.284290552139,
+ "feature_names": [
+  "d",
+  "(d)**2"
+ ],
+ "streams": [
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 0.0,
+   "winner_type": "channel",
+   "actualT": 1668,
+   "max_complexity_reached": 49,
+   "time_s": 4758.992621421814,
+   "formula": "7.000000e+01 * (d) + 1.026432e-11"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.0,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 49,
+   "time_s": 5171.38854432106,
+   "formula": "7.000000e+01 * (d) + -5.952066e-12"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 0.0,
+   "winner_type": "channel",
+   "actualT": 1670,
+   "max_complexity_reached": 45,
+   "time_s": 5282.381244897842,
+   "formula": "7.000000e+01 * (d) + -8.235991e-12"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 4.440892098500626e-16,
+   "winner_type": "channel",
+   "actualT": 1671,
+   "max_complexity_reached": 51,
+   "time_s": 5546.8648416996,
+   "formula": "7.000000e+01 * (d) + 3.855632e-12"
+  },
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5624.195698976517,
+   "formula": "+70.0000*(d)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 5652.554258346558,
+   "formula": "-70.0000*(-d)"
+  },
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1668,
+   "max_complexity_reached": 54,
+   "time_s": 5665.76757979393,
+   "formula": "+70.0000*(d)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5685.483253955841,
+   "formula": "+70.0000*(d)"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.0,
+   "winner_type": "channel",
+   "actualT": 1670,
+   "max_complexity_reached": 50,
+   "time_s": 5708.379063844681,
+   "formula": "7.000000e+01 * (d) + -1.271941e-12"
+  },
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5738.69194316864,
+   "formula": "+46.6667*(d) +23.3333*(d**2) +23.3333*(d - d**2)"
+  },
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 5748.678560495377,
+   "formula": "+70.0000*(d)"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.0,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 51,
+   "time_s": 5754.02626991272,
+   "formula": "7.000000e+01 * (d) + -3.294993e-12"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}

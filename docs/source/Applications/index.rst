@@ -125,4 +125,5 @@ For more detailed examples of various applications, see:
    load_forecasting
    symbolic_regression
    dragonsr_quickstart
+   dragonsr_validation
    time_series_forecasting

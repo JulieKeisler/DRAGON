@@ -1,0 +1,151 @@
+{
+ "target": "n11",
+ "run": 4,
+ "formula": "1.0000e+00 * exp(+1.0000*where((x)>0, ln(x), x) * y)",
+ "winner_type": "nested",
+ "stream": "log|full",
+ "loss": 8.546940932774305e-12,
+ "n_evaluations": 19991,
+ "time_s": 15417.81722521782,
+ "feature_names": [
+  "x",
+  "y",
+  "(y/x)",
+  "(x)**3"
+ ],
+ "streams": [
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 3.0635567040970813e-06,
+   "winner_type": "rational",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 5796.997899055481,
+   "formula": "(+0.3128*(x**3)*(y) -0.4106*(x)*(y) +0.1822*(x)**2 +0.6661*(x) +0.2474) / (-0.0636*(x**3)*(y) -0.0375*(x)*(y) +0.6928*(x)**2 -0.5946*(x) +1.0000)"
+  },
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 3.063556703652992e-06,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5962.311550855637,
+   "formula": "(+0.3128*(x**3)*(y) -0.4106*(x)*(y) +0.1822*(x)**2 +0.6661*(x) +0.2474) / (-0.0636*(x**3)*(y) -0.0375*(x)*(y) +0.6928*(x)**2 -0.5946*(x) +1.0000)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 2.09614802293423e-06,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 8511.254897594452,
+   "formula": "(+0.0483*(x**3 * 1 / (x**3 + 1e-08) + x * x + x + x**3)*(y * 1 / (y + 1e-08) + 0 + 0 + y) -0.1082*(x * 1 / (x + 1e-08) + 0 + 0 + x)*(y * 1 / (y + 1e-08) + 0 + 0 + y) -0.1733*(x * 1 / (x + 1e-08) + 0 + 0 + x)**2 +0.6883*(x * 1 / (x + 1e-08) + 0 + 0 + x) -0.3345) / (-0.0119*(x**3 * 1 / (x**3 + 1e-08) + x * x + x + x**3)*(y * 1 / (y + 1e-08) + 0 + 0 + y) +0.0117*(x * 1 / (x + 1e-08) + 0 + 0 + x)*(y * 1 / (y + 1e-08) + 0 + 0 + y) +0.2486*(x * 1 / (x + 1e-08) + 0 + 0 + x)**2 -0.8215*(x * 1 / (x + 1e-08) + 0 + 0 + x) +1.0000)"
+  },
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 8.546940932774305e-12,
+   "winner_type": "nested",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 8561.295352220535,
+   "formula": "1.0000e+00 * exp(+1.0000*where((x)>0, ln(x), x) * y)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 8.54716297737923e-12,
+   "winner_type": "nested",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 8965.496220827103,
+   "formula": "1.0000e+00 * exp(+1.0000*y * where((x)>0, ln(x), x))"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.010002079963628221,
+   "winner_type": "channel",
+   "actualT": 1668,
+   "max_complexity_reached": 54,
+   "time_s": 10301.912969350815,
+   "formula": "-9.861814e-01 * (-(exp(1.00816 * y * where(((x) * (1))>0, ln((x) * (1)), (x) * (1))) + 0)) + 1.559146e-02"
+  },
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 1.7904764223475311e-06,
+   "winner_type": "rational",
+   "actualT": 1661,
+   "max_complexity_reached": 55,
+   "time_s": 12755.577467918396,
+   "formula": "(+0.1766*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)*(1 * 1 * sign((((y) * (exp(minimum((y) * (1), 20)))) * (1)) * (1)) * (abs(y * exp(minimum((y) * (1), 20)) * 1 * 1) + 1e-30)**1) +0.2317*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1) -0.0070*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)**2 +0.0793*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)*(1 * 1 * sign(((((y/x)) * (exp(minimum(((y/x)) * (1), 20)))) * (1)) * (1)) * (abs(y / x * exp(minimum(((y/x)) * (1), 20)) * 1 * 1) + 1e-30)**1) +0.7933) / (-0.0096*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)*(1 * 1 * sign((((y) * (exp(minimum((y) * (1), 20)))) * (1)) * (1)) * (abs(y * exp(minimum((y) * (1), 20)) * 1 * 1) + 1e-30)**1) +0.1381*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1) -0.0023*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)**2 +0.2655*(1 * 1 * sign((((x) * (exp(minimum((x) * (1), 20)))) * (1)) * (1)) * (abs(x * exp(minimum((x) * (1), 20)) * 1 * 1) + 1e-30)**1)*(1 * 1 * sign(((((y/x)) * (exp(minimum(((y/x)) * (1), 20)))) * (1)) * (1)) * (abs(y / x * exp(minimum(((y/x)) * (1), 20)) * 1 * 1) + 1e-30)**1) +1.0000)"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.004989524594699035,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 13169.47128033638,
+   "formula": "8.992633e-01 * (-(1 * sign((y) * (1)) * (abs(y * 1) + 1e-30)**1 * 1 * y / x * 1 * 1 * (x**3 + -0.618731 + sign(((x)**3) * (-0.618731)) * (abs(x**3 * -0.618731) + 1e-30)**1) * -0.618731)) + 1.282607e+00"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 0.000643115780234349,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 13655.64845442772,
+   "formula": "1.412625e-01 * (0 + y * (y / x + 0) * (x**3 + -1.64946) * 1 * 1 + x * 1 * (x + 0) * (y + 0) * 1 * 1) + 9.943544e-01"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.0066276398995076535,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 13958.875788927078,
+   "formula": "-1.016073e-01 * (-(0 + 0 + sign((((1) * ((y) * (1))) * (1)) * ((x) * (y))) * (abs(1 * y * 1 * 1 * x * y) + 1e-30)**-1 + 0 + sign((((((0) + (x)) + (0)) + (0)) + ((x) * (y))) + (sign((((1) * ((y) * (1))) * (1)) * ((x) * (y)))*(abs((((1) * ((y) * (1))) * (1)) * ((x) * (y)))+1e-30)**-1)) * (abs(0 + x + 0 + 0 + x * y + sign((((1) * ((y) * (1))) * (1)) * ((x) * (y))) * (abs(1 * y * 1 * 1 * x * y) + 1e-30)**-1) + 1e-30)**2)) + 8.727849e-02"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 0.0008013499335300933,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 15003.249394416809,
+   "formula": "4.937195e-37 * (x * 1 * sign(x) * (abs(x) + 1e-30)**1 * exp(-0.00211157 * x * sign(x) * (abs(x) + 1e-30)**1) * sign(exp((-0.00117448)*((((x) * (sign(x)*(abs(x)+1e-30)**1)) * (y)) * (1)))) * (abs(exp(-0.00117448 * x * sign(x) * (abs(x) + 1e-30)**1 * y * 1)) + 1e-30)**-2 * 1 * exp(83.3833 * 1 * sign(exp((-0.00117448)*((((x) * (sign(x)*(abs(x)+1e-30)**1)) * (y)) * (1)))) * (abs(exp(-0.00117448 * x * sign(x) * (abs(x) + 1e-30)**1 * y * 1)) + 1e-30)**-2 * sign((exp((-0.00211157)*((x) * (sign(x)*(abs(x)+1e-30)**1)))) + (0)) * (abs(exp(-0.00211157 * x * sign(x) * (abs(x) + 1e-30)**1) + 0) + 1e-30)**2)) + 2.412143e-01"
+  },
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 0.001106827246965203,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 54,
+   "time_s": 15417.455048799515,
+   "formula": "-2.745671e-12 * (sign((((((y/x)) * (where(((((x)**3) * ((y/x))) * (0.253472))>0, ln((((x)**3) * ((y/x))) * (0.253472)), (((x)**3) * ((y/x))) * (0.253472)))) * (0.25699)) * (-799969116160.0)) * (((((x) * (1)) * (1)) * (1))+(((((x)**3) * (((0.253472) + (0.253472)) + ((((x) + (0)) + (0)+(((y/x)) + (0.253472)) + (0.253472))))) * (0.25699)) * (0.345608)))) * (abs(y / x * where(((((x)**3) * ((y/x))) * (0.253472))>0, ln((((x)**3) * ((y/x))) * (0.253472)), (((x)**3) * ((y/x))) * (0.253472)) * 0.25699 * -799969116160.0 * (x * 1 * 1 * 1 + x**3 * (0.253472 + 0.253472 + x + 0 + 0 + y / x + 0.253472 + 0.253472) * 0.25699 * 0.345608)) + 1e-30)**1) + 2.038206e+00"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}

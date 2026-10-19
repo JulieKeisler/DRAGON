@@ -1,0 +1,150 @@
+{
+ "target": "n4",
+ "run": 1,
+ "formula": "+0.5000*(x**2 + 0 + x**3 * (x + x**2 + x**3)) +0.5000*(x**3 + x + x**2 + x**3 + x * 1 + x**3 * (x + x**2 + x**3))",
+ "winner_type": "ols",
+ "stream": "trig|full",
+ "loss": 1.545874539488068e-12,
+ "n_evaluations": 19987,
+ "time_s": 16272.720206260681,
+ "feature_names": [
+  "x",
+  "(x)**2",
+  "(x)**3"
+ ],
+ "streams": [
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 1.546540673302843e-12,
+   "winner_type": "rational",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 5720.800057411194,
+   "formula": "(+1.0000*(x) -1.0000*(x**3)*(x * x**3)) / (-1.0000*(x) +1.0000)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 1.546762717907768e-12,
+   "winner_type": "rational",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 5851.609813451767,
+   "formula": "(+1.0000*(x) -1.0000*(x**3)*(x * x**3)) / (-1.0000*(x) +1.0000)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 1.546096584092993e-12,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5889.610252857208,
+   "formula": "(+1.0000*(x) -1.0000*(x**3)*(x * x**3)) / (-1.0000*(x) +1.0000)"
+  },
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 1.545874539488068e-12,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 6912.539711475372,
+   "formula": "(+1.0000*(-(-x * 1)) -1.0000*(-(-x * 1))*(-(-(x**3) * x**3))) / (-1.0000*(-(-x * 1)) +1.0000)"
+  },
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 1.546096584092993e-12,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 8334.649302959442,
+   "formula": "(+1.0000*(x) -1.0000*(x**3)*(x * x**3)) / (-1.0000*(x) +1.0000)"
+  },
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 1.545874539488068e-12,
+   "winner_type": "ols",
+   "actualT": 1659,
+   "max_complexity_reached": 55,
+   "time_s": 8500.427516698837,
+   "formula": "+0.5000*(x**2 + 0 + x**3 * (x + x**2 + x**3)) +0.5000*(x**3 + x + x**2 + x**3 + x * 1 + x**3 * (x + x**2 + x**3))"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.00017008453945766,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 10039.652025461197,
+   "formula": "9.364098e+01 * (where((((169.313675) * (sign(169.313675)*(abs(169.313675)+1e-30)**1)) * (((169.313675) + (((exp((1.69299)*(x))) + (0)+(exp((1.69299)*((x)**2))) + ((exp((1.69299)*(x))) + (0))+(exp((1.69299)*((x)**3))) + ((exp((1.69299)*((x)**3))) + (169.313675))))) + ((x)**3)))>0, ln(((169.313675) * (sign(169.313675)*(abs(169.313675)+1e-30)**1)) * (((169.313675) + (((exp((1.69299)*(x))) + (0)+(exp((1.69299)*((x)**2))) + ((exp((1.69299)*(x))) + (0))+(exp((1.69299)*((x)**3))) + ((exp((1.69299)*((x)**3))) + (169.313675))))) + ((x)**3))), ((169.313675) * (sign(169.313675)*(abs(169.313675)+1e-30)**1)) * (((169.313675) + (((exp((1.69299)*(x))) + (0)+(exp((1.69299)*((x)**2))) + ((exp((1.69299)*(x))) + (0))+(exp((1.69299)*((x)**3))) + ((exp((1.69299)*((x)**3))) + (169.313675))))) + ((x)**3)))) + -1.507921e+03"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 0.0017208495255998102,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 13694.867211818695,
+   "formula": "-9.837997e-01 * (-(0 + sign((exp((0.431209)*((x)**2))) * (1)) * (abs(exp(0.431209 * x**2) * 1) + 1e-30)**-1 + exp(minimum((((x)**2) + (0)) + (x), 20)))) + -1.946615e+00"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 0.00141364937008015,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 13868.814125299454,
+   "formula": "2.207062e-01 * (sign((((((1/(((x)**3)+1e-08)) * (4.344798)) * (sign((((x)**3) + ((x)**3)) + (4.344798))*(abs((((x)**3) + ((x)**3)) + (4.344798))+1e-30)**2)) * (sign(4.344798)*(abs(4.344798)+1e-30)**-2)) * (((x)**2) * (x))) * ((x+(x)**2+(x)**3))) * (abs(1 / (x**3 + 1e-08) * 4.344798 * sign((((x)**3) + ((x)**3)) + (4.344798)) * (abs(x**3 + x**3 + 4.344798) + 1e-30)**2 * sign(4.344798) * (abs(4.344798) + 1e-30)**-2 * x**2 * x * (x + x**2 + x**3)) + 1e-30)**1) + 3.231380e-02"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.00016091553335084718,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 14812.5770008564,
+   "formula": "2.293076e-03 * (1 * 5.774682 * 5.774682 * (x + sign(x) * (abs(x) + 1e-30)**1 + x**3 + sign((x)**3) * (abs(x**3) + 1e-30)**1) * (0 + 0 + 0 + x + sign(x) * (abs(x) + 1e-30)**1 + x + 0 + sin(x * 1) + x**2 + sign((x)**2) * (abs(x**2) + 1e-30)**1 + x**2 + 0 + sin(x**2 * 1) + x**3 + sign((x)**3) * (abs(x**3) + 1e-30)**1 + x**3 + 5.774682 + sin(x**3 * -1.620546) + x + sign(x) * (abs(x) + 1e-30)**1 + x**3 + sign((x)**3) * (abs(x**3) + 1e-30)**1) * 1) + 1.481289e-03"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.002191794518504042,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 16087.505140304565,
+   "formula": "3.712717e-01 * ((0 + 0 + x * 1 + 0 + 0 + 0) * (x + 0 + 0 + x**2 + 0 + 0 + x**3 + x + x**2 + x**3 + -0.293622 + x**3 * -1.098374 + x * 1 + x**3 * 3.702686 + sign((((x)**3) + (-0.293622)) + (((x)**3) * (-1.098374))) * (abs(x**3 + -0.293622 + x**3 * -1.098374) + 1e-30)**2 + 1 * 1 / (x * 1 + 1e-08) * 1 * x**2 * 1 * sign(((x) + (0)) + ((x) * (1))) * (abs(x + 0 + x * 1) + 1e-30)**2 + 2.632405)) + -3.181186e-02"
+  },
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 0.0001254717559244778,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 16272.428795337677,
+   "formula": "-9.760606e-02 * (1 * 1 * sign(((0) + (0)) + ((((x) + (0)) + (0)) + (((x) * (1)) + (0)))) * (abs(0 + 0 + x + 0 + 0 + x * 1 + 0) + 1e-30)**3 * 1 + -2.540993 * -8.365032 * sign(((((x)**2) * (1)) + (2.540993)) + (((((x) + (0)) + (0)) + (((x) * (1)) + (0)))+(((((x)**3) + (2.253698)) + (sign(-(2.540993))*(abs(-(2.540993))+1e-30)**-2)) + ((((x) * (1)) + (0))*((((x)**2) * (1)) + (sign(-(2.540993))*(abs(-(2.540993))+1e-30)**-2)))))) * (abs(x**2 * 1 + 2.540993 + x + 0 + 0 + x * 1 + 0 + x**3 + 2.253698 + sign(-(2.540993)) * (abs(-2.540993) + 1e-30)**-2 + (x * 1 + 0) * (x**2 * 1 + sign(-(2.540993)) * (abs(-2.540993) + 1e-30)**-2)) + 1e-30)**3 * -0.004345) + -9.031396e-01"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}

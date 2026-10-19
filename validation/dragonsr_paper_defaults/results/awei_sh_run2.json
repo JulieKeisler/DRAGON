@@ -1,0 +1,161 @@
+{
+ "target": "awei_sh",
+ "run": 2,
+ "formula": "+2.3333*(B11 - B3) -4.8333*(B12 - B3) +1.0000*(B2) -0.2500*(B8) -3.8333*(B11) +3.3333*(B12)",
+ "winner_type": "ols",
+ "stream": "exp|full",
+ "loss": 0.0,
+ "n_evaluations": 19995,
+ "time_s": 10276.133279561996,
+ "feature_names": [
+  "(B11-B3)",
+  "(B12-B3)",
+  "B2",
+  "B1",
+  "B8",
+  "B6",
+  "B8A",
+  "B11",
+  "B7",
+  "B12",
+  "lat",
+  "B4",
+  "B3",
+  "B5"
+ ],
+ "streams": [
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 4207.082979679108,
+   "formula": "-1.0000*(B11 - B3) -1.0000*(B12 - B3) +1.0000*(B2) -0.2500*(B8) -0.5000*(B11) -0.5000*(B12) +0.5000*(B3)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 2.220446049250313e-16,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 4208.953170776367,
+   "formula": "-0.5000*(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**1) -16.0000*(sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**1) +1.0000*(sign(B2) * (abs(B2) + 1e-30)**1) -0.2500*(sign(B8) * (abs(B8) + 1e-30)**1) -1.0000*(sign(B11) * (abs(B11) + 1e-30)**1) +14.5000*(sign(B12) * (abs(B12) + 1e-30)**1) -14.0000*(sign(B3) * (abs(B3) + 1e-30)**1)"
+  },
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 2.220446049250313e-16,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 4439.670402050018,
+   "formula": "+1.0000*(-(B11 - B3)) +1.0000*(-(B12 - B3)) -1.0000*(-B2) +0.2500*(-B8) +0.5000*(-B11) +0.5000*(-B12) -0.5000*(-B3)"
+  },
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1667,
+   "max_complexity_reached": 54,
+   "time_s": 4450.34663105011,
+   "formula": "+2.3333*(B11 - B3) -4.8333*(B12 - B3) +1.0000*(B2) -0.2500*(B8) -3.8333*(B11) +3.3333*(B12)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 2.220446049250313e-16,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 4479.132302761078,
+   "formula": "+1.0000*(-(B11 - B3)) +1.0000*(-(B12 - B3)) -1.0000*(-B2) +0.2500*(-B8) +0.5000*(-B11) +0.5000*(-B12) -0.5000*(-B3)"
+  },
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 0.0,
+   "winner_type": "ols",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 4652.889161348343,
+   "formula": "-1.0000*(B11 - B3) -1.0000*(B12 - B3) +1.0000*(B2) -0.2500*(B8) -0.5000*(B11) -0.5000*(B12) +0.5000*(B3)"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.001972371552603769,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 5748.194058418274,
+   "formula": "-1.667580e+00 * (B11 - B3 + sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3 + sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3 + exp(minimum((B11-B3), 20)) * sign(((B11-B3)) + (exp(minimum((B11-B3), 20)))) * (abs(B11 - B3 + exp(minimum((B11-B3), 20))) + 1e-30)**-3 * (sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3 + sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3) + B12 - B3 + sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3 + sign(((B12-B3)) + (exp(minimum((B12-B3), 20)))) * (abs(B12 - B3 + exp(minimum((B12-B3), 20))) + 1e-30)**-3 + sign((B2) + (exp(minimum(B2, 20)))) * (abs(B2 + exp(minimum(B2, 20))) + 1e-30)**-3 + sign((B2) + (exp(minimum(B2, 20)))) * (abs(B2 + exp(minimum(B2, 20))) + 1e-30)**-3) + 4.445958e+02"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 0.001971782499883168,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 55,
+   "time_s": 7824.0988919734955,
+   "formula": "-1.667576e+00 * (B11 - B3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + 0 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-2 + 0 + sign(((B11-B3)) * (1)) * (abs((B11 - B3) * 1) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 * sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 * 1 * sign((sign((B12-B3))*(abs((B12-B3))+1e-30)**-2) + (sign(((B12-B3)) * (1))*(abs(((B12-B3)) * (1))+1e-30)**-2)) * (abs(sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2) + 1e-30)**1 + -(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-3 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-2 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-2 + sign(((B11-B3)) * (1)) * (abs((B11 - B3) * 1) + 1e-30)**-2 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-2 + 0 + sign(((B11-B3)) * (1)) * (abs((B11 - B3) * 1) + 1e-30)**-2 + sign((sign((B11-B3))*(abs((B11-B3))+1e-30)**-2) + (sign(((B11-B3)) * (1))*(abs(((B11-B3)) * (1))+1e-30)**-2)) * (abs(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**-2 + sign(((B11-B3)) * (1)) * (abs((B11 - B3) * 1) + 1e-30)**-2) + 1e-30)**1) + B12 - B3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + 0 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2 + sign((sign((B12-B3))*(abs((B12-B3))+1e-30)**-2) + (sign(((B12-B3)) * (1))*(abs(((B12-B3)) * (1))+1e-30)**-2)) * (abs(sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2) + 1e-30)**1 + sign(B2) * (abs(B2) + 1e-30)**-2 * sign(B2) * (abs(B2) + 1e-30)**-2 * 1 * sign((sign(B2)*(abs(B2)+1e-30)**-2) + (sign((B2) * (1))*(abs((B2) * (1))+1e-30)**-2)) * (abs(sign(B2) * (abs(B2) + 1e-30)**-2 + sign((B2) * (1)) * (abs(B2 * 1) + 1e-30)**-2) + 1e-30)**1 + (sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2) * (B12 - B3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-3 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + 0 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2 + sign((sign((B12-B3))*(abs((B12-B3))+1e-30)**-2) + (sign(((B12-B3)) * (1))*(abs(((B12-B3)) * (1))+1e-30)**-2)) * (abs(sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**-2 + sign(((B12-B3)) * (1)) * (abs((B12 - B3) * 1) + 1e-30)**-2) + 1e-30)**1 + sign(B2) * (abs(B2) + 1e-30)**-2 * sign(B2) * (abs(B2) + 1e-30)**-2 * 1 * sign((sign(B2)*(abs(B2)+1e-30)**-2) + (sign((B2) * (1))*(abs((B2) * (1))+1e-30)**-2)) * (abs(sign(B2) * (abs(B2) + 1e-30)**-2 + sign((B2) * (1)) * (abs(B2 * 1) + 1e-30)**-2) + 1e-30)**1)) + 4.446551e+02"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.0017704524509047914,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 8099.819291591644,
+   "formula": "-1.657342e+00 * (B11 - B3 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**0.5 + sign(sign((B11-B3))*(abs((B11-B3))+1e-30)**0.5) * (abs(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**0.5) + 1e-30)**-1 + sign(sign((B11-B3))*(abs((B11-B3))+1e-30)**0.5) * (abs(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**0.5) + 1e-30)**1 + (B12 - B3) * 1 + 0 + 0 + 0 + 0 + sign(((((B11-B3)) + (sign(sign((B11-B3))*(abs((B11-B3))+1e-30)**0.5)*(abs(sign((B11-B3))*(abs((B11-B3))+1e-30)**0.5)+1e-30)**1)) + (0)) + (-((((B11-B3)) + (((B12-B3)) + (0))) + (((B12-B3)) * (1))))) * (abs(B11 - B3 + sign(sign((B11-B3))*(abs((B11-B3))+1e-30)**0.5) * (abs(sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**0.5) + 1e-30)**1 + 0 + -(B11 - B3 + B12 - B3 + 0 + (B12 - B3) * 1)) + 1e-30)**0.5) + 4.763361e+02"
+  },
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 0.0018778856046826053,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 54,
+   "time_s": 8952.998922586441,
+   "formula": "-3.683726e-01 * (0 + B11 - B3 + 0 + sign((((B11-B3)) * (1)) * (1)) * (abs((B11 - B3) * 1 * 1) + 1e-30)**1 + 0 + sign((B11-B3)) * (abs(B11 - B3) + 1e-30)**1 + sign((1) * (sign((((B11-B3)) * (1)) * (1))*(abs((((B11-B3)) * (1)) * (1))+1e-30)**1)) * (abs(1 * sign((((B11-B3)) * (1)) * (1)) * (abs((B11 - B3) * 1 * 1) + 1e-30)**1) + 1e-30)**-2 + B11 - B3 + B11 - B3 + B12 - B3 + 0 + sign((((B12-B3)) * (1)) * (1)) * (abs((B12 - B3) * 1 * 1) + 1e-30)**1 + 0 + sign((B12-B3)) * (abs(B12 - B3) + 1e-30)**1 + sign((1) * (sign((((B12-B3)) * (1)) * (1))*(abs((((B12-B3)) * (1)) * (1))+1e-30)**1)) * (abs(1 * sign((((B12-B3)) * (1)) * (1)) * (abs((B12 - B3) * 1 * 1) + 1e-30)**1) + 1e-30)**-2 + B12 - B3) + 5.309806e+02"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 0.00186465695650051,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 10004.321363449097,
+   "formula": "-3.695892e-01 * (0 + (B11 - B3) * 1 + B11 - B3 + 0 + (B12 - B3) * 1 + 0 + B11 - B3 + 0 + (B12 - B3) * 1 + 0 + exp(-0.000806495 * (B11 - B3) * 1) + B11 - B3 + 0 + (B12 - B3) * 1 + 0 + B11 - B3 + 0 + (B12 - B3) * 1 + 0) + 5.346284e+02"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.0019687387481154284,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 10248.705283880234,
+   "formula": "-1.667567e+00 * (B11 - B3 + 0 + sin(B11 - B3 + 0) + cos(B11 - B3 + 0) + 0 + 0 + cos(B11 - B3) + sin(B12 - B3 + 0) + 0 + 0 + sin(B2 + 0) + cos(B2 + 0) + cos(B12 - B3) + B12 - B3 + sin(B2 + 0) + sin(B2 + 0) + 0 + sin(B1 + 0) + cos(B2 + 0) + sin(B2 + 0) + 0 + 0 + sin(B1 + 0) + cos(B1 + 0) + cos(B2) + sin(B11 - B3)) + 4.444437e+02"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}

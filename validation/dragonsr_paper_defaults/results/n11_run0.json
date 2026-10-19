@@ -1,0 +1,150 @@
+{
+ "target": "n11",
+ "run": 0,
+ "formula": "(-0.3245*(y + x * y + 0 - (y + y))*(x * y + x + x * y) +0.6017*(y + x * y + 0 - (y + y))*(0 + x * y + 0) +1.4143*(y + x * y + 0 - (y + y)) +0.4492*(y + x * y + 0 - (y + y))**2 +1.0000) / (+0.0319*(y + x * y + 0 - (y + y))*(x * y + x + x * y) -0.1165*(y + x * y + 0 - (y + y))*(0 + x * y + 0) +0.0660*(y + x * y + 0 - (y + y)) +0.0375*(y + x * y + 0 - (y + y))**2 +1.0000)",
+ "winner_type": "rational",
+ "stream": "general_power|full",
+ "loss": 3.4928365211239765e-07,
+ "n_evaluations": 19986,
+ "time_s": 22268.34649705887,
+ "feature_names": [
+  "(x*y)",
+  "x",
+  "y"
+ ],
+ "streams": [
+  {
+   "stream": "log|full",
+   "family": "log",
+   "objective": "full",
+   "loss": 1.5124117355158617e-06,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 8198.382261753082,
+   "formula": "(+0.1093*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1)) +0.0408*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1)*(x + sign(x) * (abs(x) + 1e-30)**2 + sign(x) * (abs(x) + 1e-30)**2 + sign((x) + (sign(x)*(abs(x)+1e-30)**2)) * (abs(x + sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0407*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x + sign(x) * (abs(x) + 1e-30)**2 + sign(x) * (abs(x) + 1e-30)**2 + sign((x) + (sign(x)*(abs(x)+1e-30)**2)) * (abs(x + sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) +0.0062*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1) +1.0217) / (-0.1065*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1)) +0.0412*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1)*(x + sign(x) * (abs(x) + 1e-30)**2 + sign(x) * (abs(x) + 1e-30)**2 + sign((x) + (sign(x)*(abs(x)+1e-30)**2)) * (abs(x + sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0399*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x + sign(x) * (abs(x) + 1e-30)**2 + sign(x) * (abs(x) + 1e-30)**2 + sign((x) + (sign(x)*(abs(x)+1e-30)**2)) * (abs(x + sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0003*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (sign(y)*(abs(y)+1e-30)**2)) * (abs(y + sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (sign((x*y))*(abs((x*y))+1e-30)**2)) * (abs(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1) +1.0000)"
+  },
+  {
+   "stream": "trig|full",
+   "family": "trig",
+   "objective": "full",
+   "loss": 5.699020803051624e-07,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 9285.96028637886,
+   "formula": "(+0.3568*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2)) +0.2031*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2)*(x + 0 + x + sign((x) * (1)) * (abs(x * 1) + 1e-30)**2) -0.1703*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2))*(x + 0 + x + sign((x) * (1)) * (abs(x * 1) + 1e-30)**2) +0.0410*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2))*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2) +1.7486) / (-0.3404*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2)) +0.1903*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2)*(x + 0 + x + sign((x) * (1)) * (abs(x * 1) + 1e-30)**2) -0.1785*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2))*(x + 0 + x + sign((x) * (1)) * (abs(x * 1) + 1e-30)**2) -0.0025*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2 - (y + 1.0 + y + sign((y) * (1.0)) * (abs(y * 1.0) + 1e-30)**2))*(x * y + 0 + x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**2) +1.0000)"
+  },
+  {
+   "stream": "rational|full",
+   "family": "rational",
+   "objective": "full",
+   "loss": 1.5124117355158617e-06,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 9410.904169082642,
+   "formula": "(+0.1093*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1)) +0.0408*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1)*(x + sign(x) * (abs(x) + 1e-30)**2 + x + sign(x) * (abs(x) + 1e-30)**2 + sign(sign(x)*(abs(x)+1e-30)**2) * (abs(sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0407*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x + sign(x) * (abs(x) + 1e-30)**2 + x + sign(x) * (abs(x) + 1e-30)**2 + sign(sign(x)*(abs(x)+1e-30)**2) * (abs(sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) +0.0062*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1) +1.0217) / (-0.1065*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1)) +0.0412*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1)*(x + sign(x) * (abs(x) + 1e-30)**2 + x + sign(x) * (abs(x) + 1e-30)**2 + sign(sign(x)*(abs(x)+1e-30)**2) * (abs(sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0399*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x + sign(x) * (abs(x) + 1e-30)**2 + x + sign(x) * (abs(x) + 1e-30)**2 + sign(sign(x)*(abs(x)+1e-30)**2) * (abs(sign(x) * (abs(x) + 1e-30)**2) + 1e-30)**1) -0.0003*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + y + sign(y) * (abs(y) + 1e-30)**2 + sign(sign(y)*(abs(y)+1e-30)**2) * (abs(sign(y) * (abs(y) + 1e-30)**2) + 1e-30)**1))*(x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(sign((x*y))*(abs((x*y))+1e-30)**2) * (abs(sign((x*y)) * (abs(x * y) + 1e-30)**2) + 1e-30)**1) +1.0000)"
+  },
+  {
+   "stream": "general_power|full",
+   "family": "general_power",
+   "objective": "full",
+   "loss": 3.4928365211239765e-07,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 9672.592814683914,
+   "formula": "(-0.3245*(y + x * y + 0 - (y + y))*(x * y + x + x * y) +0.6017*(y + x * y + 0 - (y + y))*(0 + x * y + 0) +1.4143*(y + x * y + 0 - (y + y)) +0.4492*(y + x * y + 0 - (y + y))**2 +1.0000) / (+0.0319*(y + x * y + 0 - (y + y))*(x * y + x + x * y) -0.1165*(y + x * y + 0 - (y + y))*(0 + x * y + 0) +0.0660*(y + x * y + 0 - (y + y)) +0.0375*(y + x * y + 0 - (y + y))**2 +1.0000)"
+  },
+  {
+   "stream": "sqrt|channel",
+   "family": "sqrt",
+   "objective": "channel",
+   "loss": 0.0004472806785797978,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 54,
+   "time_s": 12684.686782360077,
+   "formula": "-2.202231e-02 * (1 * (x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (0)) * (abs(x * y + 0) + 1e-30)**1) + 1 / (-0.104942 + 1e-08) * (x * y + sign((x*y)) * (abs(x * y) + 1e-30)**2 + sign(((x*y)) + (0)) * (abs(x * y + 0) + 1e-30)**1 - (y + sign(y) * (abs(y) + 1e-30)**2 + sign((y) + (1/((-0.104942)+1e-08))) * (abs(y + 1 / (-0.104942 + 1e-08)) + 1e-30)**1))) + -8.673714e-01"
+  },
+  {
+   "stream": "exp|full",
+   "family": "exp",
+   "objective": "full",
+   "loss": 4.798374875214506e-07,
+   "winner_type": "rational",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 15659.58039021492,
+   "formula": "(-4.4446*(exp(0.381366 * (x * y + 0 + sign((((x*y)) + (exp((1)*((x*y))))) + (exp((-0.524922)*(((x*y)) * (sign((x*y))*(abs((x*y))+1e-30)**1))))) * (abs(x * y + exp(1 * x * y) + exp(-0.524922 * x * y * sign((x*y)) * (abs(x * y) + 1e-30)**1)) + 1e-30)**-1)))*(exp(0.381366 * (x + 0 + sign(((x) + (exp((1)*(x)))) + (exp((-0.524922)*((x) * (sign(x)*(abs(x)+1e-30)**1))))) * (abs(x + exp(1 * x) + exp(-0.524922 * x * sign(x) * (abs(x) + 1e-30)**1)) + 1e-30)**-1))) +1.9814*(exp(0.381366 * (x * y + 0 + sign((((x*y)) + (exp((1)*((x*y))))) + (exp((-0.524922)*(((x*y)) * (sign((x*y))*(abs((x*y))+1e-30)**1))))) * (abs(x * y + exp(1 * x * y) + exp(-0.524922 * x * y * sign((x*y)) * (abs(x * y) + 1e-30)**1)) + 1e-30)**-1))) -0.0334*(exp(0.381366 * (x * y + 0 + sign((((x*y)) + (exp((1)*((x*y))))) + (exp((-0.524922)*(((x*y)) * (sign((x*y))*(abs((x*y))+1e-30)**1))))) * (abs(x * y + exp(1 * x * y) + exp(-0.524922 * x * y * sign((x*y)) * (abs(x * y) + 1e-30)**1)) + 1e-30)**-1)))**2 +1.6708*(exp(0.381366 * (x + 0 + sign(((x) + (exp((1)*(x)))) + (exp((-0.524922)*((x) * (sign(x)*(abs(x)+1e-30)**1))))) * (abs(x + exp(1 * x) + exp(-0.524922 * x * sign(x) * (abs(x) + 1e-30)**1)) + 1e-30)**-1)))*(exp(0.381366 * (y + 0.000358 + sign(((y) + (exp((1)*(y)))) + (exp((-0.524922)*((y) * (sign(y)*(abs(y)+1e-30)**1))))) * (abs(y + exp(1 * y) + exp(-0.524922 * y * sign(y) * (abs(y) + 1e-30)**1)) + 1e-30)**-1))) +0.8664) / (-0.5224*(exp(0.381366 * (x * y + 0 + sign((((x*y)) + (exp((1)*((x*y))))) + (exp((-0.524922)*(((x*y)) * (sign((x*y))*(abs((x*y))+1e-30)**1))))) * (abs(x * y + exp(1 * x * y) + exp(-0.524922 * x * y * sign((x*y)) * (abs(x * y) + 1e-30)**1)) + 1e-30)**-1)))*(exp(0.381366 * (x + 0 + sign(((x) + (exp((1)*(x)))) + (exp((-0.524922)*((x) * (sign(x)*(abs(x)+1e-30)**1))))) * (abs(x + exp(1 * x) + exp(-0.524922 * x * sign(x) * (abs(x) + 1e-30)**1)) + 1e-30)**-1))) +1.8506*(exp(0.381366 * (x * y + 0 + sign((((x*y)) + (exp((1)*((x*y))))) + (exp((-0.524922)*(((x*y)) * (sign((x*y))*(abs((x*y))+1e-30)**1))))) * (abs(x * y + exp(1 * x * y) + exp(-0.524922 * x * y * sign((x*y)) * (abs(x * y) + 1e-30)**1)) + 1e-30)**-1))) -2.2549*(exp(0.381366 * (x + 0 + sign(((x) + (exp((1)*(x)))) + (exp((-0.524922)*((x) * (sign(x)*(abs(x)+1e-30)**1))))) * (abs(x + exp(1 * x) + exp(-0.524922 * x * sign(x) * (abs(x) + 1e-30)**1)) + 1e-30)**-1)))*(exp(0.381366 * (y + 0.000358 + sign(((y) + (exp((1)*(y)))) + (exp((-0.524922)*((y) * (sign(y)*(abs(y)+1e-30)**1))))) * (abs(y + exp(1 * y) + exp(-0.524922 * y * sign(y) * (abs(y) + 1e-30)**1)) + 1e-30)**-1))) +1.0000)"
+  },
+  {
+   "stream": "general_power|channel",
+   "family": "general_power",
+   "objective": "channel",
+   "loss": 0.0001897639400169071,
+   "winner_type": "channel",
+   "actualT": 1667,
+   "max_complexity_reached": 54,
+   "time_s": 19778.515854358673,
+   "formula": "-3.239120e-01 * (0 + 0 + x * 1 + 1 * exp(0.306367 * (x * y + 0)) * where(((1) * ((x) * (1)))>0, ln((1) * ((x) * (1))), (1) * ((x) * (1))) * (-1.10025 + -1.10025 + y * -1.10025) + 0 + 0 + 0 + 0) + 1.308825e+00"
+  },
+  {
+   "stream": "exp|channel",
+   "family": "exp",
+   "objective": "channel",
+   "loss": 0.0009867877153969529,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 52,
+   "time_s": 20109.57524085045,
+   "formula": "1.675229e+00 * (1 * exp(-0.486612 * (x * y + 0 + 0)) * 1 * exp(0.821337 * x * y * 1) - 3.590237 * exp(-0.486612 * (y + 1.0 + 3.590237)) * 2.906102 * exp(0.821337 * y * 1.0)) + 1.352820e+00"
+  },
+  {
+   "stream": "rational|channel",
+   "family": "rational",
+   "objective": "channel",
+   "loss": 0.00021401262495301943,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 20112.721488714218,
+   "formula": "2.550454e-03 * (1 * 1 * 1 * 1 * 1 * (x * y + 0 + 0) * 1 + 0.128501 * -0.188218 * (0 + x * y + x * y + 0 + 0 + 0 + x * y + x + x + 0 + 0 + 0 + x + y + y + 0 + 0 + 0 + y + (x * y + x * y) * (y + y) + 136.578812 + x * y * 1 + -0.188218) * 136.578812 * (0 + x * y + x * y + 0 + 0 + 0 + x * y + x + x + 0 + 0 + 0 + x + y + y + 0 + 0 + 0 + y + (x * y + x * y) * (y + y) + 136.578812 + x * y * 1 + -0.188218) * (x * y + 0 + 0 - (y + 0.128501 + 0.076838)) * -0.004745) + 1.207452e+00"
+  },
+  {
+   "stream": "sqrt|full",
+   "family": "sqrt",
+   "objective": "full",
+   "loss": 1.038251733587181e-06,
+   "winner_type": "rational",
+   "actualT": 1658,
+   "max_complexity_reached": 55,
+   "time_s": 20604.85405230522,
+   "formula": "(+0.0377*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1))**2 -0.9702*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1)) -0.0743*(-(0 + 0 + sign((x*y)) * (abs(x * y) + 1e-30)**1 + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1))*(-(0 + 0 + sign(x) * (abs(x) + 1e-30)**1 + 1 * 1 * 1 * sign(x) * (abs(x) + 1e-30)**1)) +0.0621*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1))*(-(0 + 0 + sign(x) * (abs(x) + 1e-30)**1 + 1 * 1 * 1 * sign(x) * (abs(x) + 1e-30)**1)) +0.7977) / (+0.0228*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1))**2 +0.2888*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1)) -0.0021*(-(0 + 0 + sign((x*y)) * (abs(x * y) + 1e-30)**1 + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1))*(-(0 + 0 + sign(x) * (abs(x) + 1e-30)**1 + 1 * 1 * 1 * sign(x) * (abs(x) + 1e-30)**1)) +0.0116*(-(y + (0 + sign((x*y)) * (abs(x * y) + 1e-30)**1) / (x * y + sign(((x*y)) * (1)) * (abs(x * y * 1) + 1e-30)**1 + x + sign((x) * ((x*y))) * (abs(x * x * y) + 1e-30)**1 + y + sign((y) * (y)) * (abs(y * y) + 1e-30)**1 + sign(y) * (abs(y) + 1e-30)**1) + 1 * 1 * 1 * sign((x*y)) * (abs(x * y) + 1e-30)**1 - -0.824379 * 1.309382 * -1.651969 * sign(y) * (abs(y) + 1e-30)**1))*(-(0 + 0 + sign(x) * (abs(x) + 1e-30)**1 + 1 * 1 * 1 * sign(x) * (abs(x) + 1e-30)**1)) +1.0000)"
+  },
+  {
+   "stream": "log|channel",
+   "family": "log",
+   "objective": "channel",
+   "loss": 0.0002828412822959425,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 54,
+   "time_s": 22229.282644987106,
+   "formula": "-3.756548e-04 * (1 * 1 * 1 * (x * y + 0) * 1 * 1 * 1 * 1 - where(((y) + (3.445266))>0, ln((y) + (3.445266)), (y) + (3.445266)) * (x * y + 0 + 0 + 0 + x + 0 + 0 + 0 + y + 44.338512 + 3.445266 + 1.298655) * (1 * (x * y + 0) * 1 * 1 * 1 * 1 + 0.353172 * (x * y + 0 - (y + 0.353172)) * 1.298655 * (x * y + 0 + 0 + 0 + x + 0 + 0 + 0 + y + 44.338512 + 3.445266 + 1.298655) * 9e-06 * sign((((((x*y)) + (0)) + (0)) + (0)+(((x) + (0)) + (0)) + (0)+(((y) + (44.338512)) + (3.445266)) + (1.298655))) * (abs(x * y + 0 + 0 + 0 + x + 0 + 0 + 0 + y + 44.338512 + 3.445266 + 1.298655) + 1e-30)**3)) + 1.310554e+00"
+  },
+  {
+   "stream": "trig|channel",
+   "family": "trig",
+   "objective": "channel",
+   "loss": 0.0023365744690965196,
+   "winner_type": "channel",
+   "actualT": 1666,
+   "max_complexity_reached": 55,
+   "time_s": 22267.998616695404,
+   "formula": "-3.810065e+00 * (-(38814.71875 + (x * y + 0 + 0 + 0 + 0 + x * y + cos(x * y + 0 + 0)) / (y + -94.563019 + 97.932076 + sign(-94.563019) * (abs(-94.563019) + 1e-30)**-3 + -1.742406 + y + cos(y + 38814.71875 + sign(38814.71875) * (abs(38814.71875) + 1e-30)**1)))) + -1.478884e+05"
+  }
+ ],
+ "library_commit": "681afa224861f1064cbee0ce9ef41f0c7987aa21"
+}
