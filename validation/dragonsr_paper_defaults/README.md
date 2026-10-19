@@ -33,7 +33,10 @@ dropped-term allowance.
 
 **What this does and does not show.** Five runs per law cannot separate rates
 closer than about 20 percentage points, and the six laws were chosen, not
-sampled. The check establishes that the packaged estimator, at its own
+sampled. They were chosen to span the kinds of law in the paper (two ratio
+indices, a multi-band linear index, a one-variable proportionality, a polynomial,
+and x^y, the one transcendental law the paper's own runs miss), not as the laws
+the method does best on. The check establishes that the packaged estimator, at its own
 defaults, finds the same laws on the same problems with the same effort, at
 rates consistent with the paper's runs. It does not reproduce the paper's
 tables. Two observations: the same law is often printed in very different

@@ -19,6 +19,7 @@ Nguyen-11 (x\ :sup:`y`)                     4 of 5             8 of 10
 On the 30 shared seeds the two agree on 29; in the one disagreement the
 library reports a ratio of polynomials that follows x\ :sup:`y` to 0.05% but is not
 the law. Each run spends the same effort as the paper's runs (19,937-20,014
-evaluations). With five runs per law, the result is *consistent with* the
+evaluations). The six laws were chosen to span the kinds of law in the paper, including
+x\ :sup:`y`, which the paper's own runs miss twice in ten. With five runs per law, the result is *consistent with* the
 paper's runs; it does not reproduce the paper's tables. Data, verdicts and
 scripts are in ``validation/dragonsr_paper_defaults/`` of the repository.
