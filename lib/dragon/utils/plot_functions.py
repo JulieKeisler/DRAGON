@@ -5,124 +5,10 @@ import graphviz
 from sympy import Symbol, Add, Mul, Pow
 from dragon.search_space.dag_encoding import AdjMatrix, SymbolicNode, fill_adj_matrix
 from dragon.search_space.bricks.basics import Identity
-from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures, ConstantBrick, ChannelBoost
+from dragon.search_space.bricks.symbolic_regression import Negate, Inverse, SelectFeatures, ConstantBrick
 import torch.nn as nn
 import numpy as np
 from sympy import Integer, Rational, Float
-from sympy import sympify
-
-
-
-_FMT_FUNCS = {"sqrt", "ln", "sin", "cos", "exp", "abs", "log"}
-
-
-def _is_wrapped(expr):
-    if len(expr) < 2 or expr[0] != "(" or expr[-1] != ")":
-        return False
-    depth = 0
-    for i, ch in enumerate(expr):
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-            if depth == 0 and i != len(expr) - 1:
-                return False
-    return depth == 0
-
-
-def _strip_outer_parens(expr):
-    expr = expr.strip()
-    while _is_wrapped(expr):
-        expr = expr[1:-1].strip()
-    return expr
-
-
-def _find_top_level_op(expr):
-    depth = 0
-    best = None
-    best_prec = 99
-    i = 0
-    while i < len(expr):
-        ch = expr[i]
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-        elif depth == 0:
-            if expr.startswith("**", i):
-                if best is None or 2 < best_prec:
-                    best = (i, "**")
-                    best_prec = 2
-                i += 1
-            elif ch in "+-":
-                if i == 0 or expr[i - 1] in "eE*/+-(":
-                    i += 1
-                    continue
-                if 0 < best_prec:
-                    best = (i, ch)
-                    best_prec = 0
-            elif ch in "*/":
-                if i == 0 or expr[i - 1] in "eE*/+-(":
-                    i += 1
-                    continue
-                if 1 < best_prec:
-                    best = (i, ch)
-                    best_prec = 1
-        i += 1
-    return best
-
-
-def _wrap_if_needed(expr, child_prec, parent_prec, *, right=False, op=None):
-    need = child_prec < parent_prec
-    if right and op in {"-", "/"} and child_prec == parent_prec:
-        need = True
-    return f"({expr})" if need else expr
-
-
-def _format_expr(expr):
-    expr = _strip_outer_parens(str(expr).strip())
-    if not expr:
-        return expr, 9
-
-    op_info = _find_top_level_op(expr)
-    if op_info is not None:
-        idx, op = op_info
-        left = expr[:idx].strip()
-        right = expr[idx + len(op):].strip()
-        prec = {"+": 0, "-": 0, "*": 1, "/": 1, "**": 2}[op]
-        left_s, left_p = _format_expr(left)
-        right_s, right_p = _format_expr(right)
-        if op == "**":
-            left_s = _wrap_if_needed(left_s, left_p, prec)
-            if right_p <= prec:
-                right_s = f"({right_s})"
-            return f"{left_s}**{right_s}", prec
-        left_s = _wrap_if_needed(left_s, left_p, prec)
-        right_s = _wrap_if_needed(right_s, right_p, prec, right=True, op=op)
-        return f"{left_s} {op} {right_s}", prec
-
-    if expr.startswith("-"):
-        inner_s, inner_p = _format_expr(expr[1:].strip())
-        return f"-{_wrap_if_needed(inner_s, inner_p, 3)}", 3
-
-    p = expr.find("(")
-    if p > 0 and expr.endswith(")"):
-        name = expr[:p].strip()
-        inner = expr[p + 1:-1]
-        if name in _FMT_FUNCS:
-            inner_s, _ = _format_expr(inner)
-            return f"{name}({inner_s})", 4
-
-    return expr, 5
-
-
-def format_formula_string(expr):
-    """Cheap parenthesis cleanup for generated formula strings.
-
-    This is a pure string formatter: no SymPy parsing, no algebra, only a
-    recursive precedence-aware re-rendering of the generated expression.
-    """
-    return _format_expr(expr)[0]
 
 
 class CPU_Unpickler(pickle.Unpickler):
@@ -310,36 +196,12 @@ def apply_operation(out, node):
         return [f"cos({x})" for x in out]
     if name == "Exp":
         return [f"exp({x})" for x in out]
-    if name == "ExpAffine":
-        a = getattr(op, "a", 1.0)
-        if hasattr(a, "item"):
-            a = float(a.item())
-        return [f"exp(({a:.6g})*({x}))" for x in out]
-    if name == "ChannelBoost":
-        if len(out) == 0:
-            return out
-        if len(out) == 1:
-            a = out[0]
-            b = out[0]
-        else:
-            a, b = out[0], out[-1]
-        mode = getattr(op, "mode", "add")
-        if mode == "add":
-            derived = f"({a})+({b})"
-        elif mode == "sub":
-            derived = f"({a})-({b})"
-        elif mode == "mul":
-            derived = f"({a})*({b})"
-        elif mode == "div":
-            derived = f"({a})/({b})"
-        else:
-            derived = f"({a})+({b})"
-        return out + [derived]
 
     return out
 
+from sympy import simplify, sympify
 
-def graph_to_formula(adj_matrix, X, nodes, channel=None, parse_sympy=True):
+def graph_to_formula(adj_matrix, X, nodes, channel=None):
     """Extract a symbolic formula from the DAG.
 
     Parameters
@@ -354,14 +216,10 @@ def graph_to_formula(adj_matrix, X, nodes, channel=None, parse_sympy=True):
         Which output channel to extract the formula for.
         If None, defaults to channel 0 (legacy behaviour).
 
-    parse_sympy : bool, default=True
-        If True, parse the output string into a SymPy expression. If False,
-        return the raw expression string for speed.
-
     Returns
     -------
-    sympy.Expr or str
-        Symbolic expression for the requested channel.
+    sympy.Expr
+        Simplified symbolic expression for the requested channel.
     """
     n = adj_matrix.shape[0]
 
@@ -381,20 +239,17 @@ def graph_to_formula(adj_matrix, X, nodes, channel=None, parse_sympy=True):
     if selected >= len(out_dict[n - 1]):
         selected = 0
     expr_str = out_dict[n - 1][selected]
-    return sympify(expr_str) if parse_sympy else format_formula_string(expr_str)
+    expr = sympify(expr_str)
+    return simplify(expr)
 
 
-def graph_to_all_formulas(adj_matrix, X, nodes, parse_sympy=True):
+def graph_to_all_formulas(adj_matrix, X, nodes):
     """Extract symbolic formulas for ALL output channels of the DAG.
-
-    parse_sympy : bool, default=True
-        If True, parse each channel expression into SymPy. If False, return
-        raw expression strings (much faster for large DAGs).
 
     Returns
     -------
-    list[sympy.Expr | str]
-        One expression per output channel.
+    list[sympy.Expr]
+        List of simplified symbolic expressions, one per output channel.
     """
     n = adj_matrix.shape[0]
 
@@ -411,13 +266,10 @@ def graph_to_all_formulas(adj_matrix, X, nodes, parse_sympy=True):
 
     formulas = []
     for elem in out_dict[n - 1]:
-        if parse_sympy:
-            try:
-                formulas.append(sympify(elem))
-            except Exception:
-                formulas.append(None)
-        else:
-            formulas.append(format_formula_string(elem))
+        try:
+            formulas.append(simplify(sympify(elem)))
+        except Exception:
+            formulas.append(None)
     return formulas
 
 

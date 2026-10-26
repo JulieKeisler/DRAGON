@@ -198,7 +198,18 @@ class Mutant_UCB(SearchAlgorithm):
             Dictionary containing the information of an evaluated configuration.
         """
         loss = row['UCBLoss']
-        self.storage[row['Idx']] = {"Loss": row['Loss'], "N": row['N'], "N_bar": row['N_bar'], "UCBLoss": loss}
+        N = row['N']
+        N_bar = row['N_bar']
+        Loss = row['Loss']
+        # Defensive: rows seeded from a non-UCB algorithm (e.g. SSEA) have
+        # blank UCBLoss/N/N_bar → NaN. Treat as "evaluated once" with Loss.
+        if not np.isfinite(loss):
+            loss = Loss if np.isfinite(Loss) else 1.0
+        if not np.isfinite(N) or N < 1:
+            N = 1
+        if not np.isfinite(N_bar) or N_bar < 1:
+            N_bar = 1
+        self.storage[row['Idx']] = {"Loss": Loss, "N": N, "N_bar": N_bar, "UCBLoss": loss}
         if self.min_loss > loss:
             logger.info(f'Best found! {loss} < {self.min_loss}')
             self.min_loss = loss
