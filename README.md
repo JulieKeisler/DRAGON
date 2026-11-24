@@ -83,4 +83,11 @@ Dependencies
 <a id="1">[1]</a>
 Keisler, J., Talbi, E. G., Claudel, S., & Cabriel, G. (2024). An algorithmic framework for the optimization of deep neural networks architectures and hyperparameters. Journal of Machine Learning Research.
 
+## License ##
 
+Copyright (C) 2022-2025 EDF
+
+DRAGON is distributed under the CeCILL-C free software license agreement.
+See the [LICENSE.txt](LICENSE.txt) file for more details.
+
+SPDX-License-Identifier: CECILL-C
